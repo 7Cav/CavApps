@@ -1,0 +1,61 @@
+version: '2'
+services:
+    web:
+        build:
+            context: ./
+            dockerfile: web.docker
+        image: 7cav/nginx-web:dev
+        depends_on:
+            - db
+            - cache
+        container_name: nginx
+        volumes:
+            - ./:/srv/www
+        ports:
+            - "80:80"
+        links:
+            - app
+    app:
+        build:
+            context: ./
+            dockerfile: app.docker
+        image: 7cav/cavapps:dev
+        container_name: app
+        volumes:
+            - ./:/srv/www
+        depends_on:
+            - db
+        links:
+            - db
+            - cache
+        environment:
+            - "DB_HOST=db"
+            - "DB_PORT=3306"
+            - "DB_DATABASE=homestead"
+            - "DB_USERNAME=homestead"
+            - "DB_PASSWORD=secret"
+            - "REDIS_HOST=cache"
+            - "REDIS_PORT=6379"
+
+    db:
+        image: mysql:5.7
+        container_name: db
+        restart: always
+        environment:
+            - "MYSQL_USER=homestead"
+            - "MYSQL_PASSWORD=secret"
+            - "MYSQL_ROOT_PASSWORD=secret"
+            - "MYSQL_DATABASE=homestead"
+        volumes:
+            - cav_data:/var/lib/mysql
+        ports:
+            - "3306:3306"
+
+    cache:
+        image: redis:3.0
+        container_name: cache
+        ports:
+            - "6379:6379"
+
+volumes:
+    cav_data:
