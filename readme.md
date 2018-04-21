@@ -1,12 +1,8 @@
-<!-- <p align="center"><img src="https://laravel.com/assets/img/components/logo-laravel.svg"></p>
+# Laravel docker template
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/d/total.svg" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/v/stable.svg" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://poser.pugx.org/laravel/framework/license.svg" alt="License"></a>
-</p>
+I used these files often to bootstrap several laravel projects I've been working on. So This is a central repo for me to store them so that others can easily use them too.
 
- -->
+Simply include the files here inside a new laravel project
 
-# CavApps
+It uses the default `.env` values, so you'll need to update the `docker-compose.yml` for any custom database values you wish.
+

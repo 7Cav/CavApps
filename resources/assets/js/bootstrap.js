@@ -11,7 +11,7 @@ window.Popper = require('popper.js').default;
 try {
     window.$ = window.jQuery = require('jquery');
 
-    require('bootstrap');
+    // require('bootstrap');
 } catch (e) {}
 
 /**
@@ -54,3 +54,21 @@ if (token) {
 //     cluster: process.env.MIX_PUSHER_APP_CLUSTER,
 //     encrypted: true
 // });
+
+
+/**
+ * Dashboard UI
+ */
+
+ require('@fengyuanchen/datepicker');
+ window.Chart = require('chart.js');
+ require('datatables.net');
+ require('dragula');
+ require('dropzone');
+ require('fullcalendar');
+ require('jquery-match-height');
+ require('jqvmap');
+ require('moment');
+ require('select2');
+
+ window.VueCharts = require('vue-chartjs');

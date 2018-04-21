@@ -30,9 +30,16 @@ return [
     ],
 
     'stripe' => [
-        'model' => App\User::class,
+        'model' => App\Models\User::class,
         'key' => env('STRIPE_KEY'),
         'secret' => env('STRIPE_SECRET'),
     ],
+    
+    'xenforo' => [
+        'client_id' => env('XENFORO_CLIENT_ID'),
+        'client_secret' => env('XENFORO_CLIENT_SECRET'),
+        'redirect' => env('XENFORO_CALLBACK_URL'),
+        'xenforo_url' => env('XENFORO_URL'),
+    ],        
 
 ];

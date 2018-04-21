@@ -1,14 +1,21 @@
 
 // Fonts
-@import url("https://fonts.googleapis.com/css?family=Raleway:300,400,600");
+// @import url("https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons");
 
-// Variables
-@import "variables";
+// // dash-ui
+// @import "dash-ui/main";
 
-// Bootstrap
-@import '~bootstrap/scss/bootstrap';
+// // Bootstrap
+// @import '~bootstrap/dist/css/bootstrap-grid.css';
 
-.navbar-laravel {
-  background-color: #fff;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+// // UI Kit
+// @import '~fullcalendar/dist/fullcalendar.css';
+// @import '~dragula/dist/dragula.css';
+// @import '~select2/dist/css/select2.css';
+// @import '~dropzone/dist/dropzone.css';
+// @import '~@fengyuanchen/datepicker/dist/datepicker.css';
+// @import '~jqvmap/dist/jqvmap.css';
+
+.header-username {
+    margin: 0 1em 0 0;
 }

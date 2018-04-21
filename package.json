@@ -10,13 +10,29 @@
         "production": "cross-env NODE_ENV=production node_modules/webpack/bin/webpack.js --no-progress --hide-modules --config=node_modules/laravel-mix/setup/webpack.config.js"
     },
     "devDependencies": {
-        "axios": "^0.18",
+        "@fengyuanchen/datepicker": "^0.6.3",
+        "axios": "^0.17",
         "bootstrap": "^4.0.0",
-        "popper.js": "^1.12",
+        "browser-sync": "^2.23.6",
+        "browser-sync-webpack-plugin": "^2.0.1",
         "cross-env": "^5.1",
+        "datatables.net": "^1.10.16",
+        "dragula": "^3.7.2",
+        "dropzone": "^5.2.0",
+        "fullcalendar": "^3.4.0",
         "jquery": "^3.2",
+        "jquery-match-height": "^0.7.2",
+        "jqvmap": "^1.5.1",
         "laravel-mix": "^2.0",
         "lodash": "^4.17.4",
+        "moment": "^2.18.1",
+        "popper.js": "^1.12",
+        "select2": "^4.0.6-rc.0",
         "vue": "^2.5.7"
+    },
+    "dependencies": {
+        "npm": "^5.7.1",
+        "vue-chartjs": "^3.2.1",
+        "chart.js": "^2.7.2"
     }
 }

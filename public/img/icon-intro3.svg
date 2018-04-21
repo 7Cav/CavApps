@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="140px" height="116px" viewBox="0 0 140 116" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 43.1 (39012) - http://www.bohemiancoding.com/sketch -->
+    <title>Icon 3</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <path d="M33,12.0040725 C33,7.03126056 37.0231953,3 42.0093974,3 L107.990603,3 C112.966355,3 117,7.03445528 117,12.0040725 L117,102 L33,102 L33,12.0040725 Z" id="path-1"></path>
+    </defs>
+    <g id="Screens---Source-Sans-Pro" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="30---First-Touch-with-App" transform="translate(-1115.000000, -265.000000)">
+            <g id="Get-Started" transform="translate(205.000000, 214.000000)">
+                <g id="3" transform="translate(800.000000, 0.000000)">
+                    <g id="Icon-3" transform="translate(110.000000, 51.000000)">
+                        <path d="M45.862,101 C30.892,91.172 21,74.246 21,55 C21,24.624 45.624,0 76,0 C106.375,0 131,24.624 131,55 C131,74.246 121.107,91.172 106.137,101 L45.862,101 Z" id="Base" fill="#E2DAFB"></path>
+                        <path d="M120.5,99 L26.5,99 C25.672,99 25,99.672 25,100.5 C25,101.328 25.672,102 26.5,102 L120.5,102 C121.328,102 122,101.328 122,100.5 C122,99.672 121.328,99 120.5,99 M125.5,99 C124.672,99 124,99.672 124,100.5 C124,101.328 124.672,102 125.5,102 C126.328,102 127,101.328 127,100.5 C127,99.672 126.328,99 125.5,99" id="Lines" fill="#354052"></path>
+                        <path d="M95.5,106 L41.5,106 C40.672,106 40,106.672 40,107.5 C40,108.328 40.672,109 41.5,109 L95.5,109 C96.328,109 97,108.328 97,107.5 C97,106.672 96.328,106 95.5,106 M107.5,106 L100.5,106 C99.672,106 99,106.672 99,107.5 C99,108.328 99.672,109 100.5,109 L107.5,109 C108.328,109 109,108.328 109,107.5 C109,106.672 108.328,106 107.5,106 M85.5,113 L51.5,113 C50.672,113 50,113.672 50,114.5 C50,115.328 50.672,116 51.5,116 L85.5,116 C86.328,116 87,115.328 87,114.5 C87,113.672 86.328,113 85.5,113 M93.5,113 L90.5,113 C89.672,113 89,113.672 89,114.5 C89,115.328 89.672,116 90.5,116 L93.5,116 C94.328,116 95,115.328 95,114.5 C95,113.672 94.328,113 93.5,113" id="Lines" fill="#8360E7"></path>
+                        <g id="Base">
+                            <use fill="#FFFFFF" fill-rule="evenodd" xlink:href="#path-1"></use>
+                            <path stroke="#354052" stroke-width="3" d="M115.5,100.5 L34.5,100.5 L34.5,12.0040725 C34.5,7.85600745 37.8553019,4.5 42.0093974,4.5 L107.990603,4.5 C112.136941,4.5 115.5,7.8618953 115.5,12.0040725 L115.5,100.5 Z"></path>
+                        </g>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="105" y="8" width="6" height="2" rx="1"></rect>
+                        <path d="M35.9151755,47.5044569 C35.9701514,47.3483027 36,47.1802537 36,47.0051863 L36,41 L36,42.0006117 C36,42.8299642 35.3342028,43.5022873 34.5,43.5022873 C33.6715729,43.5022873 33,42.8310979 33,42.0006117 L33,41 L33,47.0051863 C33,47.1794987 33.0299484,47.3469531 33.084998,47.5026725 C33.2898065,46.9198078 33.8426124,46.5022873 34.5,46.5022873 C35.1536689,46.5022873 35.7096807,46.9201678 35.9151755,47.5044569 Z" id="Icon-Part" fill="#E2DAFB"></path>
+                        <rect id="Icon-Part" fill="#354052" x="37" y="12" width="6" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#354052" x="44" y="12" width="73" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#354052" x="90" y="15" width="27" height="84"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="8" width="2" height="2"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="43" y="8" width="2" height="2"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="46" y="8" width="2" height="2"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="20" width="21" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="48" y="26" width="19" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="26" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="40" y="32" width="14" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="56" y="32" width="7" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="65" y="32" width="5" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="40" y="44" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="48" y="62" width="24" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="57" y="44" width="10" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="69" y="44" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="69" y="26" width="12" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="57" y="68" width="10" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="68" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="80" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="86" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="74" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="48" y="74" width="9" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="69" y="68" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="48" y="38" width="14" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="38" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="56" width="15" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="50" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="48" y="50" width="9" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#BFC7D2" x="40" y="62" width="6" height="3" rx="1"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="20" width="11" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="32" width="15" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="44" width="11" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#8360E7" x="100" y="91" width="10" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="91" width="3" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="26" width="6" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="38" width="6" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="103" y="38" width="4" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="103" y="26" width="9" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="56" width="15" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="50" width="6" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="95" y="62" width="6" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="103" y="62" width="4" height="3" rx="1.5"></rect>
+                        <rect id="Icon-Part" fill="#FFFFFF" x="103" y="50" width="9" height="3" rx="1.5"></rect>
+                        <path d="M138.4999,71.9999 C137.6719,71.9999 136.9999,72.6719 136.9999,73.4999 C136.9999,74.3279 137.6719,74.9999 138.4999,74.9999 C139.3279,74.9999 139.9999,74.3279 139.9999,73.4999 C139.9999,72.6719 139.3279,71.9999 138.4999,71.9999 M2.9999,11.4999 C2.9999,10.6719 2.3279,9.9999 1.4999,9.9999 C0.6719,9.9999 -0.0001,10.6719 -0.0001,11.4999 C-0.0001,12.3279 0.6719,12.9999 1.4999,12.9999 C2.3279,12.9999 2.9999,12.3279 2.9999,11.4999 M135.9999,12.9999 L134.9999,12.9999 L134.9999,11.9999 C134.9999,11.4479 134.5519,10.9999 133.9999,10.9999 C133.4479,10.9999 132.9999,11.4479 132.9999,11.9999 L132.9999,12.9999 L131.9999,12.9999 C131.4479,12.9999 130.9999,13.4479 130.9999,13.9999 C130.9999,14.5519 131.4479,14.9999 131.9999,14.9999 L132.9999,14.9999 L132.9999,15.9999 C132.9999,16.5519 133.4479,16.9999 133.9999,16.9999 C134.5519,16.9999 134.9999,16.5519 134.9999,15.9999 L134.9999,14.9999 L135.9999,14.9999 C136.5519,14.9999 136.9999,14.5519 136.9999,13.9999 C136.9999,13.4479 136.5519,12.9999 135.9999,12.9999 M6.9999,64.9999 L5.9999,64.9999 L5.9999,63.9999 C5.9999,63.4479 5.5519,62.9999 4.9999,62.9999 C4.4479,62.9999 3.9999,63.4479 3.9999,63.9999 L3.9999,64.9999 L2.9999,64.9999 C2.4479,64.9999 1.9999,65.4479 1.9999,65.9999 C1.9999,66.5519 2.4479,66.9999 2.9999,66.9999 L3.9999,66.9999 L3.9999,67.9999 C3.9999,68.5519 4.4479,68.9999 4.9999,68.9999 C5.5519,68.9999 5.9999,68.5519 5.9999,67.9999 L5.9999,66.9999 L6.9999,66.9999 C7.5519,66.9999 7.9999,66.5519 7.9999,65.9999 C7.9999,65.4479 7.5519,64.9999 6.9999,64.9999" id="Decoration" fill="#BFC7D2"></path>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

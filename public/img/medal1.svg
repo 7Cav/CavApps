@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="50px" height="50px" viewBox="0 0 50 50" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 48.2 (47327) - http://www.bohemiancoding.com/sketch -->
+    <title>Medal</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <circle id="path-1" cx="25" cy="25" r="25"></circle>
+    </defs>
+    <g id="P9---Achievements" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd" transform="translate(-505.000000, -337.000000)">
+        <g id="Medal-#1" transform="translate(475.000000, 337.000000)">
+            <g id="Medal" transform="translate(30.000000, 0.000000)">
+                <g id="Base">
+                    <use fill="#E4F1FE" fill-rule="evenodd" xlink:href="#path-1"></use>
+                    <circle stroke="#5E9BD7" stroke-width="3" cx="25" cy="25" r="23.5"></circle>
+                </g>
+                <path d="M21.1498387,33.778 C18.9228387,32.792 17.7658387,28.255 21.1498387,24 C21.1498387,24 19.8218387,28.321 22.8448387,32 C23.1298387,32.37 23.3768387,34.764 21.1498387,33.778 M34.0228387,28.837 C34.0408387,28.626 34.0398387,28.195 33.8928387,27.484 C33.7578387,26.69 33.5198387,25.932 33.1908387,25.223 C32.1658387,22.602 29.9238387,18.409 25.0618387,12 C25.0558387,12.004 25.0508387,12.14 25.0458387,12.371 C25.0418387,12.137 25.0368387,12.004 25.0308387,12 C19.6858387,18.996 17.4808387,23.358 16.5868387,25.909 C16.5048387,26.135 16.4298387,26.363 16.3648387,26.597 C15.8498387,28.329 16.0308387,29 16.0308387,29 C16.0308387,33.971 20.0598387,38 25.0308387,38 C30.0008387,38 34.0308387,33.971 34.0308387,29 C34.0308387,28.945 34.0238387,28.892 34.0228387,28.837" id="Icon" fill="#5E9BD7"></path>
+            </g>
+        </g>
+    </g>
+</svg>

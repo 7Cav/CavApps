@@ -1,11 +1,11 @@
-FROM php:7-fpm
+FROM php:7.1.16-fpm
 
 MAINTAINER Adam Jarvis <adam.d.jarvis@ibm.com>
 
 # Common
 RUN apt-get update \
     && apt-get install -y \
-        mysql-client
+        mysql-client -y
 
 # PHP
 # Add extensions
