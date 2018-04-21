@@ -12,7 +12,7 @@ if [ "$TRAVIS_PULL_REQUEST" != "false" -o "$TRAVIS_BRANCH" != "$SOURCE_BRANCH" ]
 fi
 
 # Save some useful information
-SSH_REPO=`git@github.com:7Cav/CavApps-Coverage.git`
+SSH_REPO='git@github.com:7Cav/CavApps-Coverage.git'
 SHA=`git rev-parse --verify HEAD`
 
 # Clone the existing gh-pages for this repo into out/

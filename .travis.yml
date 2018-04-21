@@ -49,3 +49,4 @@ after_success:
 
 notifications:
   # webhooks: https://7cav.us/travis-ci.php
+  email: false
