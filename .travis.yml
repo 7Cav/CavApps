@@ -26,6 +26,7 @@ cache:
 before_script:
 - composer install
 - npm install
+- sudo service mysql stop
 - docker-compose up -d
 - |
     until mysql -u homestead -h 127.0.0.1 -P 3306 --password=secret -e 'SELECT 1' > /dev/null; do
