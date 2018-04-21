@@ -35,6 +35,7 @@ before_script:
       sleep 1
     done
     >&2 echo "MySQL 127.0.0.1:33061 is up"
+- cp .env.example .env
 - php artisan key:generate
 - php artisan migrate:install
 - php artisan migrate
