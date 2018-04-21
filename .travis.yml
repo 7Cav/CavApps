@@ -1,0 +1,48 @@
+sudo: required
+language: php
+dist: trusty
+
+env:
+  - ENCRYPTION_LABEL: "5f84b916e37e"
+  - COMMIT_AUTHOR_EMAIL: "imo@7cav.us"
+
+php:
+  - 7.1
+
+node_js:
+  - stable
+
+branches:
+  only:
+    - master
+    - dev
+
+cache:
+  directories:
+    - "node_modules"
+    - "vendor"
+
+
+before_script:
+- composer install
+- npm install
+- docker-compose up -d
+- |
+    until mysql -u homestead -h 127.0.0.1 -P 3306 --password=secret -e 'SELECT 1' > /dev/null; do
+      >&2 echo "MySQL 127.0.0.1:33061 for user homestead is unavailable - sleeping"
+      sleep 1
+    done
+    >&2 echo "MySQL 127.0.0.1:33061 is up"
+- php artisan key:generate
+- php artisan migrate:install
+- php artisan migrate
+
+script:
+- composer test
+- bash ./deploy-cov.sh
+
+after_success:
+- bash <(curl -s https://codecov.io/bash) -t CODE_COV_ID
+
+notifications:
+  # webhooks: https://7cav.us/travis-ci.php
