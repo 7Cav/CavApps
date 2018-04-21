@@ -45,7 +45,7 @@ script:
 - bash ./deploy-cov.sh
 
 after_success:
-- bash <(curl -s https://codecov.io/bash) -t CODE_COV_ID
+- bash <(curl -s https://codecov.io/bash)
 
 notifications:
   # webhooks: https://7cav.us/travis-ci.php
