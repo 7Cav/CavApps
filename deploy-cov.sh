@@ -25,8 +25,8 @@ cd ..
 # Clean out existing contents
 rm -rf out/**/* || exit 0
 
-cp -R ../report/* out/
-cp -R ../report/.[a-zA-Z0-9]* out/
+cp -R report/* out/
+cp -R report/.[a-zA-Z0-9]* out/
 
 # Now let's go have some fun with the cloned repo
 cd out
