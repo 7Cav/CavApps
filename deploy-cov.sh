@@ -25,12 +25,15 @@ cd ..
 # Clean out existing contents
 rm -rf out/**/* || exit 0
 
+cp -R ../report/* out/
+cp -R ../report/.[a-zA-Z0-9]* out/
+
 # Now let's go have some fun with the cloned repo
 cd out
 git config user.name "Travis CI"
 git config user.email "$COMMIT_AUTHOR_EMAIL"
 
-cp ../report/* .
+
 
 # Commit the "changes", i.e. the new version.
 # The delta will show diffs between new and old versions.
