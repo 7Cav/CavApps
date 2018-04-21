@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4922e142d78bddc7711bb0da2d213722",
+    "content-hash": "2e712187e38a32e7e9a3bd5e89a56f5a",
     "packages": [
         {
             "name": "crewlabs/unsplash",
