@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e # Exit with nonzero exit code if anything fails
 
-SOURCE_BRANCH="master"
+SOURCE_BRANCH="dev"
 TARGET_BRANCH="gh-pages"
 COV_REPO="https://github.com/7Cav/CavApps-Coverage.git"
 
