@@ -13,6 +13,7 @@ ENCRYPTED_IV=${!ENCRYPTED_IV_VAR}
 openssl aes-256-cbc -K $ENCRYPTED_KEY -iv $ENCRYPTED_IV -in deploy_key.enc -out deploy_key -d
 chmod 600 deploy_key
 eval `ssh-agent -s`
+ssh-add -D
 ssh-add deploy_key
 
 # Pull requests and commits to other branches shouldn't try to deploy, just build to verify
