@@ -18,9 +18,12 @@
     },
     "require-dev": {
         "filp/whoops": "~2.0",
-        "nunomaduro/collision": "~1.1",
         "fzaninotto/faker": "~1.4",
+        "jakub-onderka/php-console-highlighter": "^0.3.2",
+        "jakub-onderka/php-parallel-lint": "^0.9.2",
         "mockery/mockery": "~1.0",
+        "nunomaduro/collision": "~1.1",
+        "phpunit/php-code-coverage": "^6.0",
         "phpunit/phpunit": "~7.0",
         "symfony/thanks": "^1.0"
     },
@@ -61,6 +64,10 @@
         "cc": [
             "php artisan cache:clear",
             "php artisan config:clear"
+        ],
+        "test": [
+            "parallel-lint --exclude vendor .",
+            "phpunit --coverage-html ./report --coverage-clover=coverage.xml"
         ]
     },
     "config": {
