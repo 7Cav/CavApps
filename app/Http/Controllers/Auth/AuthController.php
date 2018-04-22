@@ -38,7 +38,7 @@ class AuthController extends Controller
 
 	public function findOrCreateUser($user)
 	{
-		$authUser = User::where('provider_id', $user->id)->first();
+		$authUser = User::find($user->id);
 
 		if ($authUser) {
 			return $authUser;
@@ -47,15 +47,15 @@ class AuthController extends Controller
 		$cavUser = CavUser::find($user->id);
 
 		$user = User::create([
-			'name'     => $user->name,
-			'email'    => $user->email,
-			'provider_id' => $user->id,
-			'avatar' => $user->avatar,
+			'id'        => $user->id,
+			'name'      => $user->name,
+			'email'     => $user->email,
+			'avatar'    => $user->avatar,
 			'is_banned' => $cavUser->is_banned,
-			'is_admin' => $cavUser->is_admin
+			'is_admin'  => $cavUser->is_admin
 		]);
 
-		$user->is_admin = $cavUser->is_admin;
+		// $user->is_admin = $cavUser->is_admin;
 
 		return $user;
 	}
