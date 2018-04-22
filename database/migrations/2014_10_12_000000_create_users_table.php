@@ -14,15 +14,17 @@ class CreateUsersTable extends Migration
 	public function up()
 	{
 		Schema::connection('mysql')->create('users', function (Blueprint $table) {
-			$table->increments('id');
+			$table->integer('id')->unique();
 			$table->string('name');
 			$table->string('email')->unique();
-			$table->string('provider_id')->nullable();
 			$table->string('avatar')->nullable();
 			$table->boolean('is_admin')->default(0);
 			$table->boolean('is_banned')->default(0);
+			$table->string('steam_id')->nullable();
 			$table->rememberToken();
 			$table->timestamps();
+
+			$table->primary('id');
 		});
 
 		DB::statement("ALTER TABLE users ROW_FORMAT=DYNAMIC ");
