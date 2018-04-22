@@ -48,5 +48,5 @@ after_success:
 - bash <(curl -s https://codecov.io/bash)
 
 notifications:
-  # webhooks: https://7cav.us/travis-ci.php
+  webhooks: https://7cav.us/travis-ci.php
   email: false
