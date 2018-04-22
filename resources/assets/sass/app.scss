@@ -2,19 +2,8 @@
 // Fonts
 // @import url("https://fonts.googleapis.com/css?family=Roboto:300,400,500,700|Material+Icons");
 
-// // dash-ui
-// @import "dash-ui/main";
-
-// // Bootstrap
-// @import '~bootstrap/dist/css/bootstrap-grid.css';
-
-// // UI Kit
-// @import '~fullcalendar/dist/fullcalendar.css';
-// @import '~dragula/dist/dragula.css';
-// @import '~select2/dist/css/select2.css';
-// @import '~dropzone/dist/dropzone.css';
-// @import '~@fengyuanchen/datepicker/dist/datepicker.css';
-// @import '~jqvmap/dist/jqvmap.css';
+// timeline stuff
+@import "__timeline.scss";
 
 .header-username {
     margin: 0 1em 0 0;
