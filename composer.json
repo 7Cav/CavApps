@@ -14,9 +14,11 @@
         "laravel/socialite": "^3.0",
         "laravel/tinker": "~1.0",
         "nesbot/carbon": "^1.22",
-        "socialiteproviders/manager": "^3.3"
+        "socialiteproviders/manager": "^3.3",
+        "guzzlehttp/guzzle": "~6.0"
     },
     "require-dev": {
+        "codedungeon/phpunit-result-printer": "^0.16.1",
         "filp/whoops": "~2.0",
         "fzaninotto/faker": "~1.4",
         "jakub-onderka/php-console-highlighter": "^0.3.2",
