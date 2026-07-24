@@ -783,7 +783,7 @@ function Canvas(props) {
         // Draw the medals
 
         try {
-          if (data[3].length > 34) {
+          if (totalValidMedals > ROW_CAPACITIES.reduce((a, b) => a + b, 0)) {
             throw new Error(
               "Medal count exceeds max allowable limit. This is a priority error, and must be submitted to your S1 Chain of Command",
             );
