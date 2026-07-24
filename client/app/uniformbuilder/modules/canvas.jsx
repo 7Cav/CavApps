@@ -707,136 +707,112 @@ function Canvas(props) {
         //Calculate medal coords
         //TODO MOVE THIS WHOLE THING OUT OF THIS DAMN CANVAS FUNCTION
 
-        const medalCoords = [];
+        //Scale & Layout Constants
+        const scale = 1.0; // Adjust to scale overall dimensions if needed
+
         const canvasWidth = canvas.width;
         const borderWidth = 25;
-        const widthInner = canvasWidth - 2 * borderWidth;
-        const offsetX = borderWidth;
+        const offsetX = borderWidth + 4;
         const offsetY = 745;
-        const medalWidth = 70;
-        const medalHeight = 120;
-        let medalsPerRow = 12;
-        const medalSpacing = -5;
-        let x = 0;
-        let y = 0;
-        let indexOffset = 0;
-        let secondRowOffset = medalWidth / 2 + medalSpacing / 2;
-        let rowSpacing = medalHeight; // Initial row spacing
 
-        data[3].forEach((medalData, index) => {
-          if (medalData.awardPriority == 0 || medalData.awardPriority == 1) {
-            medalCoords.push({ x: 0, y: 0 });
-            indexOffset++;
-            return;
-          }
+        const medalWidth = 70 * scale;
+        const medalHeight = 120 * scale;
+        const medalSpacing = -5 * scale;
 
-          if (data[3].length > 25) {
-            rowSpacing = 70;
-          }
+        const staggerOffset = (medalWidth + medalSpacing) / 2;
 
-          let currentIndex = index - indexOffset;
-          x = currentIndex % medalsPerRow;
-          y = Math.floor(currentIndex / medalsPerRow);
+        const validMedals = data[3].filter(
+          (m) => m.awardPriority !== 0 && m.awardPriority !== 1,
+        );
+        const totalValidMedals = validMedals.length;
+        const baseRowSpacing = totalValidMedals > 23 ? 65 : 130;
+        const rowSpacing = baseRowSpacing * scale;
 
-          // Apply the offset to x for the second row
-          if (y === 1 && data[3].length - indexOffset > 25) {
-            x = (currentIndex - medalsPerRow) % (medalsPerRow - 1);
-          }
-          // Calculate x for the third row
-          if (y === 2) {
-            x =
-              (currentIndex - medalsPerRow - (medalsPerRow - 1)) % medalsPerRow;
-          }
+        const hasThirdRow = totalValidMedals > 23;
 
-          let _offsetX = Math.floor(
-            offsetX + 4 + x * (medalWidth + medalSpacing),
-          );
-          let _offsetY = offsetY + y * rowSpacing;
+        // Capacities dynamically swap based on whether Row 3 is needed
+        // This is a hack fix. We want the second row to shift only if there is a row 3
+        const ROW_CAPACITIES = hasThirdRow ? [12, 11, 12] : [12, 12, 12];
 
-          if (y % 2 !== 0 && data[3].length - indexOffset > 24) {
-            _offsetX += secondRowOffset;
-          }
-
-          if (y == 2) {
-            _offsetX += medalWidth;
-          }
-
-          if (currentIndex == 23 && data[3].length - indexOffset >= 25) {
-            // Force x-coordinate to be the same as entry 0
-            _offsetX = medalCoords[1 + indexOffset].x + 5;
-            _offsetY = 885;
-          }
-
-          medalCoords.push({ x: _offsetX, y: _offsetY });
-        });
-
-        // Separate medals into rows
-        const row1Medals = [];
-        const row2Medals = [];
-        const row3Medals = [];
         const specialMedals = [];
-        const medalCoordsRow1 = [];
-        const medalCoordsRow2 = [];
-        const medalCoordsRow3 = [];
+        const rows = [[], [], []];
 
-        data[3].forEach((medal, index) => {
-          if (medal.awardPriority == 0 || medal.awardPriority == 1) {
-            specialMedals.push(medal);
+        let validIndex = 0;
+
+        data[3].forEach((medalData) => {
+          if (medalData.awardPriority === 0 || medalData.awardPriority === 1) {
+            specialMedals.push(medalData);
             return;
           }
-          const medalY = medalCoords[index].y;
 
-          if (medalY === offsetY) {
-            row1Medals.push(medal);
-            medalCoordsRow1.push(medalCoords[index]);
-          } else if (medalY === offsetY + rowSpacing) {
-            row2Medals.push(medal);
-            medalCoordsRow2.push(medalCoords[index]);
-          } else {
-            row3Medals.push(medal);
-            medalCoordsRow3.push(medalCoords[index]);
+          // Determine row and column dynamically based on variable row capacities
+          let remainingIndex = validIndex;
+          let row = 0;
+          let col = 0;
+
+          for (let r = 0; r < ROW_CAPACITIES.length; r++) {
+            if (remainingIndex < ROW_CAPACITIES[r]) {
+              row = r;
+              col = remainingIndex;
+              break;
+            }
+            remainingIndex -= ROW_CAPACITIES[r];
+
+            // If index exceeds max capacity across all 3 rows (35 total), stop placing
+            if (r === ROW_CAPACITIES.length - 1) return;
           }
-        });
-        // Draw medals in reverse row order (row 3, then 2, then 1)
-        await Promise.all([
-          ...specialMedals.map((medalData) =>
-            drawSpecialMedal(medalData, context),
-          ),
-        ]);
-        await Promise.all([
-          ...row3Medals.map((medalData, index) =>
-            placeMedal(
-              medalData,
-              images.medalSprites,
-              context,
-              medalCoordsRow3[index].x,
-              medalCoordsRow3[index].y,
-            ),
-          ),
-        ]);
-        await Promise.all([
-          ...row2Medals.map((medalData, index) =>
-            placeMedal(
-              medalData,
-              images.medalSprites,
-              context,
-              medalCoordsRow2[index].x,
-              medalCoordsRow2[index].y,
-            ),
-          ),
-        ]);
 
-        await Promise.all([
-          ...row1Medals.map((medalData, index) =>
-            placeMedal(
-              medalData,
-              images.medalSprites,
-              context,
-              medalCoordsRow1[index].x,
-              medalCoordsRow1[index].y,
+          // Calculate coordinates
+          let xPos = offsetX + col * (medalWidth + medalSpacing);
+          let yPos = offsetY + row * rowSpacing;
+
+          // Apply stagger shift exclusively to Row 2 and only if there is a third row
+          if (row === 1 && hasThirdRow) {
+            xPos += staggerOffset;
+          }
+
+          rows[row].push({
+            data: medalData,
+            x: Math.floor(xPos),
+            y: Math.floor(yPos),
+          });
+
+          validIndex++;
+        });
+
+        // Draw the medals
+
+        try {
+          if (totalValidMedals > ROW_CAPACITIES.reduce((a, b) => a + b, 0)) {
+            throw new Error(
+              "Medal count exceeds max allowable limit. This is a priority error, and must be submitted to your S1 Chain of Command",
+            );
+          }
+
+          await Promise.all(
+            specialMedals.map((medalData) =>
+              drawSpecialMedal(medalData, context),
             ),
-          ),
-        ]);
+          );
+
+          for (let r = 2; r >= 0; r--) {
+            await Promise.all(
+              rows[r].map((item) =>
+                placeMedal(
+                  item.data,
+                  images.medalSprites,
+                  context,
+                  item.x,
+                  item.y,
+                  medalWidth,
+                  medalHeight,
+                ),
+              ),
+            );
+          }
+        } catch (err) {
+          setBuilderErrors((prevErrors) => [...prevErrors, err.message]);
+        }
 
         canvas.toBlob(function (blob) {
           canvasDownload.href = URL.createObjectURL(blob);

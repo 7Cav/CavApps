@@ -4,6 +4,7 @@ import {
   AwardNameFragment,
   hasValorDevice,
   stripValorDevice,
+  BadgeImages,
 } from "./constants";
 
 export class Award {
@@ -239,38 +240,29 @@ export class BadgeCombat extends Badge {
   getImageNum(awardPriority) {
     // Maps awardPriority from constants/awardCatalog.js to a badge image that
     // canvas.jsx will use to render from client/public/skunkworks/uniformBadges/combatBadges/<n>.png
-    // awardPriority values 1-5 (EIB thru CIB4) are universal and are matched by default and fall through.
-    const BadgeImage = Object.freeze({
-      flightMedicBadge: 6,
-      aviator: 7,
-      seniorAviator: 8,
-      masterAviator: 9,
-      aircrew: 10,
-      seniorAircrew: 11,
-      masterAircrew: 12,
-    });
+    // awardPriority values 1-5 (EIB thru CIB4) are universal and are matched by default and fall through
 
     if (this.isAviation) {
       switch (awardPriority) {
         case 6:
-          return BadgeImage.aircrew;
+          return BadgeImages.aircrew;
         case 7:
-          return BadgeImage.seniorAircrew;
+          return BadgeImages.seniorAircrew;
         case 8:
-          return BadgeImage.masterAircrew;
+          return BadgeImages.masterAircrew;
         case 9:
-          return BadgeImage.aviator;
+          return BadgeImages.aviator;
         case 10:
-          return BadgeImage.seniorAviator;
+          return BadgeImages.seniorAviator;
         case 11:
-          return BadgeImage.masterAviator;
+          return BadgeImages.masterAviator;
       }
     }
 
     // awardPriority 6 is used for both aviation and medical trees.
     // isMedical will claim the value for the medical tree.
     if (this.isMedical && awardPriority == 6) {
-      return BadgeImage.flightMedicBadge;
+      return BadgeImages.flightMedicBadge;
     }
 
     return awardPriority;

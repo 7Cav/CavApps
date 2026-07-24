@@ -7,3 +7,4 @@ export {
   stripValorDevice,
 } from "./awardNames";
 export { AWARD_CATALOG } from "./awardCatalog";
+export { BadgeImages } from "./badgeImages";
