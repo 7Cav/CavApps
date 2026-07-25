@@ -25,6 +25,8 @@ The live deployment can be found at https://apps.7cav.us/ and the backend at htt
 - [Server Deployment](#server-deployment)
   - [Requirements](#requirements-1)
 - [Roster Statistics](#roster-statistics)
+  - [Add New Billet in Existing Category (Roster Statistics)](#add-new-billet-in-existing-category-roster-statistics)
+  - [Add New Category (Roster Statistics)](#add-new-category-roster-statistics)
 - [Future Goals](#future-goals)
 
 ## Running Locally
@@ -147,11 +149,9 @@ Open http://localhost:3000 and you should see the CavApps index page. Happy codi
 
 For further documentation on Next.js, visit https://nextjs.org/docs
 
-## Before Starting
-
-> **Important:** The ADR and the [Roster Statistics](#roster-statistics) page are driven by **different** files. The ADR reads billet groups by index from `client/app/adr/page.jsx`; Roster Statistics reads billet IDs from `BilletBank.jsx`. A new billet or unit usually needs to be added in **both** places (and, for the regiment chart, a matching color). See [Files to Update](#files-to-update) for the full list.
-
 ## Updating the ADR
+
+> **Before starting:** The ADR and the [Roster Statistics](#roster-statistics) page are driven by **different** files. The ADR reads billet groups by index from `client/app/adr/page.jsx`; Roster Statistics reads billet IDs from `BilletBank.jsx`. A new billet inside a group the ADR already selects needs **no** ADR change — the ADR picks it up live from the API. `page.jsx` only needs updating when a **new billet group** appears or a group moves between categories. Roster Statistics always needs its `BilletBank.jsx` list updated (and, for the regiment chart, a matching color). See [Files to Update](#files-to-update) for the full list.
 
 Since the ADR sources its data from the 7th Cavalry API and compares the API against a predefined billet list, the ADR is not aware when new billets are created or when older billets are moved.
 
@@ -161,7 +161,7 @@ The ADR works in terms of **billet groups**: selecting a group pulls in every bi
 
 ### Add New Billet in Existing Category
 
-To add a new billet to an existing category, you need to update the `page.jsx` file located in `cavapps/client/app/adr`.
+To add a new billet to an existing category, you need to update the `page.jsx` file located in `client/app/adr`.
 
 #### Step-by-Step Instructions
 
@@ -176,20 +176,20 @@ Suppose you want to add a new billet group with an ID of `28` to the "Informatio
 ##### Before:
 
 ```javascript
-{ title: "Information Management Office Command", selectors: ["5", "9"] },
+{ title: "Information Management Office Command", selectors: [5, 9] },
 ```
 
 ##### After:
 
 ```javascript
-{ title: "Information Management Office Command", selectors: ["5", "9", "28"] },
+{ title: "Information Management Office Command", selectors: [5, 9, 28] },
 ```
 
 ---
 
 ### Add New Category
 
-To introduce a new category, the `units` array in `page.jsx` located in `cavapps/client/app/adr/page.jsx` needs to be updated.
+To introduce a new category, the `units` array in `page.jsx` located in `client/app/adr/page.jsx` needs to be updated.
 
 #### Step-by-Step Instructions
 
@@ -224,7 +224,7 @@ Because the ADR and Roster Statistics are driven separately, adding a billet or 
 1. **`client/app/adr/page.jsx`**: the ADR. Add the billet group's ID to a `units` entry's `selectors` (existing category) or add a new `units` entry (new category), as shown above.
 2. **`client/app/reusableModules/BilletBank.jsx`**: the data behind Roster Statistics. Add the billet ID to the matching array (existing category), or add new arrays + a group object for a new category, and export them at the bottom of the file.
 3. **`client/app/rosterstatistics/page.jsx`**: the Statistics layout. Add the unit to the relevant `<Statistics>` block's `billetIDs` and add a matching label to its `labelArray` (the two must stay the same length and order).
-4. **`client/app/rosterstatistics/modules/statistics.jsx`**: the chart colors. The regiment-wide chart colors its segments by position from a fixed `colors` array; if you added a segment to the regiment `billetIDs`, add a matching color here or the new segment renders with none.
+4. **`client/app/rosterstatistics/modules/statistics.jsx`**: the chart colors. The regiment-wide chart colors its segments by position from a fixed `colors` array; if you added a segment to the regiment `billetIDs`, add a matching color here. ApexCharts cycles the array when it runs short, so without a new entry the added segment reuses a colour already on the chart instead of getting its own.
 
 > **Note:** The billet IDs in `BilletBank.jsx` are a hardcoded snapshot and drift as billets are created or moved. The ADR avoids this by reading the API live; Statistics does not, so its lists need occasional refreshing against `/roster/groups`.
 
@@ -300,9 +300,9 @@ And you should be good! Simply navigate to your server in your browser and the i
 
 The Roster Statistics section is currently pending rewrite to include more information. Stay Tuned!
 
-Unlike the ADR, Roster Statistics reads its billet IDs from the `BilletBank.jsx` file located in `cavapps/client/app/reusableModules`.
+Unlike the ADR, Roster Statistics reads its billet IDs from the `BilletBank.jsx` file located in `client/app/reusableModules`.
 
-### Add New Billet in Existing Category
+### Add New Billet in Existing Category (Roster Statistics)
 
 To add a new billet to an existing category, append the new billet ID to the matching array.
 
@@ -324,9 +324,9 @@ const imoCommand = ["5", "9", "28"];
 
 ---
 
-### Add New Category
+### Add New Category (Roster Statistics)
 
-To introduce a new category, both `BilletBank.jsx` and `rosterstatistics/page.jsx` located in `cavapps/client/app/rosterstatistics/page.jsx` need to be updated.
+To introduce a new category, both `BilletBank.jsx` and `rosterstatistics/page.jsx` located in `client/app/rosterstatistics/page.jsx` need to be updated.
 
 #### Step-by-Step Instructions
 
@@ -339,7 +339,7 @@ To introduce a new category, both `BilletBank.jsx` and `rosterstatistics/page.js
    - Add a new `<Statistics>` block for the category, listing the new arrays in `billetIDs` with a matching `labelArray` of the same length and order.
 
 3. **In `rosterstatistics/modules/statistics.jsx`:**
-   - If the category also appears in the regiment-wide chart (the one combining every unit), add a color for each new segment to that chart's `colors` array. It is positional, so add the colors in the same order as the segments. Segments with no color render blank. (The per-battalion charts use a separate cycling palette and need no change.)
+   - If the category also appears in the regiment-wide chart (the one combining every unit), add a color for each new segment to that chart's `colors` array. It is positional, so add the colors in the same order as the segments. If the array is shorter than the number of segments, ApexCharts loops back to the start and reuses a colour, so an uncoloured segment comes out the same shade as an existing slice rather than blank. (The per-battalion charts use a separate five-colour palette that cycles the same way.)
 
 #### Example:
 
