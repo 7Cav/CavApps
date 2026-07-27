@@ -123,10 +123,26 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: npm run format:check
 
+      # The PR below MUST NOT be opened with the default GITHUB_TOKEN. Events
+      # triggered by that token do not start workflow runs, so LINT_FORMAT_CHECK
+      # would never report on the PR — and `main` requires that check, which
+      # would leave every sprite PR permanently unmergeable. An App
+      # installation token is an ordinary actor, so the push and the PR fire
+      # workflows normally. Minted only when there is a PR to open; revoked
+      # automatically when the job ends.
+      - name: Mint sprite-bot token
+        id: app-token
+        if: steps.changes.outputs.changed == 'true'
+        uses: actions/create-github-app-token@v3.2.0
+        with:
+          client-id: ${{ secrets.SPRITE_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.SPRITE_BOT_PRIVATE_KEY }}
+
       - name: Open pull request
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
         with:
+          token: ${{ steps.app-token.outputs.token }}
           branch: award-sprites/${{ github.ref_name }}
           base: ${{ github.ref_name }}
           add-paths: |
