@@ -1,0 +1,35 @@
+name: Dependabot Auto-merge
+
+on:
+  pull_request:
+    branches:
+      - main
+
+# Dependabot-triggered runs get a read-only GITHUB_TOKEN no matter what the
+# repository default is, so the merge step below fails on permissions without
+# this block.
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  automerge:
+    name: Auto-merge
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v3.1.0
+
+      # Majors land as individual PRs (see dependabot.yml) so they get looked at
+      # on their own; the grouped minor/patch PRs are what this arms. Auto-merge
+      # only fires once the required status checks pass, so this is not a way
+      # around CI.
+      - name: Arm auto-merge for non-major updates
+        if: steps.metadata.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
