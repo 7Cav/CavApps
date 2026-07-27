@@ -1,0 +1,4 @@
+# Review routing only — the branch ruleset does not require code-owner review.
+# Everyone listed here must hold write permission or the entry is silently a
+# no-op. Keep that in mind before adding anyone.
+* @SyniRon @Vercin-G
