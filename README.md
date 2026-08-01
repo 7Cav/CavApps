@@ -27,7 +27,6 @@ The live deployment can be found at https://apps.7cav.us/ and the backend at htt
 - [Roster Statistics](#roster-statistics)
   - [Add New Billet in Existing Category (Roster Statistics)](#add-new-billet-in-existing-category-roster-statistics)
   - [Add New Category (Roster Statistics)](#add-new-category-roster-statistics)
-- [Future Goals](#future-goals)
 
 ## Running Locally
 
@@ -418,11 +417,3 @@ colors: [
 ```
 
 > Note: Ensure that you add these elements in the proper locations to maintain the formatting.
-
-## Future Goals
-
-CavApps has several goals in mind for the future. Here are some examples.
-
-- Roster Statistics which draw from a 7th Cavalry Operated database. Providing historical numbers on top of current figures
-- Implementation of an AWOL tracker
-- Implementation of keycloak systems to allow for the operation of internal documents. E.g. moving S1 spreadsheets into internal tools which are authenticated by keycloak.
