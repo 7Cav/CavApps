@@ -19,11 +19,6 @@ export default async function searchForUser(query) {
     cache: "no-store",
   });
 
-  // A search that matches no users is not an error — return no suggestions.
-  if (response.status === 404) {
-    return [];
-  }
-
   if (!response.ok) {
     throw new Error(`User search failed: ${response.status}`);
   }
