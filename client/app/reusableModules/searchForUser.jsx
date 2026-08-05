@@ -19,7 +19,7 @@ export default async function searchForUser(query) {
     cache: "no-store",
   });
 
-  if (response.status != 200) {
+  if (!response.ok) {
     throw new Error(`User search failed: ${response.status}`);
   }
 
