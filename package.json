@@ -1,5 +1,5 @@
 {
-  "name": "adr",
+  "name": "cavapps",
   "private": true,
   "scripts": {
     "format:check": "prettier --check \"{**/*,*}.{js,jsx,json,html,css}\"",
