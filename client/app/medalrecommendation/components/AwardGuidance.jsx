@@ -5,7 +5,7 @@ export default function AwardGuidance({ award }) {
 
   return (
     <details className="border border-[#353535] bg-[#141414]">
-      <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-[#d8d8d8] transition hover:text-[#ebc729]">
+      <summary className="cursor-pointer select-none px-4 py-3 font-semibold text-[#ebc729] transition hover:text-[#f5d84b]">
         Award Criteria & Guidance
       </summary>
 

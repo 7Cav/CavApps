@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import Logo from "../theme/adrLogo";
+import CavColor from "../theme/cavColor";
 
 import MedalRecommendationClient from "./MedalRecommendationClient";
 import GetMedalEligibleRoster from "./lib/get-medal-eligible-roster";
@@ -27,14 +27,26 @@ export default async function MedalRecommendationPage() {
           <nav className="p-nav">
             <div className="p-nav-inner">
               <div className="p-nav-scroller">
-                <div className="p-nav-logo">
-                  <Link href="/">
-                    <Logo
-                      alt="ADR Logo"
-                      title="Return to CavApps"
-                      width="17em"
-                      height="3em"
+                <div className="p-nav-logo" style={{ maxWidth: "none" }}>
+                  <Link
+                    href="/"
+                    title="Return to CavApps"
+                    className="flex items-center gap-2"
+                  >
+                    <CavColor
+                      width="2.7em"
+                      height="2.7em"
+                      aria-hidden="true"
                     />
+
+                    <span className="flex flex-col leading-[1.05] text-white">
+                      <span className="whitespace-nowrap text-[0.88rem] font-bold tracking-[0.05em]">
+                        7TH CAVALRY GAMING
+                      </span>
+                      <span className="mt-[1px] whitespace-nowrap text-[0.67rem] font-medium tracking-[0.01em]">
+                        Medal Recommendation Aid
+                      </span>
+                    </span>
                   </Link>
                 </div>
               </div>

@@ -22,10 +22,15 @@ import {
   UNIT_AWARDS,
 } from "../lib/reference-data";
 
+import {
+  INDIVIDUAL_NARRATIVE_LIMITS,
+  UNIT_NARRATIVE_LIMITS,
+} from "../lib/narrative-limits";
+
 const FIELD_CLASS =
   "h-10 w-full border border-[#444] bg-[#1b1b1b] px-3 text-sm text-white outline-none transition focus:border-[#ebc729]";
 
-const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-[#aaa]";
+const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-[#c8c8c8]";
 
 const INITIAL_INDIVIDUAL_FORM = {
   operationName: "",
@@ -73,6 +78,100 @@ function cloneUnitForm() {
     ...INITIAL_UNIT_FORM,
     recipients: ["", "", "", ""],
   };
+}
+
+function MedalSelectionSection({
+  mode,
+  awards,
+  selectedAward,
+  awardName,
+  actionScope,
+  actionCharacter,
+  onAwardChange,
+  onScopeChange,
+  onCharacterChange,
+}) {
+  const isUnitAward = mode === "unit";
+  const awardInputId = isUnitAward ? "unit-award" : "individual-award";
+  const scopeInputId = isUnitAward ? "unit-scope" : "individual-scope";
+  const characterInputId = isUnitAward
+    ? "unit-character"
+    : "individual-character";
+
+  return (
+    <section className="border border-[#353535] bg-[#141414] p-4">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="font-semibold text-[#ebc729]">Medal Selection</h2>
+        <span className="text-xs text-[#777]">
+          {isUnitAward ? "Unit Award" : "Individual Medal"}
+        </span>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor={awardInputId} className={LABEL_CLASS}>
+            {isUnitAward ? "Unit Award" : "Medal"}
+          </label>
+          <select
+            id={awardInputId}
+            value={awardName}
+            onChange={(event) => onAwardChange(event.target.value)}
+            className={FIELD_CLASS}
+          >
+            {awards.map((award) => (
+              <option key={award.name} value={award.name}>
+                {award.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="grid gap-4">
+          {selectedAward?.scopeRequired ? (
+            <div>
+              <label htmlFor={scopeInputId} className={LABEL_CLASS}>
+                Action Scope
+              </label>
+              <select
+                id={scopeInputId}
+                value={actionScope}
+                onChange={(event) => onScopeChange?.(event.target.value)}
+                className={FIELD_CLASS}
+              >
+                <option value="">Select action scope…</option>
+                {splitChoices(selectedAward.allowedScope).map((choice) => (
+                  <option key={choice} value={choice}>
+                    {choice}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {selectedAward?.characterRequired ? (
+            <div>
+              <label htmlFor={characterInputId} className={LABEL_CLASS}>
+                Action Character
+              </label>
+              <select
+                id={characterInputId}
+                value={actionCharacter}
+                onChange={(event) => onCharacterChange?.(event.target.value)}
+                className={FIELD_CLASS}
+              >
+                <option value="">Select action character…</option>
+                {splitChoices(selectedAward.allowedCharacter).map((choice) => (
+                  <option key={choice} value={choice}>
+                    {choice}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
 }
 
 export default function OperationAwardsView({ roster, onBack }) {
@@ -156,7 +255,10 @@ export default function OperationAwardsView({ roster, onBack }) {
         .filter(Boolean),
     };
 
-    const result = generateIndividual(payload, generationContext);
+    const result = generateIndividual(payload, {
+      ...generationContext,
+      limits: { narrative: INDIVIDUAL_NARRATIVE_LIMITS.hard },
+    });
     setIndividualResult(result);
     setIndividualResultStale(false);
   }
@@ -169,7 +271,10 @@ export default function OperationAwardsView({ roster, onBack }) {
         .filter(Boolean),
     };
 
-    const result = generateUnit(payload, generationContext);
+    const result = generateUnit(payload, {
+      ...generationContext,
+      limits: { narrative: UNIT_NARRATIVE_LIMITS.hard },
+    });
     setUnitResult(result);
     setUnitResultStale(false);
   }
@@ -197,12 +302,12 @@ export default function OperationAwardsView({ roster, onBack }) {
           <button
             type="button"
             onClick={onBack}
-            className="mb-3 text-sm font-semibold text-[#aaa] transition hover:text-[#ebc729]"
+            className="mb-3 text-sm font-semibold text-[#c8c8c8] transition hover:text-[#ebc729]"
           >
             ← Back to Home
           </button>
 
-          <h1 className="text-3xl font-semibold text-[#e7e7e7]">
+          <h1 className="text-3xl font-semibold text-[#ebc729]">
             Operation Medals
           </h1>
 
@@ -214,7 +319,7 @@ export default function OperationAwardsView({ roster, onBack }) {
         <button
           type="button"
           onClick={handleResetWorksheet}
-          className="border border-[#555] px-4 py-2 text-sm font-semibold text-[#aaa] transition hover:border-red-700 hover:text-red-300"
+          className="border border-[#555] px-4 py-2 text-sm font-semibold text-[#c8c8c8] transition hover:border-red-700 hover:text-red-300"
         >
           Reset Worksheet
         </button>
@@ -227,7 +332,7 @@ export default function OperationAwardsView({ roster, onBack }) {
           className={
             awardType === "individual"
               ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
-              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#c8c8c8] transition hover:border-[#666] hover:text-white"
           }
         >
           Individual Medal
@@ -239,7 +344,7 @@ export default function OperationAwardsView({ roster, onBack }) {
           className={
             awardType === "unit"
               ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
-              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#c8c8c8] transition hover:border-[#666] hover:text-white"
           }
         >
           Unit Award
@@ -250,9 +355,27 @@ export default function OperationAwardsView({ roster, onBack }) {
         <div className="min-w-0 space-y-4">
           {awardType === "individual" ? (
             <>
+              <MedalSelectionSection
+                mode="individual"
+                awards={INDIVIDUAL_AWARDS}
+                selectedAward={selectedIndividualAward}
+                awardName={individualForm.awardName}
+                actionScope={individualForm.actionScope}
+                actionCharacter={individualForm.actionCharacter}
+                onAwardChange={handleIndividualAwardChange}
+                onScopeChange={(value) =>
+                  updateIndividualField("actionScope", value)
+                }
+                onCharacterChange={(value) =>
+                  updateIndividualField("actionCharacter", value)
+                }
+              />
+
+              <AwardGuidance award={selectedIndividualAward} />
+
               <section className="border border-[#353535] bg-[#141414] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-[#dedede]">
+                  <h2 className="font-semibold text-[#ebc729]">
                     Recommendation Details
                   </h2>
                   <span className="text-xs text-[#777]">Individual Medal</span>
@@ -328,85 +451,8 @@ export default function OperationAwardsView({ roster, onBack }) {
                     </datalist>
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label htmlFor="individual-award" className={LABEL_CLASS}>
-                      Medal
-                    </label>
-                    <select
-                      id="individual-award"
-                      value={individualForm.awardName}
-                      onChange={(event) =>
-                        handleIndividualAwardChange(event.target.value)
-                      }
-                      className={FIELD_CLASS}
-                    >
-                      {INDIVIDUAL_AWARDS.map((award) => (
-                        <option key={award.name} value={award.name}>
-                          {award.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedIndividualAward?.scopeRequired ? (
-                    <div>
-                      <label htmlFor="individual-scope" className={LABEL_CLASS}>
-                        Action Scope
-                      </label>
-                      <select
-                        id="individual-scope"
-                        value={individualForm.actionScope}
-                        onChange={(event) =>
-                          updateIndividualField("actionScope", event.target.value)
-                        }
-                        className={FIELD_CLASS}
-                      >
-                        <option value="">Select action scope…</option>
-                        {splitChoices(selectedIndividualAward.allowedScope).map(
-                          (choice) => (
-                            <option key={choice} value={choice}>
-                              {choice}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                  ) : null}
-
-                  {selectedIndividualAward?.characterRequired ? (
-                    <div>
-                      <label
-                        htmlFor="individual-character"
-                        className={LABEL_CLASS}
-                      >
-                        Action Character
-                      </label>
-                      <select
-                        id="individual-character"
-                        value={individualForm.actionCharacter}
-                        onChange={(event) =>
-                          updateIndividualField(
-                            "actionCharacter",
-                            event.target.value,
-                          )
-                        }
-                        className={FIELD_CLASS}
-                      >
-                        <option value="">Select action character…</option>
-                        {splitChoices(
-                          selectedIndividualAward.allowedCharacter,
-                        ).map((choice) => (
-                          <option key={choice} value={choice}>
-                            {choice}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : null}
                 </div>
               </section>
-
-              <AwardGuidance award={selectedIndividualAward} />
 
               <RecipientSelector
                 roster={roster}
@@ -430,6 +476,8 @@ export default function OperationAwardsView({ roster, onBack }) {
                 }
                 note="Write the narrative completely in your own words. Official opening and closing language will be added automatically."
                 placeholder="Explain the lead-up, actions, and outcome…"
+                softCharacterLimit={INDIVIDUAL_NARRATIVE_LIMITS.soft}
+                hardCharacterLimit={INDIVIDUAL_NARRATIVE_LIMITS.hard}
               />
 
               <button
@@ -442,9 +490,23 @@ export default function OperationAwardsView({ roster, onBack }) {
             </>
           ) : (
             <>
+              <MedalSelectionSection
+                mode="unit"
+                awards={UNIT_AWARDS}
+                selectedAward={selectedUnitAward}
+                awardName={unitForm.awardName}
+                actionCharacter={unitForm.actionCharacter}
+                onAwardChange={handleUnitAwardChange}
+                onCharacterChange={(value) =>
+                  updateUnitField("actionCharacter", value)
+                }
+              />
+
+              <AwardGuidance award={selectedUnitAward} />
+
               <section className="border border-[#353535] bg-[#141414] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-[#dedede]">
+                  <h2 className="font-semibold text-[#ebc729]">
                     Recommendation Details
                   </h2>
                   <span className="text-xs text-[#777]">Unit Award</span>
@@ -514,52 +576,8 @@ export default function OperationAwardsView({ roster, onBack }) {
                     />
                   </div>
 
-                  <div className="sm:col-span-2">
-                    <label htmlFor="unit-award" className={LABEL_CLASS}>
-                      Unit Award
-                    </label>
-                    <select
-                      id="unit-award"
-                      value={unitForm.awardName}
-                      onChange={(event) => handleUnitAwardChange(event.target.value)}
-                      className={FIELD_CLASS}
-                    >
-                      {UNIT_AWARDS.map((award) => (
-                        <option key={award.name} value={award.name}>
-                          {award.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {selectedUnitAward?.characterRequired ? (
-                    <div>
-                      <label htmlFor="unit-character" className={LABEL_CLASS}>
-                        Action Character
-                      </label>
-                      <select
-                        id="unit-character"
-                        value={unitForm.actionCharacter}
-                        onChange={(event) =>
-                          updateUnitField("actionCharacter", event.target.value)
-                        }
-                        className={FIELD_CLASS}
-                      >
-                        <option value="">Select action character…</option>
-                        {splitChoices(selectedUnitAward.allowedCharacter).map(
-                          (choice) => (
-                            <option key={choice} value={choice}>
-                              {choice}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                    </div>
-                  ) : null}
                 </div>
               </section>
-
-              <AwardGuidance award={selectedUnitAward} />
 
               <RecipientSelector
                 roster={roster}
@@ -582,6 +600,8 @@ export default function OperationAwardsView({ roster, onBack }) {
                 minimumSentences={selectedUnitAward?.minimumSentences ?? 0}
                 note="Use the shared unit name. Do not name individual recipients in the citation body."
                 placeholder="Describe the unit's lead-up, actions, and outcome…"
+                softCharacterLimit={UNIT_NARRATIVE_LIMITS.soft}
+                hardCharacterLimit={UNIT_NARRATIVE_LIMITS.hard}
               />
 
               <button

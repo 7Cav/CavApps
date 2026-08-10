@@ -13,7 +13,7 @@ function MedalChoiceButton({
       onClick={onClick}
       className="group flex h-[32rem] w-full flex-col items-center justify-between overflow-hidden rounded-2xl border border-[#4a4a4a] bg-[#2a2a2a] px-8 py-10 text-center transition hover:border-[#ebc729] hover:bg-[#313131] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#ebc729] md:h-[34rem]"
     >
-      <span className="text-[2.25rem] font-bold tracking-wide text-white transition group-hover:text-[#ebc729] md:text-[2.6rem]">
+      <span className="text-[2.15rem] font-semibold tracking-[0.035em] text-white transition group-hover:text-[#ebc729] md:text-[2.45rem]">
         {title}
       </span>
 
@@ -26,7 +26,7 @@ function MedalChoiceButton({
         />
       </div>
 
-      <span className="text-[2.25rem] font-bold tracking-wide text-white transition group-hover:text-[#ebc729] md:text-[2.6rem]">
+      <span className="text-[2.15rem] font-semibold tracking-[0.035em] text-white transition group-hover:text-[#ebc729] md:text-[2.45rem]">
         Medals
       </span>
     </button>
@@ -42,7 +42,7 @@ export default function MedalLanding({
     <section className="flex min-h-[calc(100vh-120px)] items-center justify-center py-8 md:py-10">
       <div className="w-full">
         <div className="mb-8 text-center md:mb-10">
-          <h1 className="text-4xl font-bold text-[#e7e7e7] sm:text-5xl">
+          <h1 className="text-4xl font-bold text-[#ebc729] sm:text-5xl">
             Medal Recommendation Aid
           </h1>
 

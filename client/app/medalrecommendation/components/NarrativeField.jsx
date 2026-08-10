@@ -1,7 +1,5 @@
 "use client";
 
-const SOFT_CHARACTER_LIMIT = 1400;
-const HARD_CHARACTER_LIMIT = 2100;
 const TEXTAREA_INPUT_LIMIT = 12000;
 
 export default function NarrativeField({
@@ -14,6 +12,8 @@ export default function NarrativeField({
   minimumSentences = 0,
   note = "",
   placeholder = "",
+  softCharacterLimit = 1400,
+  hardCharacterLimit = 1600,
 }) {
   const normalizedValue = value.trim();
 
@@ -26,12 +26,12 @@ export default function NarrativeField({
       : 0;
 
   const characters = normalizedValue.length;
-  const softLimitExceeded = characters > SOFT_CHARACTER_LIMIT;
-  const hardLimitExceeded = characters > HARD_CHARACTER_LIMIT;
+  const softLimitExceeded = characters > softCharacterLimit;
+  const hardLimitExceeded = characters > hardCharacterLimit;
 
   return (
     <section className="border border-[#353535] bg-[#141414] p-4">
-      <label htmlFor={id} className="block font-semibold text-[#dedede]">
+      <label htmlFor={id} className="block font-semibold text-[#ebc729]">
         {label}
       </label>
 
@@ -74,7 +74,7 @@ export default function NarrativeField({
           }
         >
           Characters: <strong>{characters.toLocaleString()}</strong> /{" "}
-          {HARD_CHARACTER_LIMIT.toLocaleString()}
+          {hardCharacterLimit.toLocaleString()}
         </span>
       </div>
 
@@ -87,8 +87,8 @@ export default function NarrativeField({
           }
         >
           {hardLimitExceeded
-            ? `Hard limit exceeded: shorten the narrative to ${HARD_CHARACTER_LIMIT.toLocaleString()} characters or fewer before generating.`
-            : `Soft warning: over ${SOFT_CHARACTER_LIMIT.toLocaleString()} characters. You can still generate the recommendation.`}
+            ? `Hard limit exceeded: shorten the narrative to ${hardCharacterLimit.toLocaleString()} characters or fewer before generating.`
+            : `Soft warning: over ${softCharacterLimit.toLocaleString()} characters. You can still generate the recommendation.`}
         </p>
       ) : null}
     </section>

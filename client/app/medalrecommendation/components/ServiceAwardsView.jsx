@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 
 import AwardGuidance from "./AwardGuidance";
+import BulkRecipientSelector from "./BulkRecipientSelector";
 import NarrativeField from "./NarrativeField";
 import RecipientSelector from "./RecipientSelector";
 import RecommendationResult from "./RecommendationResult";
@@ -21,10 +22,15 @@ import {
   buildOrganizationReference_,
 } from "../lib/reference-data";
 
+import {
+  INDIVIDUAL_NARRATIVE_LIMITS,
+  UNIT_NARRATIVE_LIMITS,
+} from "../lib/narrative-limits";
+
 const FIELD_CLASS =
   "h-10 w-full border border-[#444] bg-[#1b1b1b] px-3 text-sm text-white outline-none transition focus:border-[#ebc729]";
 
-const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-[#aaa]";
+const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-[#c8c8c8]";
 
 const SERVICE_MONTHS = [
   "January",
@@ -339,6 +345,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
   const [unitResult, setUnitResult] = useState(null);
   const [individualResultStale, setIndividualResultStale] = useState(false);
   const [unitResultStale, setUnitResultStale] = useState(false);
+  const [bulkRecipientEditorOpen, setBulkRecipientEditorOpen] = useState(false);
 
   const organizations = useMemo(
     () => buildOrganizationReference_(roster),
@@ -465,7 +472,10 @@ export default function ServiceAwardsView({ roster, onBack }) {
       narrative: individualForm.narrative,
     };
 
-    const result = generateService(payload, generationContext);
+    const result = generateService(payload, {
+      ...generationContext,
+      limits: { narrative: INDIVIDUAL_NARRATIVE_LIMITS.hard },
+    });
     setIndividualResult(result);
     setIndividualResultStale(false);
   }
@@ -481,7 +491,10 @@ export default function ServiceAwardsView({ roster, onBack }) {
       narrative: unitForm.narrative,
     };
 
-    const result = generateService(payload, generationContext);
+    const result = generateService(payload, {
+      ...generationContext,
+      limits: { narrative: UNIT_NARRATIVE_LIMITS.hard },
+    });
     setUnitResult(result);
     setUnitResultStale(false);
   }
@@ -494,6 +507,20 @@ export default function ServiceAwardsView({ roster, onBack }) {
     setUnitResult(null);
     setIndividualResultStale(false);
     setUnitResultStale(false);
+    setBulkRecipientEditorOpen(false);
+  }
+
+  function handleConfirmBulkRecipients(recipients) {
+    updateUnitField("recipients", recipients);
+    setBulkRecipientEditorOpen(false);
+  }
+
+  function handleClearBulkRecipients() {
+    const minimum = APP_RULES.minimumUnitRecipients ?? 4;
+    updateUnitField(
+      "recipients",
+      Array.from({ length: minimum }, () => ""),
+    );
   }
 
   function renderAwardFields({ award, fields, onChange, scope }) {
@@ -528,6 +555,15 @@ export default function ServiceAwardsView({ roster, onBack }) {
   const currentResultStale =
     awardType === "individual" ? individualResultStale : unitResultStale;
 
+  const minimumUnitRecipients = APP_RULES.minimumUnitRecipients ?? 4;
+  const maximumManualServiceUnitRecipients =
+    APP_RULES.maximumManualServiceUnitRecipients ?? 20;
+  const selectedUnitRecipients = unitForm.recipients
+    .map((recipient) => recipient.trim())
+    .filter(Boolean);
+  const usingBulkUnitRecipients =
+    selectedUnitRecipients.length > maximumManualServiceUnitRecipients;
+
   return (
     <section className="py-2">
       <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
@@ -535,12 +571,12 @@ export default function ServiceAwardsView({ roster, onBack }) {
           <button
             type="button"
             onClick={onBack}
-            className="mb-3 text-sm font-semibold text-[#aaa] transition hover:text-[#ebc729]"
+            className="mb-3 text-sm font-semibold text-[#c8c8c8] transition hover:text-[#ebc729]"
           >
             ← Back to Home
           </button>
 
-          <h1 className="text-3xl font-semibold text-[#e7e7e7]">
+          <h1 className="text-3xl font-semibold text-[#ebc729]">
             Service Medals
           </h1>
 
@@ -552,7 +588,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
         <button
           type="button"
           onClick={handleResetWorksheet}
-          className="border border-[#555] px-4 py-2 text-sm font-semibold text-[#aaa] transition hover:border-red-700 hover:text-red-300"
+          className="border border-[#555] px-4 py-2 text-sm font-semibold text-[#c8c8c8] transition hover:border-red-700 hover:text-red-300"
         >
           Reset Worksheet
         </button>
@@ -565,7 +601,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
           className={
             awardType === "individual"
               ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
-              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#c8c8c8] transition hover:border-[#666] hover:text-white"
           }
         >
           Individual Medal
@@ -577,7 +613,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
           className={
             awardType === "unit"
               ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
-              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#c8c8c8] transition hover:border-[#666] hover:text-white"
           }
         >
           Unit Award
@@ -590,7 +626,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
             <>
               <section className="border border-[#353535] bg-[#141414] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-[#dedede]">
+                  <h2 className="font-semibold text-[#ebc729]">
                     Recommendation Details
                   </h2>
                   <span className="text-xs text-[#777]">Individual Medal</span>
@@ -656,6 +692,8 @@ export default function ServiceAwardsView({ roster, onBack }) {
                   individualForm.fields,
                 )}
                 placeholder="Continue the citation sentence here…"
+                softCharacterLimit={INDIVIDUAL_NARRATIVE_LIMITS.soft}
+                hardCharacterLimit={INDIVIDUAL_NARRATIVE_LIMITS.hard}
               />
 
               <button
@@ -670,7 +708,7 @@ export default function ServiceAwardsView({ roster, onBack }) {
             <>
               <section className="border border-[#353535] bg-[#141414] p-4">
                 <div className="mb-4 flex items-center justify-between gap-3">
-                  <h2 className="font-semibold text-[#dedede]">
+                  <h2 className="font-semibold text-[#ebc729]">
                     Recommendation Details
                   </h2>
                   <span className="text-xs text-[#777]">Unit Award</span>
@@ -706,16 +744,62 @@ export default function ServiceAwardsView({ roster, onBack }) {
 
               <AwardGuidance award={selectedUnitAward} />
 
-              <RecipientSelector
-                roster={roster}
-                recipients={unitForm.recipients}
-                onChange={(recipients) => updateUnitField("recipients", recipients)}
-                minimum={APP_RULES.minimumUnitRecipients ?? 4}
-                maximum={
-                  APP_RULES.maximumManualServiceUnitRecipients ?? 20
-                }
-                label="Recipient"
-              />
+              {usingBulkUnitRecipients ? (
+                <section className="border border-[#353535] bg-[#141414] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-[#ebc729]">Recipients</h3>
+                      <p className="mt-1 text-xs text-[#858585]">
+                        {selectedUnitRecipients.length} recipients selected through the bulk roster tool.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setBulkRecipientEditorOpen(true)}
+                        className="border border-[#555] px-3 py-1.5 text-xs font-semibold text-[#cfcfcf] transition hover:border-[#ebc729] hover:text-[#ebc729]"
+                      >
+                        View/Edit Recipients
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleClearBulkRecipients}
+                        className="border border-[#555] px-3 py-1.5 text-xs font-semibold text-[#c8c8c8] transition hover:border-red-700 hover:text-red-300"
+                      >
+                        Clear Recipients
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 whitespace-pre-line border border-[#333] bg-[#1a1a1a] p-3 text-sm leading-6 text-[#bdbdbd]">
+                    {selectedUnitRecipients.slice(0, 8).join("\n")}
+                    {selectedUnitRecipients.length > 8
+                      ? `\n+ ${selectedUnitRecipients.length - 8} more`
+                      : ""}
+                  </div>
+                </section>
+              ) : (
+                <RecipientSelector
+                  roster={roster}
+                  recipients={unitForm.recipients}
+                  onChange={(recipients) =>
+                    updateUnitField("recipients", recipients)
+                  }
+                  minimum={minimumUnitRecipients}
+                  maximum={maximumManualServiceUnitRecipients}
+                  label="Recipient"
+                  extraActions={
+                    <button
+                      type="button"
+                      onClick={() => setBulkRecipientEditorOpen(true)}
+                      className="border border-[#555] px-3 py-1.5 text-xs font-semibold text-[#cfcfcf] transition hover:border-[#ebc729] hover:text-[#ebc729]"
+                    >
+                      Bulk Add Recipients
+                    </button>
+                  }
+                />
+              )}
 
               <NarrativeField
                 id="service-unit-narrative"
@@ -727,6 +811,8 @@ export default function ServiceAwardsView({ roster, onBack }) {
                 minimumSentences={selectedUnitAward?.minimumSentences ?? 0}
                 note={getUnitNarrativeNote(selectedUnitAward, unitForm.fields)}
                 placeholder="Continue the unit citation sentence here…"
+                softCharacterLimit={UNIT_NARRATIVE_LIMITS.soft}
+                hardCharacterLimit={UNIT_NARRATIVE_LIMITS.hard}
               />
 
               <button
@@ -747,6 +833,16 @@ export default function ServiceAwardsView({ roster, onBack }) {
           />
         </aside>
       </div>
+
+      {bulkRecipientEditorOpen ? (
+        <BulkRecipientSelector
+          roster={roster}
+          recipients={unitForm.recipients}
+          minimum={minimumUnitRecipients}
+          onConfirm={handleConfirmBulkRecipients}
+          onCancel={() => setBulkRecipientEditorOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }

@@ -14,6 +14,7 @@ export default function RecipientSelector({
   minimum = 1,
   maximum = 20,
   label = "Recipient",
+  extraActions = null,
 }) {
   const safeLabel = makeSafeId(label);
   const datalistId = `medal-roster-options-${safeLabel}`;
@@ -44,7 +45,7 @@ export default function RecipientSelector({
     <section className="border border-[#353535] bg-[#141414] p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold text-[#dedede]">Recipients</h3>
+          <h3 className="font-semibold text-[#ebc729]">Recipients</h3>
           <p className="mt-1 text-xs text-[#858585]">
             Start typing a rank or roster name and choose the correct member.
           </p>
@@ -68,10 +69,12 @@ export default function RecipientSelector({
             type="button"
             onClick={removeRecipient}
             disabled={recipients.length <= minimum}
-            className="border border-[#555] px-3 py-1.5 text-xs font-semibold text-[#aaa] transition hover:border-red-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-35"
+            className="border border-[#555] px-3 py-1.5 text-xs font-semibold text-[#c8c8c8] transition hover:border-red-700 hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-35"
           >
             Remove
           </button>
+
+          {extraActions}
         </div>
       </div>
 
@@ -86,7 +89,7 @@ export default function RecipientSelector({
           <div key={index}>
             <label
               htmlFor={`${safeLabel}-${index}`}
-              className="mb-1.5 block text-xs font-medium text-[#aaa]"
+              className="mb-1.5 block text-xs font-medium text-[#c8c8c8]"
             >
               {label} {index + 1}
             </label>
