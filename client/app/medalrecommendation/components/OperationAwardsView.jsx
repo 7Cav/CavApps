@@ -73,6 +73,16 @@ export default function OperationAwardsView({
   const [unitResult, setUnitResult] =
     useState(null);
 
+  const [
+    individualResultStale,
+    setIndividualResultStale,
+  ] = useState(false);
+
+  const [
+    unitResultStale,
+    setUnitResultStale,
+  ] = useState(false);
+
   const selectedIndividualAward =
     INDIVIDUAL_AWARDS.find(
       (award) =>
@@ -102,6 +112,10 @@ export default function OperationAwardsView({
       ...current,
       [field]: value,
     }));
+
+    if (individualResult) {
+      setIndividualResultStale(true);
+    }
   }
 
   function updateUnitField(
@@ -112,6 +126,10 @@ export default function OperationAwardsView({
       ...current,
       [field]: value,
     }));
+
+    if (unitResult) {
+      setUnitResultStale(true);
+    }
   }
 
   function handleIndividualAwardChange(
@@ -124,7 +142,9 @@ export default function OperationAwardsView({
       actionCharacter: "",
     }));
 
-    setIndividualResult(null);
+    if (individualResult) {
+      setIndividualResultStale(true);
+    }
   }
 
   function handleUnitAwardChange(value) {
@@ -134,7 +154,9 @@ export default function OperationAwardsView({
       actionCharacter: "",
     }));
 
-    setUnitResult(null);
+    if (unitResult) {
+      setUnitResultStale(true);
+    }
   }
 
   function handleGenerateIndividual() {
@@ -155,6 +177,7 @@ export default function OperationAwardsView({
     );
 
     setIndividualResult(result);
+    setIndividualResultStale(false);
   }
 
   function handleGenerateUnit() {
@@ -175,6 +198,7 @@ export default function OperationAwardsView({
     );
 
     setUnitResult(result);
+    setUnitResultStale(false);
   }
 
   return (
@@ -539,6 +563,7 @@ export default function OperationAwardsView({
 
           <RecommendationResult
             result={individualResult}
+            stale={individualResultStale}
           />
         </div>
       ) : (
@@ -796,6 +821,7 @@ export default function OperationAwardsView({
 
           <RecommendationResult
             result={unitResult}
+            stale={unitResultStale}
           />
         </div>
       )}
