@@ -18,9 +18,7 @@ export default function NarrativeField({
   const normalizedValue = value.trim();
 
   const words =
-    typeof countWords === "function"
-      ? countWords(normalizedValue)
-      : 0;
+    typeof countWords === "function" ? countWords(normalizedValue) : 0;
 
   const sentences =
     typeof countSentences === "function"
@@ -28,59 +26,42 @@ export default function NarrativeField({
       : 0;
 
   const characters = normalizedValue.length;
-
-  const softLimitExceeded =
-    characters > SOFT_CHARACTER_LIMIT;
-
-  const hardLimitExceeded =
-    characters > HARD_CHARACTER_LIMIT;
+  const softLimitExceeded = characters > SOFT_CHARACTER_LIMIT;
+  const hardLimitExceeded = characters > HARD_CHARACTER_LIMIT;
 
   return (
-    <div>
-      <label
-        htmlFor={id}
-        className="mb-2 block font-medium"
-      >
+    <section className="border border-[#353535] bg-[#141414] p-4">
+      <label htmlFor={id} className="block font-semibold text-[#dedede]">
         {label}
       </label>
 
       {note ? (
-        <p className="mb-3 text-sm text-[#aaa]">
+        <p className="mt-2 border-l-2 border-[#ebc729] bg-[#191919] px-3 py-2 text-xs leading-5 text-[#a9a9a9]">
           {note}
         </p>
       ) : null}
 
       <textarea
         id={id}
-        rows={12}
+        rows={7}
         maxLength={TEXTAREA_INPUT_LIMIT}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className="w-full border border-[#444] bg-[#1a1a1a] px-3 py-2 text-white"
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-3 w-full resize-y border border-[#444] bg-[#1b1b1b] px-3 py-2 text-sm leading-6 text-white outline-none transition focus:border-[#ebc729]"
         placeholder={placeholder}
       />
 
       <div
-        className="mt-2 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#999]"
+        className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#858585]"
         aria-live="polite"
       >
         <span>
-          Approx. sentences:{" "}
-          <strong className="text-white">
-            {sentences}
-          </strong>
-          {minimumSentences > 0 ? (
-            <> / {minimumSentences} minimum</>
-          ) : null}
+          Sentences: <strong className="text-[#ccc]">{sentences}</strong>
+          {minimumSentences > 0 ? <> / {minimumSentences} minimum</> : null}
         </span>
 
         <span>
-          Approx. words:{" "}
-          <strong className="text-white">
-            {words}
-          </strong>
+          Words: <strong className="text-[#ccc]">{words}</strong>
         </span>
 
         <span
@@ -92,11 +73,8 @@ export default function NarrativeField({
                 : ""
           }
         >
-          Characters:{" "}
-          <strong>
-            {characters.toLocaleString()} /{" "}
-            {HARD_CHARACTER_LIMIT.toLocaleString()}
-          </strong>
+          Characters: <strong>{characters.toLocaleString()}</strong> /{" "}
+          {HARD_CHARACTER_LIMIT.toLocaleString()}
         </span>
       </div>
 
@@ -104,8 +82,8 @@ export default function NarrativeField({
         <p
           className={
             hardLimitExceeded
-              ? "mt-2 text-sm text-red-400"
-              : "mt-2 text-sm text-yellow-400"
+              ? "mt-2 text-xs text-red-400"
+              : "mt-2 text-xs text-yellow-400"
           }
         >
           {hardLimitExceeded
@@ -113,6 +91,6 @@ export default function NarrativeField({
             : `Soft warning: over ${SOFT_CHARACTER_LIMIT.toLocaleString()} characters. You can still generate the recommendation.`}
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import AwardGuidance from "./AwardGuidance";
 import NarrativeField from "./NarrativeField";
 import RecipientSelector from "./RecipientSelector";
 import RecommendationResult from "./RecommendationResult";
@@ -20,6 +21,11 @@ import {
   buildOrganizationReference_,
 } from "../lib/reference-data";
 
+const FIELD_CLASS =
+  "h-10 w-full border border-[#444] bg-[#1b1b1b] px-3 text-sm text-white outline-none transition focus:border-[#ebc729]";
+
+const LABEL_CLASS = "mb-1.5 block text-xs font-medium text-[#aaa]";
+
 const SERVICE_MONTHS = [
   "January",
   "February",
@@ -35,12 +41,16 @@ const SERVICE_MONTHS = [
   "December",
 ];
 
+const INDIVIDUAL_SERVICE_AWARDS = SERVICE_AWARD_DEFINITIONS.filter(
+  (award) => award.scope === "individual",
+);
+
+const UNIT_SERVICE_AWARDS = SERVICE_AWARD_DEFINITIONS.filter(
+  (award) => award.scope === "unit",
+);
+
 function cleanText(value) {
-  return String(
-    value === undefined || value === null
-      ? ""
-      : value,
-  )
+  return String(value === undefined || value === null ? "" : value)
     .replace(/\s+/gu, " ")
     .trim();
 }
@@ -50,28 +60,21 @@ function uniqueSorted(values) {
 
   (values ?? []).forEach((value) => {
     const clean = cleanText(value);
-
     if (!clean) {
       return;
     }
 
     const normalized = clean.toUpperCase();
-
     if (!seen.has(normalized)) {
       seen.set(normalized, clean);
     }
   });
 
-  return Array.from(seen.values()).sort(
-    (left, right) =>
-      left.localeCompare(
-        right,
-        undefined,
-        {
-          numeric: true,
-          sensitivity: "base",
-        },
-      ),
+  return Array.from(seen.values()).sort((left, right) =>
+    left.localeCompare(right, undefined, {
+      numeric: true,
+      sensitivity: "base",
+    }),
   );
 }
 
@@ -82,71 +85,120 @@ function buildBilletSuggestions(roster) {
 
   (roster ?? []).forEach((person) => {
     if (person.primaryBillet) {
-      primaryBillets.push(
-        person.primaryBillet,
-      );
-
-      allBillets.push(
-        person.primaryBillet,
-      );
+      primaryBillets.push(person.primaryBillet);
+      allBillets.push(person.primaryBillet);
     }
 
-    (
-      person.secondaryBillets ?? []
-    ).forEach((billet) => {
+    (person.secondaryBillets ?? []).forEach((billet) => {
       secondaryBillets.push(billet);
       allBillets.push(billet);
     });
   });
 
   return {
-    primaryBillets:
-      uniqueSorted(primaryBillets),
-
-    secondaryBillets:
-      uniqueSorted(secondaryBillets),
-
-    allBillets:
-      uniqueSorted(allBillets),
+    primaryBillets: uniqueSorted(primaryBillets),
+    secondaryBillets: uniqueSorted(secondaryBillets),
+    allBillets: uniqueSorted(allBillets),
   };
 }
 
 function buildServiceYears() {
-  const currentYear =
-    new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
 
   return Array.from(
     {
-      length:
-        Math.max(
-          0,
-          currentYear - 2009,
-        ),
+      length: Math.max(0, currentYear - 2009),
     },
-    (_, index) =>
-      String(currentYear - index),
+    (_, index) => String(currentYear - index),
   );
 }
 
-function isFieldVisible(
-  field,
-  fields,
-) {
+function isFieldVisible(field, fields) {
   if (!field.visibleWhen) {
     return true;
   }
 
   const currentValue = cleanText(
-    fields[
-      field.visibleWhen.field
-    ],
+    fields[field.visibleWhen.field],
   ).toLowerCase();
 
-  const expectedValue = cleanText(
-    field.visibleWhen.equals,
-  ).toLowerCase();
-
+  const expectedValue = cleanText(field.visibleWhen.equals).toLowerCase();
   return currentValue === expectedValue;
+}
+
+function awardHasField(award, fieldKey) {
+  return (award?.fields ?? []).some((field) => field.key === fieldKey);
+}
+
+function getIndividualNarrativeNote(award, fields) {
+  if (!award) {
+    return "";
+  }
+
+  const hasSelectableLead = awardHasField(award, "narrativeLead");
+  const selectedLead = cleanText(fields?.narrativeLead);
+
+  if (hasSelectableLead && !selectedLead) {
+    return (
+      "After you select a Narrative Introduction, the app will begin the narrative sentence for you using " +
+      "the recipient’s full rank and name. Continue that sentence directly in the narrative box. Begin with a lowercase word " +
+      "unless the first word is a proper noun."
+    );
+  }
+
+  const narrativeLead = selectedLead || "distinguished themselves by";
+
+  return (
+    `The app will begin this sentence for you: "Full Rank First Last ${narrativeLead} …" ` +
+    "Continue the sentence directly in the narrative box. Begin with a lowercase word unless the first word is a proper noun."
+  );
+}
+
+function getUnitNarrativeNote(award, fields) {
+  if (!award) {
+    return "";
+  }
+
+  const hasNarrativeVerb = awardHasField(award, "narrativeVerb");
+
+  if (!hasNarrativeVerb) {
+    return (
+      "Write the shared unit citation in your own words. Required opening and closing language will be added automatically."
+    );
+  }
+
+  const narrativeVerb = cleanText(fields?.narrativeVerb);
+  const recognizedGroup = cleanText(fields?.recognizedGroup) || "Recognized Group";
+
+  if (!narrativeVerb) {
+    return (
+      "After you select a Narrative Introduction, the app will end the opening with an incomplete sentence starter for the recognized group. " +
+      "Continue that sentence directly in the narrative box. Begin with a lowercase word unless the first word is a proper noun."
+    );
+  }
+
+  return (
+    `The app will begin this part of the sentence for you: "${recognizedGroup} ${narrativeVerb} themselves by …" ` +
+    "Continue the sentence directly in the narrative box. Begin with a lowercase word unless the first word is a proper noun."
+  );
+}
+
+function createIndividualForm() {
+  return {
+    awardId: INDIVIDUAL_SERVICE_AWARDS[0]?.id ?? "",
+    fields: {},
+    recipients: [""],
+    narrative: "",
+  };
+}
+
+function createUnitForm() {
+  return {
+    awardId: UNIT_SERVICE_AWARDS[0]?.id ?? "",
+    fields: {},
+    recipients: ["", "", "", ""],
+    narrative: "",
+  };
 }
 
 function ServiceField({
@@ -157,110 +209,64 @@ function ServiceField({
   serviceReference,
   billetSuggestions,
 }) {
-  const id =
-    `service-${scope}-${field.key}`;
-
-  const datalistId =
-    `${id}-options`;
-
-  const commonClassName =
-    "w-full border border-[#444] bg-[#1a1a1a] px-3 py-2 text-white";
+  const id = `service-${scope}-${field.key}`;
+  const datalistId = `${id}-options`;
 
   let control = null;
 
   if (field.component === "select") {
-    const choices =
-      serviceReference.choices[
-        field.optionsSource
-      ] ?? [];
+    const choices = serviceReference.choices[field.optionsSource] ?? [];
 
     control = (
       <select
         id={id}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className={commonClassName}
+        onChange={(event) => onChange(event.target.value)}
+        className={FIELD_CLASS}
       >
-        <option value="">
-          Select {field.label}…
-        </option>
-
+        <option value="">Select {field.label}…</option>
         {choices.map((choice) => (
-          <option
-            key={choice}
-            value={choice}
-          >
+          <option key={choice} value={choice}>
             {choice}
           </option>
         ))}
       </select>
     );
-  } else if (
-    field.component === "month"
-  ) {
+  } else if (field.component === "month") {
     control = (
       <select
         id={id}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className={commonClassName}
+        onChange={(event) => onChange(event.target.value)}
+        className={FIELD_CLASS}
       >
-        <option value="">
-          Select month…
-        </option>
-
-        {SERVICE_MONTHS.map(
-          (month) => (
-            <option
-              key={month}
-              value={month}
-            >
-              {month}
-            </option>
-          ),
-        )}
+        <option value="">Select month…</option>
+        {SERVICE_MONTHS.map((month) => (
+          <option key={month} value={month}>
+            {month}
+          </option>
+        ))}
       </select>
     );
-  } else if (
-    field.component === "year"
-  ) {
+  } else if (field.component === "year") {
     control = (
       <select
         id={id}
         value={value}
-        onChange={(event) =>
-          onChange(event.target.value)
-        }
-        className={commonClassName}
+        onChange={(event) => onChange(event.target.value)}
+        className={FIELD_CLASS}
       >
-        <option value="">
-          Select year…
-        </option>
-
-        {buildServiceYears().map(
-          (year) => (
-            <option
-              key={year}
-              value={year}
-            >
-              {year}
-            </option>
-          ),
-        )}
+        <option value="">Select year…</option>
+        {buildServiceYears().map((year) => (
+          <option key={year} value={year}>
+            {year}
+          </option>
+        ))}
       </select>
     );
-  } else if (
-    field.component ===
-    "organization"
-  ) {
+  } else if (field.component === "organization") {
     const suggestions =
-      serviceReference.organizations[
-        field.optionsSource
-      ] ?? [];
+      serviceReference.organizations[field.optionsSource] ?? [];
 
     control = (
       <>
@@ -269,69 +275,40 @@ function ServiceField({
           type="text"
           list={datalistId}
           value={value}
-          onChange={(event) =>
-            onChange(
-              event.target.value,
-            )
-          }
-          className={commonClassName}
-          placeholder={
-            field.placeholder ?? ""
-          }
+          onChange={(event) => onChange(event.target.value)}
+          className={FIELD_CLASS}
+          placeholder={field.placeholder ?? ""}
         />
 
         <datalist id={datalistId}>
-          {suggestions.map(
-            (option) => (
-              <option
-                key={option}
-                value={option}
-              />
-            ),
-          )}
+          {suggestions.map((option) => (
+            <option key={option} value={option} />
+          ))}
         </datalist>
       </>
     );
   } else {
-    const suggestions =
-      field.suggestionsSource
-        ? billetSuggestions[
-            field.suggestionsSource
-          ] ?? []
-        : [];
+    const suggestions = field.suggestionsSource
+      ? billetSuggestions[field.suggestionsSource] ?? []
+      : [];
 
     control = (
       <>
         <input
           id={id}
           type="text"
-          list={
-            suggestions.length
-              ? datalistId
-              : undefined
-          }
+          list={suggestions.length ? datalistId : undefined}
           value={value}
-          onChange={(event) =>
-            onChange(
-              event.target.value,
-            )
-          }
-          className={commonClassName}
-          placeholder={
-            field.placeholder ?? ""
-          }
+          onChange={(event) => onChange(event.target.value)}
+          className={FIELD_CLASS}
+          placeholder={field.placeholder ?? ""}
         />
 
         {suggestions.length ? (
           <datalist id={datalistId}>
-            {suggestions.map(
-              (option) => (
-                <option
-                  key={option}
-                  value={option}
-                />
-              ),
-            )}
+            {suggestions.map((option) => (
+              <option key={option} value={option} />
+            ))}
           </datalist>
         ) : null}
       </>
@@ -340,173 +317,81 @@ function ServiceField({
 
   return (
     <div>
-      <label
-        htmlFor={id}
-        className="mb-2 block font-medium"
-      >
+      <label htmlFor={id} className={LABEL_CLASS}>
         {field.label}
       </label>
 
       {control}
 
       {field.helpText ? (
-        <p className="mt-2 text-sm text-[#888]">
-          {field.helpText}
-        </p>
+        <p className="mt-1.5 text-xs leading-5 text-[#777]">{field.helpText}</p>
       ) : null}
     </div>
   );
 }
 
-export default function ServiceAwardsView({
-  roster,
-}) {
-  const [awardType, setAwardType] =
-    useState("individual");
+export default function ServiceAwardsView({ roster, onBack }) {
+  const [awardType, setAwardType] = useState("individual");
+  const [individualForm, setIndividualForm] = useState(createIndividualForm);
+  const [unitForm, setUnitForm] = useState(createUnitForm);
 
-  const individualAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) =>
-        award.scope === "individual",
-    );
-
-  const unitAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) =>
-        award.scope === "unit",
-    );
-
-  const [
-    individualForm,
-    setIndividualForm,
-  ] = useState({
-    awardId:
-      individualAwards[0]?.id ?? "",
-    fields: {},
-    recipients: [""],
-    narrative: "",
-  });
-
-  const [unitForm, setUnitForm] =
-    useState({
-      awardId:
-        unitAwards[0]?.id ?? "",
-      fields: {},
-      recipients: [
-        "",
-        "",
-        "",
-        "",
-      ],
-      narrative: "",
-    });
-
-  const [
-    individualResult,
-    setIndividualResult,
-  ] = useState(null);
-
-  const [
-    unitResult,
-    setUnitResult,
-  ] = useState(null);
-
-  const [
-    individualResultStale,
-    setIndividualResultStale,
-  ] = useState(false);
-
-  const [
-    unitResultStale,
-    setUnitResultStale,
-  ] = useState(false);
+  const [individualResult, setIndividualResult] = useState(null);
+  const [unitResult, setUnitResult] = useState(null);
+  const [individualResultStale, setIndividualResultStale] = useState(false);
+  const [unitResultStale, setUnitResultStale] = useState(false);
 
   const organizations = useMemo(
-    () =>
-      buildOrganizationReference_(
-        roster,
-      ),
+    () => buildOrganizationReference_(roster),
     [roster],
   );
 
-  const billetSuggestions =
-    useMemo(
-      () =>
-        buildBilletSuggestions(roster),
-      [roster],
-    );
+  const billetSuggestions = useMemo(
+    () => buildBilletSuggestions(roster),
+    [roster],
+  );
 
-  const serviceReference =
-    useMemo(
-      () => ({
-        organizations,
-        choices:
-          SERVICE_REFERENCE_CHOICES,
-      }),
-      [organizations],
-    );
+  const serviceReference = useMemo(
+    () => ({
+      organizations,
+      choices: SERVICE_REFERENCE_CHOICES,
+    }),
+    [organizations],
+  );
 
   const selectedIndividualAward =
-    individualAwards.find(
-      (award) =>
-        award.id ===
-        individualForm.awardId,
+    INDIVIDUAL_SERVICE_AWARDS.find(
+      (award) => award.id === individualForm.awardId,
     ) ?? null;
 
   const selectedUnitAward =
-    unitAwards.find(
-      (award) =>
-        award.id === unitForm.awardId,
-    ) ?? null;
+    UNIT_SERVICE_AWARDS.find((award) => award.id === unitForm.awardId) ?? null;
 
-  const generationContext =
-    useMemo(
-      () => ({
-        rules: APP_RULES,
+  const generationContext = useMemo(
+    () => ({
+      rules: APP_RULES,
+      rankPrecedence: RANK_PRECEDENCE,
+      serviceAwards: {
+        individual: INDIVIDUAL_SERVICE_AWARDS,
+        unit: UNIT_SERVICE_AWARDS,
+      },
+      serviceReference,
+      roster,
+    }),
+    [serviceReference, roster],
+  );
 
-        rankPrecedence:
-          RANK_PRECEDENCE,
-
-        serviceAwards: {
-          individual:
-            individualAwards,
-          unit: unitAwards,
-        },
-
-        serviceReference,
-
-        roster,
-      }),
-      [
-        individualAwards,
-        unitAwards,
-        serviceReference,
-        roster,
-      ],
-    );
-
-  function updateIndividualField(
-    field,
-    value,
-  ) {
-    setIndividualForm(
-      (current) => ({
-        ...current,
-        [field]: value,
-      }),
-    );
+  function updateIndividualField(field, value) {
+    setIndividualForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
 
     if (individualResult) {
-      setIndividualResultStale(
-        true,
-      );
+      setIndividualResultStale(true);
     }
   }
 
-  function updateUnitField(
-    field,
-    value,
-  ) {
+  function updateUnitField(field, value) {
     setUnitForm((current) => ({
       ...current,
       [field]: value,
@@ -517,35 +402,23 @@ export default function ServiceAwardsView({
     }
   }
 
-  function updateIndividualAwardField(
-    key,
-    value,
-  ) {
-    setIndividualForm(
-      (current) => ({
-        ...current,
-
-        fields: {
-          ...current.fields,
-          [key]: value,
-        },
-      }),
-    );
+  function updateIndividualAwardField(key, value) {
+    setIndividualForm((current) => ({
+      ...current,
+      fields: {
+        ...current.fields,
+        [key]: value,
+      },
+    }));
 
     if (individualResult) {
-      setIndividualResultStale(
-        true,
-      );
+      setIndividualResultStale(true);
     }
   }
 
-  function updateUnitAwardField(
-    key,
-    value,
-  ) {
+  function updateUnitAwardField(key, value) {
     setUnitForm((current) => ({
       ...current,
-
       fields: {
         ...current.fields,
         [key]: value,
@@ -557,27 +430,19 @@ export default function ServiceAwardsView({
     }
   }
 
-  function handleIndividualAwardChange(
-    awardId,
-  ) {
-    setIndividualForm(
-      (current) => ({
-        ...current,
-        awardId,
-        fields: {},
-      }),
-    );
+  function handleIndividualAwardChange(awardId) {
+    setIndividualForm((current) => ({
+      ...current,
+      awardId,
+      fields: {},
+    }));
 
     if (individualResult) {
-      setIndividualResultStale(
-        true,
-      );
+      setIndividualResultStale(true);
     }
   }
 
-  function handleUnitAwardChange(
-    awardId,
-  ) {
+  function handleUnitAwardChange(awardId) {
     setUnitForm((current) => ({
       ...current,
       awardId,
@@ -592,141 +457,115 @@ export default function ServiceAwardsView({
   function handleGenerateIndividual() {
     const payload = {
       scope: "individual",
-
-      awardId:
-        individualForm.awardId,
-
-      fields:
-        individualForm.fields,
-
-      recipients:
-        individualForm.recipients
-          .map((recipient) =>
-            recipient.trim(),
-          )
-          .filter(Boolean),
-
-      narrative:
-        individualForm.narrative,
+      awardId: individualForm.awardId,
+      fields: individualForm.fields,
+      recipients: individualForm.recipients
+        .map((recipient) => recipient.trim())
+        .filter(Boolean),
+      narrative: individualForm.narrative,
     };
 
-    const result =
-      generateService(
-        payload,
-        generationContext,
-      );
-
+    const result = generateService(payload, generationContext);
     setIndividualResult(result);
-
     setIndividualResultStale(false);
   }
 
   function handleGenerateUnit() {
     const payload = {
       scope: "unit",
-
       awardId: unitForm.awardId,
-
       fields: unitForm.fields,
-
-      recipients:
-        unitForm.recipients
-          .map((recipient) =>
-            recipient.trim(),
-          )
-          .filter(Boolean),
-
-      narrative:
-        unitForm.narrative,
+      recipients: unitForm.recipients
+        .map((recipient) => recipient.trim())
+        .filter(Boolean),
+      narrative: unitForm.narrative,
     };
 
-    const result =
-      generateService(
-        payload,
-        generationContext,
-      );
-
+    const result = generateService(payload, generationContext);
     setUnitResult(result);
-
     setUnitResultStale(false);
   }
 
-  function renderAwardFields({
-    award,
-    fields,
-    onChange,
-    scope,
-  }) {
+  function handleResetWorksheet() {
+    setAwardType("individual");
+    setIndividualForm(createIndividualForm());
+    setUnitForm(createUnitForm());
+    setIndividualResult(null);
+    setUnitResult(null);
+    setIndividualResultStale(false);
+    setUnitResultStale(false);
+  }
+
+  function renderAwardFields({ award, fields, onChange, scope }) {
     if (!award) {
       return null;
     }
 
-    const visibleFields =
-      (award.fields ?? []).filter(
-        (field) =>
-          isFieldVisible(
-            field,
-            fields,
-          ),
-      );
+    const visibleFields = (award.fields ?? []).filter((field) =>
+      isFieldVisible(field, fields),
+    );
 
     if (!visibleFields.length) {
       return null;
     }
 
-    return visibleFields.map(
-      (field) => (
-        <ServiceField
-          key={field.key}
-          field={field}
-          value={
-            fields[field.key] ?? ""
-          }
-          onChange={(value) =>
-            onChange(
-              field.key,
-              value,
-            )
-          }
-          scope={scope}
-          serviceReference={
-            serviceReference
-          }
-          billetSuggestions={
-            billetSuggestions
-          }
-        />
-      ),
-    );
+    return visibleFields.map((field) => (
+      <ServiceField
+        key={field.key}
+        field={field}
+        value={fields[field.key] ?? ""}
+        onChange={(value) => onChange(field.key, value)}
+        scope={scope}
+        serviceReference={serviceReference}
+        billetSuggestions={billetSuggestions}
+      />
+    ));
   }
 
+  const currentResult =
+    awardType === "individual" ? individualResult : unitResult;
+
+  const currentResultStale =
+    awardType === "individual" ? individualResultStale : unitResultStale;
+
   return (
-    <div className="mt-6">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold">
-          Service Awards
-        </h2>
+    <section className="py-2">
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-3 text-sm font-semibold text-[#aaa] transition hover:text-[#ebc729]"
+          >
+            ← Back to Home
+          </button>
 
-        <p className="mt-2 text-[#aaa]">
-          Select the Service
-          recommendation type and
-          complete the fields required
-          for the selected award.
-        </p>
-      </div>
+          <h1 className="text-3xl font-semibold text-[#e7e7e7]">
+            Service Medals
+          </h1>
 
-      <div className="mb-8 flex gap-2">
+          <p className="mt-2 text-sm text-[#8f8f8f]">
+            Prepare an individual Service Medal or Service Unit Award.
+          </p>
+        </div>
+
         <button
           type="button"
-          onClick={() =>
-            setAwardType(
-              "individual",
-            )
-          }
+          onClick={handleResetWorksheet}
+          className="border border-[#555] px-4 py-2 text-sm font-semibold text-[#aaa] transition hover:border-red-700 hover:text-red-300"
+        >
+          Reset Worksheet
+        </button>
+      </div>
+
+      <div className="mb-5 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setAwardType("individual")}
           className={
             awardType === "individual"
-              ? "border border-[#ebc729] px-4 py-2 text-[#ebc729]"
-              : "border border-[#444] px-4 py-2 text-[#aaa]"
+              ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
           }
         >
           Individual Medal
@@ -734,324 +573,180 @@ export default function ServiceAwardsView({
 
         <button
           type="button"
-          onClick={() =>
-            setAwardType("unit")
-          }
+          onClick={() => setAwardType("unit")}
           className={
             awardType === "unit"
-              ? "border border-[#ebc729] px-4 py-2 text-[#ebc729]"
-              : "border border-[#444] px-4 py-2 text-[#aaa]"
+              ? "border border-[#ebc729] bg-[#262626] px-4 py-2 text-sm font-semibold text-[#ebc729]"
+              : "border border-[#444] bg-[#171717] px-4 py-2 text-sm text-[#aaa] transition hover:border-[#666] hover:text-white"
           }
         >
           Unit Award
         </button>
       </div>
 
-      {awardType === "individual" ? (
-        <div className="max-w-3xl">
-          <div className="grid gap-5">
-            <div>
-              <label
-                htmlFor="service-individual-award"
-                className="mb-2 block font-medium"
-              >
-                Service Medal
-              </label>
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(390px,2fr)]">
+        <div className="min-w-0 space-y-4">
+          {awardType === "individual" ? (
+            <>
+              <section className="border border-[#353535] bg-[#141414] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="font-semibold text-[#dedede]">
+                    Recommendation Details
+                  </h2>
+                  <span className="text-xs text-[#777]">Individual Medal</span>
+                </div>
 
-              <select
-                id="service-individual-award"
-                value={
-                  individualForm.awardId
-                }
-                onChange={(event) =>
-                  handleIndividualAwardChange(
-                    event.target.value,
-                  )
-                }
-                className="w-full border border-[#444] bg-[#1a1a1a] px-3 py-2 text-white"
-              >
-                {individualAwards.map(
-                  (award) => (
-                    <option
-                      key={award.id}
-                      value={award.id}
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label
+                      htmlFor="service-individual-award"
+                      className={LABEL_CLASS}
                     >
-                      {award.name}
-                    </option>
-                  ),
-                )}
-              </select>
-            </div>
-
-            <RecipientSelector
-              roster={roster}
-              recipients={
-                individualForm.recipients
-              }
-              onChange={(recipients) =>
-                updateIndividualField(
-                  "recipients",
-                  recipients,
-                )
-              }
-              minimum={1}
-              maximum={
-                APP_RULES.maximumServiceIndividualRecipients ??
-                20
-              }
-              label="Recipient"
-            />
-
-            {renderAwardFields({
-              award:
-                selectedIndividualAward,
-
-              fields:
-                individualForm.fields,
-
-              onChange:
-                updateIndividualAwardField,
-
-              scope: "individual",
-            })}
-
-            <NarrativeField
-              id="service-individual-narrative"
-              value={
-                individualForm.narrative
-              }
-              onChange={(value) =>
-                updateIndividualField(
-                  "narrative",
-                  value,
-                )
-              }
-              countWords={countWords}
-              countSentences={
-                countApproximateSentences
-              }
-              minimumSentences={
-                selectedIndividualAward?.minimumSentences ??
-                0
-              }
-              note="Write the narrative body in your own words. The required opening, narrative introduction, and closing language will be added automatically."
-              placeholder="Describe the recipient's service, actions, contributions, and impact…"
-            />
-          </div>
-
-          {selectedIndividualAward ? (
-            <div className="mt-8 border border-[#444] p-4">
-              <h3 className="font-semibold text-[#ebc729]">
-                Criteria
-              </h3>
-
-              <p className="mt-2 text-[#ccc]">
-                {
-                  selectedIndividualAward.criteria
-                }
-              </p>
-
-              <h3 className="mt-5 font-semibold text-[#ebc729]">
-                Citation Guidance
-              </h3>
-
-              <p className="mt-2 text-[#ccc]">
-                {
-                  selectedIndividualAward.guidance
-                }
-              </p>
-
-              <h3 className="mt-5 font-semibold text-[#ebc729]">
-                Eligibility / Evidence
-              </h3>
-
-              <p className="mt-2 text-[#ccc]">
-                {selectedIndividualAward.eligibility ||
-                  "No additional automated note."}
-              </p>
-
-              <p className="mt-4 text-sm text-[#999]">
-                Minimum narrative
-                sentences:{" "}
-                {
-                  selectedIndividualAward.minimumSentences
-                }
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={
-                handleGenerateIndividual
-              }
-              className="border border-[#ebc729] px-5 py-3 font-semibold text-[#ebc729]"
-            >
-              Generate Recommendation
-            </button>
-          </div>
-
-          <RecommendationResult
-            result={individualResult}
-            stale={
-              individualResultStale
-            }
-          />
-        </div>
-      ) : (
-        <div className="max-w-3xl">
-          <div className="grid gap-5">
-            <div>
-              <label
-                htmlFor="service-unit-award"
-                className="mb-2 block font-medium"
-              >
-                Service Unit Award
-              </label>
-
-              <select
-                id="service-unit-award"
-                value={unitForm.awardId}
-                onChange={(event) =>
-                  handleUnitAwardChange(
-                    event.target.value,
-                  )
-                }
-                className="w-full border border-[#444] bg-[#1a1a1a] px-3 py-2 text-white"
-              >
-                {unitAwards.map(
-                  (award) => (
-                    <option
-                      key={award.id}
-                      value={award.id}
+                      Service Medal
+                    </label>
+                    <select
+                      id="service-individual-award"
+                      value={individualForm.awardId}
+                      onChange={(event) =>
+                        handleIndividualAwardChange(event.target.value)
+                      }
+                      className={FIELD_CLASS}
                     >
-                      {award.name}
-                    </option>
-                  ),
+                      {INDIVIDUAL_SERVICE_AWARDS.map((award) => (
+                        <option key={award.id} value={award.id}>
+                          {award.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {renderAwardFields({
+                    award: selectedIndividualAward,
+                    fields: individualForm.fields,
+                    onChange: updateIndividualAwardField,
+                    scope: "individual",
+                  })}
+                </div>
+              </section>
+
+              <AwardGuidance award={selectedIndividualAward} />
+
+              <RecipientSelector
+                roster={roster}
+                recipients={individualForm.recipients}
+                onChange={(recipients) =>
+                  updateIndividualField("recipients", recipients)
+                }
+                minimum={1}
+                maximum={APP_RULES.maximumServiceIndividualRecipients ?? 20}
+                label="Recipient"
+              />
+
+              <NarrativeField
+                id="service-individual-narrative"
+                value={individualForm.narrative}
+                onChange={(value) => updateIndividualField("narrative", value)}
+                countWords={countWords}
+                countSentences={countApproximateSentences}
+                minimumSentences={
+                  selectedIndividualAward?.minimumSentences ?? 0
+                }
+                note={getIndividualNarrativeNote(
+                  selectedIndividualAward,
+                  individualForm.fields,
                 )}
-              </select>
-            </div>
+                placeholder="Continue the citation sentence here…"
+              />
 
-            <RecipientSelector
-              roster={roster}
-              recipients={
-                unitForm.recipients
-              }
-              onChange={(recipients) =>
-                updateUnitField(
-                  "recipients",
-                  recipients,
-                )
-              }
-              minimum={
-                APP_RULES.minimumUnitRecipients ??
-                4
-              }
-              maximum={
-                APP_RULES.maximumManualServiceUnitRecipients ??
-                20
-              }
-              label="Recipient"
-            />
+              <button
+                type="button"
+                onClick={handleGenerateIndividual}
+                className="w-full border border-[#ebc729] bg-[#1c1c1c] px-5 py-3 font-semibold text-[#ebc729] transition hover:bg-[#ebc729] hover:text-black"
+              >
+                Generate Recommendation
+              </button>
+            </>
+          ) : (
+            <>
+              <section className="border border-[#353535] bg-[#141414] p-4">
+                <div className="mb-4 flex items-center justify-between gap-3">
+                  <h2 className="font-semibold text-[#dedede]">
+                    Recommendation Details
+                  </h2>
+                  <span className="text-xs text-[#777]">Unit Award</span>
+                </div>
 
-            {renderAwardFields({
-              award:
-                selectedUnitAward,
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <label htmlFor="service-unit-award" className={LABEL_CLASS}>
+                      Service Unit Award
+                    </label>
+                    <select
+                      id="service-unit-award"
+                      value={unitForm.awardId}
+                      onChange={(event) => handleUnitAwardChange(event.target.value)}
+                      className={FIELD_CLASS}
+                    >
+                      {UNIT_SERVICE_AWARDS.map((award) => (
+                        <option key={award.id} value={award.id}>
+                          {award.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              fields:
-                unitForm.fields,
+                  {renderAwardFields({
+                    award: selectedUnitAward,
+                    fields: unitForm.fields,
+                    onChange: updateUnitAwardField,
+                    scope: "unit",
+                  })}
+                </div>
+              </section>
 
-              onChange:
-                updateUnitAwardField,
+              <AwardGuidance award={selectedUnitAward} />
 
-              scope: "unit",
-            })}
-
-            <NarrativeField
-              id="service-unit-narrative"
-              label="Unit Citation Narrative"
-              value={
-                unitForm.narrative
-              }
-              onChange={(value) =>
-                updateUnitField(
-                  "narrative",
-                  value,
-                )
-              }
-              countWords={countWords}
-              countSentences={
-                countApproximateSentences
-              }
-              minimumSentences={
-                selectedUnitAward?.minimumSentences ??
-                0
-              }
-              note="Write the shared unit citation in your own words. Required opening and closing language will be added automatically."
-              placeholder="Describe the unit's service, contributions, and impact…"
-            />
-          </div>
-
-          {selectedUnitAward ? (
-            <div className="mt-8 border border-[#444] p-4">
-              <h3 className="font-semibold text-[#ebc729]">
-                Criteria
-              </h3>
-
-              <p className="mt-2 text-[#ccc]">
-                {
-                  selectedUnitAward.criteria
+              <RecipientSelector
+                roster={roster}
+                recipients={unitForm.recipients}
+                onChange={(recipients) => updateUnitField("recipients", recipients)}
+                minimum={APP_RULES.minimumUnitRecipients ?? 4}
+                maximum={
+                  APP_RULES.maximumManualServiceUnitRecipients ?? 20
                 }
-              </p>
+                label="Recipient"
+              />
 
-              <h3 className="mt-5 font-semibold text-[#ebc729]">
-                Citation Guidance
-              </h3>
+              <NarrativeField
+                id="service-unit-narrative"
+                label="Unit Citation Narrative"
+                value={unitForm.narrative}
+                onChange={(value) => updateUnitField("narrative", value)}
+                countWords={countWords}
+                countSentences={countApproximateSentences}
+                minimumSentences={selectedUnitAward?.minimumSentences ?? 0}
+                note={getUnitNarrativeNote(selectedUnitAward, unitForm.fields)}
+                placeholder="Continue the unit citation sentence here…"
+              />
 
-              <p className="mt-2 text-[#ccc]">
-                {
-                  selectedUnitAward.guidance
-                }
-              </p>
-
-              <h3 className="mt-5 font-semibold text-[#ebc729]">
-                Eligibility / Evidence
-              </h3>
-
-              <p className="mt-2 text-[#ccc]">
-                {selectedUnitAward.eligibility ||
-                  "No additional automated note."}
-              </p>
-
-              <p className="mt-4 text-sm text-[#999]">
-                Minimum narrative
-                sentences:{" "}
-                {
-                  selectedUnitAward.minimumSentences
-                }
-              </p>
-            </div>
-          ) : null}
-
-          <div className="mt-8">
-            <button
-              type="button"
-              onClick={
-                handleGenerateUnit
-              }
-              className="border border-[#ebc729] px-5 py-3 font-semibold text-[#ebc729]"
-            >
-              Generate Recommendation
-            </button>
-          </div>
-
-          <RecommendationResult
-            result={unitResult}
-            stale={unitResultStale}
-          />
+              <button
+                type="button"
+                onClick={handleGenerateUnit}
+                className="w-full border border-[#ebc729] bg-[#1c1c1c] px-5 py-3 font-semibold text-[#ebc729] transition hover:bg-[#ebc729] hover:text-black"
+              >
+                Generate Recommendation
+              </button>
+            </>
+          )}
         </div>
-      )}
-    </div>
+
+        <aside className="min-w-0 lg:sticky lg:top-6 lg:self-start">
+          <RecommendationResult
+            result={currentResult}
+            stale={currentResultStale}
+          />
+        </aside>
+      </div>
+    </section>
   );
 }

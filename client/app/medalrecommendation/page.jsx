@@ -3,12 +3,8 @@ import Link from "next/link";
 import Logo from "../theme/adrLogo";
 
 import MedalRecommendationClient from "./MedalRecommendationClient";
-
 import GetMedalEligibleRoster from "./lib/get-medal-eligible-roster";
-
-import {
-  adaptMedalRoster,
-} from "./lib/roster-adapter";
+import { adaptMedalRoster } from "./lib/roster-adapter";
 
 import "../adr/page.css";
 import "../globals.css";
@@ -20,38 +16,12 @@ export const metadata = {
 };
 
 export default async function MedalRecommendationPage() {
-  const medalRoster =
-    await GetMedalEligibleRoster();
-
-  const profiles =
-    medalRoster?.profiles ?? {};
-
-  const roster =
-    adaptMedalRoster(profiles);
-
-  const meta =
-    medalRoster?.meta ?? {};
-
-  const rosterSummary = {
-    combatCount:
-      meta.combatCount ?? 0,
-
-    reserveCount:
-      meta.reserveCount ?? 0,
-
-    eloaCount:
-      meta.eloaCount ?? 0,
-
-    retiredCount:
-      meta.retiredCount ?? 0,
-
-    totalCount:
-      meta.eligibleCount ??
-      Object.keys(profiles).length,
-  };
+  const medalRoster = await GetMedalEligibleRoster();
+  const profiles = medalRoster?.profiles ?? {};
+  const roster = adaptMedalRoster(profiles);
 
   return (
-    <div className="MasterContainer">
+    <div className="MasterContainer min-h-screen bg-[#0f0f0f]">
       <div className="p-nav-primary">
         <div className="p-nav-wrapper">
           <nav className="p-nav">
@@ -73,16 +43,9 @@ export default async function MedalRecommendationPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <h1 className="text-2xl font-semibold">
-          Medal Recommendation Aid
-        </h1>
-
-        <MedalRecommendationClient
-          rosterSummary={rosterSummary}
-          roster={roster}
-        />
-      </div>
+      <main className="mx-auto w-full max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
+        <MedalRecommendationClient roster={roster} />
+      </main>
     </div>
   );
 }

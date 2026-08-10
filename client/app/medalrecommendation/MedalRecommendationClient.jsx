@@ -2,72 +2,55 @@
 
 import { useState } from "react";
 
+import HowToUseView from "./components/HowToUseView";
+import MedalLanding from "./components/MedalLanding";
 import OperationAwardsView from "./components/OperationAwardsView";
 import ServiceAwardsView from "./components/ServiceAwardsView";
 
-export default function MedalRecommendationClient({
-  rosterSummary,
-  roster,
-}) {
-  const [activeSection, setActiveSection] =
-    useState("operation");
+export default function MedalRecommendationClient({ roster }) {
+  const [activeView, setActiveView] = useState("landing");
+
+  function navigate(nextView) {
+    setActiveView(nextView);
+
+    if (typeof window !== "undefined") {
+      window.scrollTo(0, 0);
+    }
+  }
+
+  if (activeView === "operation") {
+    return (
+      <OperationAwardsView
+        roster={roster}
+        onBack={() => navigate("landing")}
+      />
+    );
+  }
+
+  if (activeView === "service") {
+    return (
+      <ServiceAwardsView
+        roster={roster}
+        onBack={() => navigate("landing")}
+      />
+    );
+  }
+
+  if (activeView === "guide") {
+    return (
+      <HowToUseView
+        onBack={() => navigate("landing")}
+        onOpenOperation={() => navigate("operation")}
+        onOpenService={() => navigate("service")}
+      />
+    );
+  }
 
   return (
-    <div className="mt-6">
-      <div className="mb-6 border border-[#444] p-4">
-        <div className="font-semibold">
-          Roster connected:{" "}
-          {rosterSummary.totalCount} members
-          available
-        </div>
-
-        <p className="mt-2 text-sm text-[#999]">
-          {rosterSummary.combatCount} active /{" "}
-          {rosterSummary.reserveCount} reserve /{" "}
-          {rosterSummary.eloaCount} ELOA /{" "}
-          {rosterSummary.retiredCount} retired
-        </p>
-      </div>
-
-      <div className="mb-8 flex gap-2">
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSection("operation")
-          }
-          className={
-            activeSection === "operation"
-              ? "border border-[#ebc729] px-4 py-2 font-semibold text-[#ebc729]"
-              : "border border-[#444] px-4 py-2 text-[#aaa]"
-          }
-        >
-          Operation Awards
-        </button>
-
-        <button
-          type="button"
-          onClick={() =>
-            setActiveSection("service")
-          }
-          className={
-            activeSection === "service"
-              ? "border border-[#ebc729] px-4 py-2 font-semibold text-[#ebc729]"
-              : "border border-[#444] px-4 py-2 text-[#aaa]"
-          }
-        >
-          Service Awards
-        </button>
-      </div>
-
-      {activeSection === "operation" ? (
-        <OperationAwardsView
-          roster={roster}
-        />
-      ) : (
-        <ServiceAwardsView
-          roster={roster}
-        />
-      )}
-    </div>
+    <MedalLanding
+      onOpenOperation={() => navigate("operation")}
+      onOpenService={() => navigate("service")}
+      onOpenGuide={() => navigate("guide")}
+    />
   );
 }
