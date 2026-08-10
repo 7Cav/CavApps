@@ -1,14 +1,55 @@
 import Link from "next/link";
+
 import Logo from "../theme/adrLogo";
+
+import MedalRecommendationClient from "./MedalRecommendationClient";
+
+import GetMedalEligibleRoster from "./lib/get-medal-eligible-roster";
+
+import {
+  adaptMedalRoster,
+} from "./lib/roster-adapter";
+
 import "../adr/page.css";
 import "../globals.css";
-import MedalRecommendationClient from "./MedalRecommendationClient";
+
+export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Medal Recommendation Aid",
 };
 
-export default function MedalRecommendationPage() {
+export default async function MedalRecommendationPage() {
+  const medalRoster =
+    await GetMedalEligibleRoster();
+
+  const profiles =
+    medalRoster?.profiles ?? {};
+
+  const roster =
+    adaptMedalRoster(profiles);
+
+  const meta =
+    medalRoster?.meta ?? {};
+
+  const rosterSummary = {
+    combatCount:
+      meta.combatCount ?? 0,
+
+    reserveCount:
+      meta.reserveCount ?? 0,
+
+    eloaCount:
+      meta.eloaCount ?? 0,
+
+    retiredCount:
+      meta.retiredCount ?? 0,
+
+    totalCount:
+      meta.eligibleCount ??
+      Object.keys(profiles).length,
+  };
+
   return (
     <div className="MasterContainer">
       <div className="p-nav-primary">
@@ -37,7 +78,10 @@ export default function MedalRecommendationPage() {
           Medal Recommendation Aid
         </h1>
 
-        <MedalRecommendationClient />
+        <MedalRecommendationClient
+          rosterSummary={rosterSummary}
+          roster={roster}
+        />
       </div>
     </div>
   );
