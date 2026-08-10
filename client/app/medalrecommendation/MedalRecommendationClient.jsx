@@ -2,54 +2,42 @@
 
 import { useState } from "react";
 
-import {
-  SERVICE_AWARD_DEFINITIONS,
-} from "./lib/reference-data";
-
 import OperationAwardsView from "./components/OperationAwardsView";
+import ServiceAwardsView from "./components/ServiceAwardsView";
 
 export default function MedalRecommendationClient({
   rosterSummary,
   roster,
 }) {
-  const [workflow, setWorkflow] =
+  const [activeSection, setActiveSection] =
     useState("operation");
-
-  const serviceIndividualAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) =>
-        award.scope === "individual",
-    );
-
-  const serviceUnitAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) =>
-        award.scope === "unit",
-    );
 
   return (
     <div className="mt-6">
-      <div className="mb-6 border border-[#444] p-3 text-sm text-[#aaa]">
-        Roster connected:{" "}
-        <span className="text-white">
-          {rosterSummary.totalCount}
-        </span>{" "}
-        members available (
-        {rosterSummary.combatCount} active /{" "}
-        {rosterSummary.reserveCount} reserve /{" "}
-        {rosterSummary.eloaCount} ELOA /{" "}
-        {rosterSummary.retiredCount} retired)
+      <div className="mb-6 border border-[#444] p-4">
+        <div className="font-semibold">
+          Roster connected:{" "}
+          {rosterSummary.totalCount} members
+          available
+        </div>
+
+        <p className="mt-2 text-sm text-[#999]">
+          {rosterSummary.combatCount} active /{" "}
+          {rosterSummary.reserveCount} reserve /{" "}
+          {rosterSummary.eloaCount} ELOA /{" "}
+          {rosterSummary.retiredCount} retired
+        </p>
       </div>
 
-      <div className="mb-6 flex gap-2">
+      <div className="mb-8 flex gap-2">
         <button
           type="button"
           onClick={() =>
-            setWorkflow("operation")
+            setActiveSection("operation")
           }
           className={
-            workflow === "operation"
-              ? "border border-[#ebc729] px-4 py-2 text-[#ebc729]"
+            activeSection === "operation"
+              ? "border border-[#ebc729] px-4 py-2 font-semibold text-[#ebc729]"
               : "border border-[#444] px-4 py-2 text-[#aaa]"
           }
         >
@@ -59,11 +47,11 @@ export default function MedalRecommendationClient({
         <button
           type="button"
           onClick={() =>
-            setWorkflow("service")
+            setActiveSection("service")
           }
           className={
-            workflow === "service"
-              ? "border border-[#ebc729] px-4 py-2 text-[#ebc729]"
+            activeSection === "service"
+              ? "border border-[#ebc729] px-4 py-2 font-semibold text-[#ebc729]"
               : "border border-[#444] px-4 py-2 text-[#aaa]"
           }
         >
@@ -71,23 +59,14 @@ export default function MedalRecommendationClient({
         </button>
       </div>
 
-      {workflow === "operation" ? (
+      {activeSection === "operation" ? (
         <OperationAwardsView
-           roster={roster}
+          roster={roster}
         />
       ) : (
-        <div>
-          <h2 className="text-xl font-semibold">
-            Service Awards
-          </h2>
-
-          <p className="mt-2 text-[#aaa]">
-            {serviceIndividualAwards.length}{" "}
-            Service Medals and{" "}
-            {serviceUnitAwards.length} Service
-            Unit Awards loaded.
-          </p>
-        </div>
+        <ServiceAwardsView
+          roster={roster}
+        />
       )}
     </div>
   );
