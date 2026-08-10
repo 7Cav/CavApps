@@ -2,10 +2,10 @@
 
 ## Overview
 
-[![Production Deployment](https://github.com/7Cav/adr/actions/workflows/prod_deploy.yml/badge.svg)](https://apps.7cav.us/)
-[![Development Deployment](https://github.com/7Cav/adr/actions/workflows/dev_deploy.yml/badge.svg)](https://beta.apps.7cav.us/)
+[![Production Deployment](https://github.com/7Cav/CavApps/actions/workflows/prod_deploy.yml/badge.svg)](https://apps.7cav.us/)
+[![Development Deployment](https://github.com/7Cav/CavApps/actions/workflows/dev_deploy.yml/badge.svg)](https://beta.apps.7cav.us/)
 
-7th Cavalry Apps (CavApps) is a Nextjs based collection of tools and apps designed to aid the 7th Cavalry Gaming Regiment in its day to day functions. It currently includes the Active Duty Roster (ADR) and a small collection of Roster Statistics. Future iterations could include a more advanced statistics tool, an AWOL tracker, and a migration of S1 Documents, among other possible tools. CavApps uses a Frontend-Backend architecture and includes basic authentication.
+7th Cavalry Apps (CavApps) is a Nextjs based collection of tools and apps designed to aid the 7th Cavalry Gaming Regiment in its day to day functions. It currently includes the Active Duty Roster (ADR), a small collection of Roster Statistics, and the Uniform Builder. Future iterations could include a more advanced statistics tool, an AWOL tracker, and a migration of S1 Documents, among other possible tools. CavApps uses a Frontend-Backend architecture and includes basic authentication.
 
 The live deployment can be found at https://apps.7cav.us/ and the backend at https://bff.apps.7cav.us/
 
