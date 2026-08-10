@@ -4,15 +4,20 @@ import { useState } from "react";
 
 import NarrativeField from "./NarrativeField";
 import RecipientSelector from "./RecipientSelector";
+import RecommendationResult from "./RecommendationResult";
 
 import {
   countApproximateSentences,
   countWords,
+  generateIndividual,
+  generateUnit,
 } from "../lib/citation-engine";
 
 import {
+  APP_RULES,
   COMBAT_ROLE_CHOICES,
   INDIVIDUAL_AWARDS,
+  RANK_PRECEDENCE,
   UNIT_AWARDS,
 } from "../lib/reference-data";
 
@@ -60,6 +65,14 @@ export default function OperationAwardsView({
       narrative: "",
     });
 
+  const [
+    individualResult,
+    setIndividualResult,
+  ] = useState(null);
+
+  const [unitResult, setUnitResult] =
+    useState(null);
+
   const selectedIndividualAward =
     INDIVIDUAL_AWARDS.find(
       (award) =>
@@ -72,6 +85,14 @@ export default function OperationAwardsView({
       (award) =>
         award.name === unitForm.awardName,
     ) ?? null;
+
+  const generationContext = {
+    rules: APP_RULES,
+    rankPrecedence: RANK_PRECEDENCE,
+    individualAwards: INDIVIDUAL_AWARDS,
+    unitAwards: UNIT_AWARDS,
+    roster,
+  };
 
   function updateIndividualField(
     field,
@@ -102,6 +123,8 @@ export default function OperationAwardsView({
       actionScope: "",
       actionCharacter: "",
     }));
+
+    setIndividualResult(null);
   }
 
   function handleUnitAwardChange(value) {
@@ -110,6 +133,48 @@ export default function OperationAwardsView({
       awardName: value,
       actionCharacter: "",
     }));
+
+    setUnitResult(null);
+  }
+
+  function handleGenerateIndividual() {
+    const payload = {
+      ...individualForm,
+
+      recipients:
+        individualForm.recipients
+          .map((recipient) =>
+            recipient.trim(),
+          )
+          .filter(Boolean),
+    };
+
+    const result = generateIndividual(
+      payload,
+      generationContext,
+    );
+
+    setIndividualResult(result);
+  }
+
+  function handleGenerateUnit() {
+    const payload = {
+      ...unitForm,
+
+      recipients:
+        unitForm.recipients
+          .map((recipient) =>
+            recipient.trim(),
+          )
+          .filter(Boolean),
+    };
+
+    const result = generateUnit(
+      payload,
+      generationContext,
+    );
+
+    setUnitResult(result);
   }
 
   return (
@@ -459,6 +524,22 @@ export default function OperationAwardsView({
               </p>
             </div>
           ) : null}
+
+          <div className="mt-8">
+            <button
+              type="button"
+              onClick={
+                handleGenerateIndividual
+              }
+              className="border border-[#ebc729] px-5 py-3 font-semibold text-[#ebc729]"
+            >
+              Generate Recommendation
+            </button>
+          </div>
+
+          <RecommendationResult
+            result={individualResult}
+          />
         </div>
       ) : (
         <div className="max-w-3xl">
@@ -702,6 +783,20 @@ export default function OperationAwardsView({
               </p>
             </div>
           ) : null}
+
+          <div className="mt-8">
+            <button
+              type="button"
+              onClick={handleGenerateUnit}
+              className="border border-[#ebc729] px-5 py-3 font-semibold text-[#ebc729]"
+            >
+              Generate Recommendation
+            </button>
+          </div>
+
+          <RecommendationResult
+            result={unitResult}
+          />
         </div>
       )}
     </div>
