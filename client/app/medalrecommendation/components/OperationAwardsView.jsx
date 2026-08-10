@@ -2,6 +2,14 @@
 
 import { useState } from "react";
 
+import NarrativeField from "./NarrativeField";
+import RecipientSelector from "./RecipientSelector";
+
+import {
+  countApproximateSentences,
+  countWords,
+} from "../lib/citation-engine";
+
 import {
   COMBAT_ROLE_CHOICES,
   INDIVIDUAL_AWARDS,
@@ -33,8 +41,10 @@ export default function OperationAwardsView({
       role: "",
       awardName:
         INDIVIDUAL_AWARDS[0]?.name ?? "",
+      recipients: [""],
       actionScope: "",
       actionCharacter: "",
+      narrative: "",
     });
 
   const [unitForm, setUnitForm] =
@@ -45,7 +55,9 @@ export default function OperationAwardsView({
       unitName: "",
       awardName:
         UNIT_AWARDS[0]?.name ?? "",
+      recipients: ["", "", "", ""],
       actionCharacter: "",
+      narrative: "",
     });
 
   const selectedIndividualAward =
@@ -58,8 +70,7 @@ export default function OperationAwardsView({
   const selectedUnitAward =
     UNIT_AWARDS.find(
       (award) =>
-        award.name ===
-        unitForm.awardName,
+        award.name === unitForm.awardName,
     ) ?? null;
 
   function updateIndividualField(
@@ -112,12 +123,6 @@ export default function OperationAwardsView({
           Select the recommendation type
           and complete the required award
           information.
-        </p>
-
-        <p className="mt-2 text-sm text-[#777]">
-          {roster.length} roster members
-          normalized and ready for
-          recipient selection.
         </p>
       </div>
 
@@ -296,6 +301,22 @@ export default function OperationAwardsView({
               </select>
             </div>
 
+            <RecipientSelector
+              roster={roster}
+              recipients={
+                individualForm.recipients
+              }
+              onChange={(recipients) =>
+                updateIndividualField(
+                  "recipients",
+                  recipients,
+                )
+              }
+              minimum={1}
+              maximum={20}
+              label="Recipient"
+            />
+
             {selectedIndividualAward?.scopeRequired ? (
               <div>
                 <label
@@ -375,6 +396,27 @@ export default function OperationAwardsView({
                 </select>
               </div>
             ) : null}
+
+            <NarrativeField
+              id="individual-narrative"
+              value={individualForm.narrative}
+              onChange={(value) =>
+                updateIndividualField(
+                  "narrative",
+                  value,
+                )
+              }
+              countWords={countWords}
+              countSentences={
+                countApproximateSentences
+              }
+              minimumSentences={
+                selectedIndividualAward?.minimumSentences ??
+                0
+              }
+              note="Write the narrative completely in your own words. Official opening and closing language will be added automatically."
+              placeholder="Explain the lead-up, actions, and outcome…"
+            />
           </div>
 
           {selectedIndividualAward ? (
@@ -547,6 +589,20 @@ export default function OperationAwardsView({
               </select>
             </div>
 
+            <RecipientSelector
+              roster={roster}
+              recipients={unitForm.recipients}
+              onChange={(recipients) =>
+                updateUnitField(
+                  "recipients",
+                  recipients,
+                )
+              }
+              minimum={4}
+              maximum={20}
+              label="Recipient"
+            />
+
             {selectedUnitAward?.characterRequired ? (
               <div>
                 <label
@@ -570,8 +626,7 @@ export default function OperationAwardsView({
                   className="w-full border border-[#444] bg-[#1a1a1a] px-3 py-2 text-white"
                 >
                   <option value="">
-                    Select action
-                    character…
+                    Select action character…
                   </option>
 
                   {splitChoices(
@@ -587,6 +642,28 @@ export default function OperationAwardsView({
                 </select>
               </div>
             ) : null}
+
+            <NarrativeField
+              id="unit-narrative"
+              label="Unit Citation Narrative"
+              value={unitForm.narrative}
+              onChange={(value) =>
+                updateUnitField(
+                  "narrative",
+                  value,
+                )
+              }
+              countWords={countWords}
+              countSentences={
+                countApproximateSentences
+              }
+              minimumSentences={
+                selectedUnitAward?.minimumSentences ??
+                0
+              }
+              note="Use the shared unit name. Do not name individual recipients in the citation body."
+              placeholder="Describe the unit's lead-up, actions, and outcome…"
+            />
           </div>
 
           {selectedUnitAward ? (
@@ -596,9 +673,7 @@ export default function OperationAwardsView({
               </h3>
 
               <p className="mt-2 text-[#ccc]">
-                {
-                  selectedUnitAward.criteria
-                }
+                {selectedUnitAward.criteria}
               </p>
 
               <h3 className="mt-5 font-semibold text-[#ebc729]">
@@ -606,9 +681,7 @@ export default function OperationAwardsView({
               </h3>
 
               <p className="mt-2 text-[#ccc]">
-                {
-                  selectedUnitAward.guidance
-                }
+                {selectedUnitAward.guidance}
               </p>
 
               <h3 className="mt-5 font-semibold text-[#ebc729]">
