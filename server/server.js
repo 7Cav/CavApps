@@ -112,7 +112,10 @@ const startServer = async () => {
       console.log(`Roster Server listening on ${port}`);
     });
   } catch (error) {
-    console.error("Error initializing cache:", error);
+    console.error(
+      "Error initializing cache:",
+      error.stack || error.message || String(error),
+    );
     process.exit(1); // Exit the process if initialization fails
   }
 };

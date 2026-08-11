@@ -5,7 +5,9 @@
     "format:check": "prettier --check \"{**/*,*}.{js,jsx,json,html,css}\"",
     "format": "prettier --write \"{**/*,*}.{js,jsx,json,html,css}\"",
     "sprites:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.js",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.test.js"
+    "test": "npm run test:sprites && npm run test:server",
+    "test:sprites": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.test.js",
+    "test:server": "npm --prefix server test"
   },
   "devDependencies": {
     "prettier": "3.8.3",
