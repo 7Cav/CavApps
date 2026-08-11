@@ -383,7 +383,10 @@ export default function OperationAwardsView({ roster, onBack }) {
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label htmlFor="individual-operation" className={LABEL_CLASS}>
+                    <label
+                      htmlFor="individual-operation"
+                      className={LABEL_CLASS}
+                    >
                       Operation Name
                     </label>
                     <input
@@ -391,7 +394,10 @@ export default function OperationAwardsView({ roster, onBack }) {
                       type="text"
                       value={individualForm.operationName}
                       onChange={(event) =>
-                        updateIndividualField("operationName", event.target.value)
+                        updateIndividualField(
+                          "operationName",
+                          event.target.value,
+                        )
                       }
                       className={FIELD_CLASS}
                       placeholder="Operation Overlord"
@@ -407,14 +413,20 @@ export default function OperationAwardsView({ roster, onBack }) {
                       type="date"
                       value={individualForm.operationDate}
                       onChange={(event) =>
-                        updateIndividualField("operationDate", event.target.value)
+                        updateIndividualField(
+                          "operationDate",
+                          event.target.value,
+                        )
                       }
                       className={FIELD_CLASS}
                     />
                   </div>
 
                   <div>
-                    <label htmlFor="individual-location" className={LABEL_CLASS}>
+                    <label
+                      htmlFor="individual-location"
+                      className={LABEL_CLASS}
+                    >
                       Location
                     </label>
                     <input
@@ -450,7 +462,6 @@ export default function OperationAwardsView({ roster, onBack }) {
                       ))}
                     </datalist>
                   </div>
-
                 </div>
               </section>
 
@@ -575,7 +586,6 @@ export default function OperationAwardsView({ roster, onBack }) {
                       placeholder="Able Squad"
                     />
                   </div>
-
                 </div>
               </section>
 

@@ -45,14 +45,7 @@ function createRoster() {
       "Alpha",
       "S1 Operations",
     ),
-    recipient(
-      "CPL Bravo.B",
-      "CPL",
-      "Corporal",
-      "Beth",
-      "Bravo",
-      "1/B/2-7",
-    ),
+    recipient("CPL Bravo.B", "CPL", "Corporal", "Beth", "Bravo", "1/B/2-7"),
     recipient(
       "PFC Delta.D",
       "PFC",
@@ -61,29 +54,20 @@ function createRoster() {
       "Delta",
       "2/B/2-7",
     ),
-    recipient(
-      "PVT Smith.E",
-      "PVT",
-      "Private",
-      "Ethan",
-      "Smith",
-      "D/2/B/2-7",
-    ),
+    recipient("PVT Smith.E", "PVT", "Private", "Ethan", "Smith", "D/2/B/2-7"),
   ];
 }
 
 function createContext() {
   const roster = createRoster();
 
-  const serviceIndividualAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) => award.scope === "individual",
-    );
+  const serviceIndividualAwards = SERVICE_AWARD_DEFINITIONS.filter(
+    (award) => award.scope === "individual",
+  );
 
-  const serviceUnitAwards =
-    SERVICE_AWARD_DEFINITIONS.filter(
-      (award) => award.scope === "unit",
-    );
+  const serviceUnitAwards = SERVICE_AWARD_DEFINITIONS.filter(
+    (award) => award.scope === "unit",
+  );
 
   return {
     rules: APP_RULES,
@@ -104,9 +88,7 @@ function createContext() {
 
 function findFailedCheck(result, label) {
   return result.checks.find(
-    (item) =>
-      item.label === label &&
-      item.status === "FAIL",
+    (item) => item.label === label && item.status === "FAIL",
   );
 }
 
@@ -125,17 +107,11 @@ function validSuperiorUnitAward() {
   return {
     scope: "unit",
     awardId: "service_superior_unit_award",
-    recipients: [
-      "SGT Alpha.A",
-      "CPL Bravo.B",
-      "PFC Delta.D",
-      "PVT Smith.E",
-    ],
+    recipients: ["SGT Alpha.A", "CPL Bravo.B", "PFC Delta.D", "PVT Smith.E"],
     fields: {
       recognizedGroup: "S1 Operations",
       benefitedUnit: "B/2-7",
-      recognitionBasis:
-        "exceptionally meritorious service",
+      recognitionBasis: "exceptionally meritorious service",
       narrativeVerb: "distinguished",
     },
     narrative:
@@ -145,21 +121,18 @@ function validSuperiorUnitAward() {
 
 describe("Medal Recommendation Aid — Service citation engine", () => {
   test("loads valid Service award definitions", () => {
-    const individualAwards =
-      SERVICE_AWARD_DEFINITIONS.filter(
-        (award) => award.scope === "individual",
-      );
+    const individualAwards = SERVICE_AWARD_DEFINITIONS.filter(
+      (award) => award.scope === "individual",
+    );
 
-    const unitAwards =
-      SERVICE_AWARD_DEFINITIONS.filter(
-        (award) => award.scope === "unit",
-      );
+    const unitAwards = SERVICE_AWARD_DEFINITIONS.filter(
+      (award) => award.scope === "unit",
+    );
 
     expect(individualAwards).toHaveLength(13);
     expect(unitAwards).toHaveLength(2);
 
-    const validation =
-      validateServiceAwardDefinitions_();
+    const validation = validateServiceAwardDefinitions_();
 
     expect(validation.valid).toBe(true);
     expect(validation.errors).toEqual([]);
@@ -170,9 +143,7 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
     const narrative =
       "They provided technical assistance. The issue was resolved.";
 
-    expect(
-      countApproximateSentences(narrative),
-    ).toBe(2);
+    expect(countApproximateSentences(narrative)).toBe(2);
 
     expect(countWords(narrative)).toBeGreaterThan(0);
   });
@@ -180,34 +151,21 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
   test("generates a Humanitarian Service Medal recommendation", () => {
     const context = createContext();
 
-    const result = generate(
-      validHumanitarian(),
-      context,
-    );
+    const result = generate(validHumanitarian(), context);
 
     expect(result.ready).toBe(true);
 
-    expect(result.statusText).toBe(
-      "READY FOR FINAL REVIEW",
-    );
+    expect(result.statusText).toBe("READY FOR FINAL REVIEW");
 
-    expect(result.award.name).toBe(
-      "Humanitarian Service Medal",
-    );
+    expect(result.award.name).toBe("Humanitarian Service Medal");
 
-    expect(result.recipientNames).toEqual([
-      "Corporal Beth Bravo",
-    ]);
+    expect(result.recipientNames).toEqual(["Corporal Beth Bravo"]);
 
     expect(result.ticketTitle).toContain("HSM");
 
-    expect(result.citation).toContain(
-      "Corporal Beth Bravo",
-    );
+    expect(result.citation).toContain("Corporal Beth Bravo");
 
-    expect(result.citation).toContain(
-      "For providing aid to a fellow trooper.",
-    );
+    expect(result.citation).toContain("For providing aid to a fellow trooper.");
 
     expect(result.bbcode).toContain(
       "[CENTER][B]Humanitarian Service Medal[/B]",
@@ -236,13 +194,9 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
       "Medal Recommendation | B/2-7 | AAM | CPL.Bravo.B",
     );
 
-    expect(result.citation).toContain(
-      "For contributions in B/2-7.",
-    );
+    expect(result.citation).toContain("For contributions in B/2-7.");
 
-    expect(result.citation).toContain(
-      "Corporal Beth Bravo",
-    );
+    expect(result.citation).toContain("Corporal Beth Bravo");
   });
 
   test("supports multiple recipients on an individual Service Medal", () => {
@@ -250,11 +204,7 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
 
     const payload = validHumanitarian();
 
-    payload.recipients = [
-      "PFC Delta.D",
-      "SGT Alpha.A",
-      "CPL Bravo.B",
-    ];
+    payload.recipients = ["PFC Delta.D", "SGT Alpha.A", "CPL Bravo.B"];
 
     const result = generate(payload, context);
 
@@ -266,63 +216,38 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
       "Private First Class Dana Delta",
     ]);
 
-    expect(result.ticketTitle).toContain(
-      "HSM | Multiple",
-    );
+    expect(result.ticketTitle).toContain("HSM | Multiple");
 
-    expect(result.bbcode).toContain(
-      "Sergeant Adam Alpha",
-    );
+    expect(result.bbcode).toContain("Sergeant Adam Alpha");
 
-    expect(result.bbcode).toContain(
-      "Private First Class Dana Delta",
-    );
+    expect(result.bbcode).toContain("Private First Class Dana Delta");
   });
 
   test("rejects duplicate and missing Service Medal recipients", () => {
     const context = createContext();
 
-    const duplicatePayload =
-      validHumanitarian();
+    const duplicatePayload = validHumanitarian();
 
-    duplicatePayload.recipients = [
-      "CPL Bravo.B",
-      "CPL Bravo.B",
-    ];
+    duplicatePayload.recipients = ["CPL Bravo.B", "CPL Bravo.B"];
 
-    const duplicateResult = generate(
-      duplicatePayload,
-      context,
-    );
+    const duplicateResult = generate(duplicatePayload, context);
 
     expect(duplicateResult.ready).toBe(false);
 
     expect(
-      findFailedCheck(
-        duplicateResult,
-        "No duplicate recipients",
-      ),
+      findFailedCheck(duplicateResult, "No duplicate recipients"),
     ).toBeDefined();
 
-    const missingPayload =
-      validHumanitarian();
+    const missingPayload = validHumanitarian();
 
-    missingPayload.recipients = [
-      "PFC Missing.M",
-    ];
+    missingPayload.recipients = ["PFC Missing.M"];
 
-    const missingResult = generate(
-      missingPayload,
-      context,
-    );
+    const missingResult = generate(missingPayload, context);
 
     expect(missingResult.ready).toBe(false);
 
     expect(
-      findFailedCheck(
-        missingResult,
-        "Every recipient matches the roster",
-      ),
+      findFailedCheck(missingResult, "Every recipient matches the roster"),
     ).toBeDefined();
   });
 
@@ -339,16 +264,11 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
     expect(result.ready).toBe(false);
     expect(result.bbcode).toBe("");
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Forum BBCode safety",
-    );
+    const failedCheck = findFailedCheck(result, "Forum BBCode safety");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "Citation narrative",
-    );
+    expect(failedCheck.message).toContain("Citation narrative");
   });
 
   test("Joint Service Commendation Medal requires different benefited and assigned companies", () => {
@@ -356,15 +276,13 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
 
     const payload = {
       scope: "individual",
-      awardId:
-        "service_joint_service_commendation_medal",
+      awardId: "service_joint_service_commendation_medal",
       recipients: ["CPL Bravo.B"],
       fields: {
         actionsOrContributions: "actions",
         benefitedCompany: "B/2-7",
         assignedCompany: "B/2-7",
-        narrativeLead:
-          "distinguished themselves by",
+        narrativeLead: "distinguished themselves by",
       },
       narrative:
         "supporting the combat line unit during multiple events. The assistance improved the unit's effectiveness. The work provided a measurable benefit to the unit.",
@@ -374,12 +292,7 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
 
     expect(result.ready).toBe(false);
 
-    expect(
-      findFailedCheck(
-        result,
-        "Companies are different",
-      ),
-    ).toBeDefined();
+    expect(findFailedCheck(result, "Companies are different")).toBeDefined();
   });
 
   test("generates a Service Medal with a valid service period", () => {
@@ -391,8 +304,7 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
       recipients: ["SGT Alpha.A"],
       fields: {
         secondaryBillet: "S1 Operations Clerk",
-        creditedDepartmentOrElement:
-          "S1 Operations",
+        creditedDepartmentOrElement: "S1 Operations",
         startMonth: "January",
         startYear: "2025",
         endMonth: "December",
@@ -406,29 +318,19 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
 
     expect(result.ready).toBe(true);
 
-    expect(result.citation).toContain(
-      "during January 2025 to December 2025.",
-    );
+    expect(result.citation).toContain("during January 2025 to December 2025.");
 
     expect(result.ticketTitle).toBe(
       "Medal Recommendation | S1 Operations | LOM | SGT.Alpha.A",
     );
 
-    expect(
-      findFailedCheck(
-        result,
-        "Service period is valid",
-      ),
-    ).toBeUndefined();
+    expect(findFailedCheck(result, "Service period is valid")).toBeUndefined();
   });
 
   test("enforces Service Unit Award recipient limits", () => {
     const context = createContext();
 
-    const validResult = generate(
-      validSuperiorUnitAward(),
-      context,
-    );
+    const validResult = generate(validSuperiorUnitAward(), context);
 
     expect(validResult.ready).toBe(true);
 
@@ -439,31 +341,18 @@ describe("Medal Recommendation Aid — Service citation engine", () => {
       "Private Ethan Smith",
     ]);
 
-    expect(validResult.ticketTitle).toContain(
-      "SUA | Multiple",
-    );
+    expect(validResult.ticketTitle).toContain("SUA | Multiple");
 
-    const invalidPayload =
-      validSuperiorUnitAward();
+    const invalidPayload = validSuperiorUnitAward();
 
-    invalidPayload.recipients = [
-      "SGT Alpha.A",
-      "CPL Bravo.B",
-      "PFC Delta.D",
-    ];
+    invalidPayload.recipients = ["SGT Alpha.A", "CPL Bravo.B", "PFC Delta.D"];
 
-    const invalidResult = generate(
-      invalidPayload,
-      context,
-    );
+    const invalidResult = generate(invalidPayload, context);
 
     expect(invalidResult.ready).toBe(false);
 
     expect(
-      findFailedCheck(
-        invalidResult,
-        "Service Unit recipient limit observed",
-      ),
+      findFailedCheck(invalidResult, "Service Unit recipient limit observed"),
     ).toBeDefined();
   });
 });

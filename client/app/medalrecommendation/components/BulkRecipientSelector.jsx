@@ -50,9 +50,7 @@ export default function BulkRecipientSelector({
 
   const rosterByName = useMemo(
     () =>
-      new Map(
-        (roster ?? []).map((person) => [person.dropdownName, person]),
-      ),
+      new Map((roster ?? []).map((person) => [person.dropdownName, person])),
     [roster],
   );
 
@@ -137,7 +135,8 @@ export default function BulkRecipientSelector({
               Bulk Recipient Selection
             </h2>
             <p className="mt-1 text-sm text-[#888]">
-              Select department- or unit-sized recipient groups from the eligible roster.
+              Select department- or unit-sized recipient groups from the
+              eligible roster.
             </p>
           </div>
 
@@ -251,7 +250,10 @@ export default function BulkRecipientSelector({
 
             {initialResolution.unmatched.length ? (
               <div className="mb-5 border border-amber-700/60 bg-amber-950/20 p-3 text-xs leading-5 text-amber-200">
-                {initialResolution.unmatched.length} current recipient entr{initialResolution.unmatched.length === 1 ? "y" : "ies"} could not be matched to the roster and will not be kept unless corrected.
+                {initialResolution.unmatched.length} current recipient entr
+                {initialResolution.unmatched.length === 1 ? "y" : "ies"} could
+                not be matched to the roster and will not be kept unless
+                corrected.
               </div>
             ) : null}
 
@@ -279,7 +281,9 @@ export default function BulkRecipientSelector({
                   );
                 })
               ) : (
-                <p className="p-4 text-sm text-[#777]">No recipients selected.</p>
+                <p className="p-4 text-sm text-[#777]">
+                  No recipients selected.
+                </p>
               )}
             </div>
 
@@ -307,8 +311,17 @@ export default function BulkRecipientSelector({
               </button>
 
               {pasteReport ? (
-                <div className="mt-3 space-y-2 text-xs leading-5" aria-live="polite">
-                  <p className={pasteReport.unmatched.length ? "text-amber-300" : "text-emerald-300"}>
+                <div
+                  className="mt-3 space-y-2 text-xs leading-5"
+                  aria-live="polite"
+                >
+                  <p
+                    className={
+                      pasteReport.unmatched.length
+                        ? "text-amber-300"
+                        : "text-emerald-300"
+                    }
+                  >
                     {pasteReport.matched.length} matched
                   </p>
 

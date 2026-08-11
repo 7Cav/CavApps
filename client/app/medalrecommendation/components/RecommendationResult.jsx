@@ -22,12 +22,7 @@ async function copyText(value) {
   textarea.remove();
 }
 
-function CopySection({
-  label,
-  value,
-  multiline = false,
-  disabled = false,
-}) {
+function CopySection({ label, value, multiline = false, disabled = false }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
@@ -75,10 +70,7 @@ function CopySection({
   );
 }
 
-export default function RecommendationResult({
-  result,
-  stale = false,
-}) {
+export default function RecommendationResult({ result, stale = false }) {
   if (!result) {
     return (
       <section className="border border-[#353535] bg-[#141414] p-5">
@@ -155,7 +147,9 @@ export default function RecommendationResult({
               >
                 <div className="font-semibold text-red-400">{check.label}</div>
                 {check.message ? (
-                  <div className="mt-1 leading-5 text-[#aaa]">{check.message}</div>
+                  <div className="mt-1 leading-5 text-[#aaa]">
+                    {check.message}
+                  </div>
                 ) : null}
               </div>
             ))}

@@ -20,19 +20,13 @@ export default function MedalRecommendationClient({ roster }) {
 
   if (activeView === "operation") {
     return (
-      <OperationAwardsView
-        roster={roster}
-        onBack={() => navigate("landing")}
-      />
+      <OperationAwardsView roster={roster} onBack={() => navigate("landing")} />
     );
   }
 
   if (activeView === "service") {
     return (
-      <ServiceAwardsView
-        roster={roster}
-        onBack={() => navigate("landing")}
-      />
+      <ServiceAwardsView roster={roster} onBack={() => navigate("landing")} />
     );
   }
 

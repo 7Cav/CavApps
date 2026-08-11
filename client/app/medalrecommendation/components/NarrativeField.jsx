@@ -21,9 +21,7 @@ export default function NarrativeField({
     typeof countWords === "function" ? countWords(normalizedValue) : 0;
 
   const sentences =
-    typeof countSentences === "function"
-      ? countSentences(normalizedValue)
-      : 0;
+    typeof countSentences === "function" ? countSentences(normalizedValue) : 0;
 
   const characters = normalizedValue.length;
   const softLimitExceeded = characters > softCharacterLimit;

@@ -4,8 +4,7 @@ const cacheManager = require("./cacheManager");
 
 const API_TOKEN = process.env.API_TOKEN;
 
-const SUPPLEMENTAL_CACHE_TTL_MS =
-  60 * 60 * 1000;
+const SUPPLEMENTAL_CACHE_TTL_MS = 60 * 60 * 1000;
 
 let supplementalCache = null;
 let supplementalCacheTime = 0;
@@ -25,50 +24,32 @@ function supplementalCacheIsFresh() {
     return false;
   }
 
-  return (
-    Date.now() - supplementalCacheTime <
-    SUPPLEMENTAL_CACHE_TTL_MS
-  );
+  return Date.now() - supplementalCacheTime < SUPPLEMENTAL_CACHE_TTL_MS;
 }
 
 async function fetchSupplementalRosters() {
   const headers = getApiHeaders();
 
-  const [eloaResponse, pastMembersResponse] =
-    await Promise.all([
-      axios.get(
-        "https://api.7cav.us/api/v1/roster/3/lite",
-        {
-          headers,
-        },
-      ),
+  const [eloaResponse, pastMembersResponse] = await Promise.all([
+    axios.get("https://api.7cav.us/api/v1/roster/3/lite", {
+      headers,
+    }),
 
-      axios.get(
-        "https://api.7cav.us/api/v1/roster/6/lite",
-        {
-          headers,
-        },
-      ),
-    ]);
+    axios.get("https://api.7cav.us/api/v1/roster/6/lite", {
+      headers,
+    }),
+  ]);
 
-  const eloaProfiles =
-    eloaResponse.data?.profiles ?? {};
+  const eloaProfiles = eloaResponse.data?.profiles ?? {};
 
-  const pastMemberProfiles =
-    pastMembersResponse.data?.profiles ?? {};
+  const pastMemberProfiles = pastMembersResponse.data?.profiles ?? {};
 
   const retiredProfiles = Object.fromEntries(
-    Object.entries(pastMemberProfiles).filter(
-      ([, profile]) => {
-        const positionTitle =
-          profile?.primary?.positionTitle ?? "";
+    Object.entries(pastMemberProfiles).filter(([, profile]) => {
+      const positionTitle = profile?.primary?.positionTitle ?? "";
 
-        return (
-          positionTitle.trim().toUpperCase() ===
-          "RETIRED"
-        );
-      },
-    ),
+      return positionTitle.trim().toUpperCase() === "RETIRED";
+    }),
   );
 
   return {
@@ -126,35 +107,25 @@ async function getSupplementalRosters() {
 async function getMedalEligibleRoster() {
   // Reuse S6's existing Combat and Reserve caches.
   // We do not modify or replace cacheManager.js.
-  const combatRoster =
-    cacheManager.getCachedCombatRoster();
+  const combatRoster = cacheManager.getCachedCombatRoster();
 
-  const reserveRoster =
-    cacheManager.getCachedReserveRoster();
+  const reserveRoster = cacheManager.getCachedReserveRoster();
 
-  if (
-    !combatRoster?.profiles ||
-    !reserveRoster?.profiles
-  ) {
+  if (!combatRoster?.profiles || !reserveRoster?.profiles) {
     throw new Error(
       "Core CavApps Combat or Reserve roster cache is unavailable",
     );
   }
 
-  const supplemental =
-    await getSupplementalRosters();
+  const supplemental = await getSupplementalRosters();
 
-  const combatProfiles =
-    combatRoster.profiles ?? {};
+  const combatProfiles = combatRoster.profiles ?? {};
 
-  const reserveProfiles =
-    reserveRoster.profiles ?? {};
+  const reserveProfiles = reserveRoster.profiles ?? {};
 
-  const eloaProfiles =
-    supplemental.eloaProfiles ?? {};
+  const eloaProfiles = supplemental.eloaProfiles ?? {};
 
-  const retiredProfiles =
-    supplemental.retiredProfiles ?? {};
+  const retiredProfiles = supplemental.retiredProfiles ?? {};
 
   const profiles = {
     ...combatProfiles,
@@ -167,23 +138,17 @@ async function getMedalEligibleRoster() {
     profiles,
 
     meta: {
-      combatCount:
-        Object.keys(combatProfiles).length,
+      combatCount: Object.keys(combatProfiles).length,
 
-      reserveCount:
-        Object.keys(reserveProfiles).length,
+      reserveCount: Object.keys(reserveProfiles).length,
 
-      eloaCount:
-        Object.keys(eloaProfiles).length,
+      eloaCount: Object.keys(eloaProfiles).length,
 
-      retiredCount:
-        Object.keys(retiredProfiles).length,
+      retiredCount: Object.keys(retiredProfiles).length,
 
-      eligibleCount:
-        Object.keys(profiles).length,
+      eligibleCount: Object.keys(profiles).length,
 
-      supplementalFetchedAt:
-        supplemental.fetchedAt,
+      supplementalFetchedAt: supplemental.fetchedAt,
     },
   };
 }

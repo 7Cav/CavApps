@@ -48,7 +48,9 @@ export function formatBilletSummary(person) {
 function recipientMatchKeys(person) {
   const firstName = cleanBulkText(person?.firstName);
   const lastName = cleanBulkText(person?.lastName);
-  const fullName = cleanBulkText(person?.fullName || `${firstName} ${lastName}`);
+  const fullName = cleanBulkText(
+    person?.fullName || `${firstName} ${lastName}`,
+  );
   const rankAbbreviation = cleanBulkText(person?.rankAbbreviation);
   const rankLong = cleanBulkText(person?.rankLong);
   const rosterName = cleanBulkText(person?.rosterName);

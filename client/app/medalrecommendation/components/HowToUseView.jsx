@@ -122,9 +122,7 @@ export default function HowToUseView({
               {step.title}
             </h3>
 
-            <p className="mt-2 text-sm leading-6 text-[#b8b8b8]">
-              {step.text}
-            </p>
+            <p className="mt-2 text-sm leading-6 text-[#b8b8b8]">{step.text}</p>
           </article>
         ))}
       </div>

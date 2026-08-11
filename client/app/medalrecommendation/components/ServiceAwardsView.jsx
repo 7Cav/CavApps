@@ -124,9 +124,7 @@ function isFieldVisible(field, fields) {
     return true;
   }
 
-  const currentValue = cleanText(
-    fields[field.visibleWhen.field],
-  ).toLowerCase();
+  const currentValue = cleanText(fields[field.visibleWhen.field]).toLowerCase();
 
   const expectedValue = cleanText(field.visibleWhen.equals).toLowerCase();
   return currentValue === expectedValue;
@@ -168,13 +166,12 @@ function getUnitNarrativeNote(award, fields) {
   const hasNarrativeVerb = awardHasField(award, "narrativeVerb");
 
   if (!hasNarrativeVerb) {
-    return (
-      "Write the shared unit citation in your own words. Required opening and closing language will be added automatically."
-    );
+    return "Write the shared unit citation in your own words. Required opening and closing language will be added automatically.";
   }
 
   const narrativeVerb = cleanText(fields?.narrativeVerb);
-  const recognizedGroup = cleanText(fields?.recognizedGroup) || "Recognized Group";
+  const recognizedGroup =
+    cleanText(fields?.recognizedGroup) || "Recognized Group";
 
   if (!narrativeVerb) {
     return (
@@ -295,7 +292,7 @@ function ServiceField({
     );
   } else {
     const suggestions = field.suggestionsSource
-      ? billetSuggestions[field.suggestionsSource] ?? []
+      ? (billetSuggestions[field.suggestionsSource] ?? [])
       : [];
 
     control = (
@@ -722,7 +719,9 @@ export default function ServiceAwardsView({ roster, onBack }) {
                     <select
                       id="service-unit-award"
                       value={unitForm.awardId}
-                      onChange={(event) => handleUnitAwardChange(event.target.value)}
+                      onChange={(event) =>
+                        handleUnitAwardChange(event.target.value)
+                      }
                       className={FIELD_CLASS}
                     >
                       {UNIT_SERVICE_AWARDS.map((award) => (
@@ -748,9 +747,12 @@ export default function ServiceAwardsView({ roster, onBack }) {
                 <section className="border border-[#353535] bg-[#141414] p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <h3 className="font-semibold text-[#ebc729]">Recipients</h3>
+                      <h3 className="font-semibold text-[#ebc729]">
+                        Recipients
+                      </h3>
                       <p className="mt-1 text-xs text-[#858585]">
-                        {selectedUnitRecipients.length} recipients selected through the bulk roster tool.
+                        {selectedUnitRecipients.length} recipients selected
+                        through the bulk roster tool.
                       </p>
                     </div>
 

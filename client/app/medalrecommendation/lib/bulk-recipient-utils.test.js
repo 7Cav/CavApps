@@ -49,11 +49,7 @@ const ROSTER = [
 describe("bulk recipient utilities", () => {
   it("matches the supported pasted-name formats", () => {
     const result = matchPastedRecipients(
-      [
-        "Sergeant Adam Alpha",
-        "CPL Beth Bravo",
-        "Chris Charlie",
-      ].join("\n"),
+      ["Sergeant Adam Alpha", "CPL Beth Bravo", "Chris Charlie"].join("\n"),
       ROSTER,
     );
 

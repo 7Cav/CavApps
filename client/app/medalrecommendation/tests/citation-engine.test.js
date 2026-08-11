@@ -60,41 +60,11 @@ function createContext() {
         "Shanks",
         "Roderick",
       ),
-      recipient(
-        "SGT Alpha.A",
-        "SGT",
-        "Sergeant",
-        "Adam",
-        "Alpha",
-      ),
-      recipient(
-        "SGT Zebra.Z",
-        "SGT",
-        "Sergeant",
-        "Zach",
-        "Zebra",
-      ),
-      recipient(
-        "CPL Bravo.B",
-        "CPL",
-        "Corporal",
-        "Beth",
-        "Bravo",
-      ),
-      recipient(
-        "SPC Charlie.C",
-        "SPC",
-        "Specialist",
-        "Chris",
-        "Charlie",
-      ),
-      recipient(
-        "PFC Delta.D",
-        "PFC",
-        "Private First Class",
-        "Dana",
-        "Delta",
-      ),
+      recipient("SGT Alpha.A", "SGT", "Sergeant", "Adam", "Alpha"),
+      recipient("SGT Zebra.Z", "SGT", "Sergeant", "Zach", "Zebra"),
+      recipient("CPL Bravo.B", "CPL", "Corporal", "Beth", "Bravo"),
+      recipient("SPC Charlie.C", "SPC", "Specialist", "Chris", "Charlie"),
+      recipient("PFC Delta.D", "PFC", "Private First Class", "Dana", "Delta"),
       recipient(
         "PFC Devine.D",
         "PFC",
@@ -109,13 +79,7 @@ function createContext() {
         "Cliff",
         "Bauvil",
       ),
-      recipient(
-        "PVT Smith.E.R",
-        "PVT",
-        "Private",
-        "Ethan",
-        "Ronald Smith",
-      ),
+      recipient("PVT Smith.E.R", "PVT", "Private", "Ethan", "Ronald Smith"),
     ],
   };
 }
@@ -176,19 +140,14 @@ describe("Medal Recommendation Aid — citation engine", () => {
   test("generates a valid individual Operation Medal recommendation", () => {
     const context = createContext();
 
-    const result = generateIndividual(
-      validIndividual(),
-      context,
-    );
+    const result = generateIndividual(validIndividual(), context);
 
     expect(result.ready).toBe(true);
     expect(result.statusText).toBe("READY FOR FINAL REVIEW");
 
     expect(result.ticketTitle).toContain("BSM");
 
-    expect(result.citation).toContain(
-      "Second Lieutenant Shanks Roderick",
-    );
+    expect(result.citation).toContain("Second Lieutenant Shanks Roderick");
 
     expect(result.bbcode).toContain("[CENTER][B]");
 
@@ -196,9 +155,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "Please proofread and expand it as necessary.",
     );
 
-    expect(result.warnings.join(" ")).not.toContain(
-      "manual review controls",
-    );
+    expect(result.warnings.join(" ")).not.toContain("manual review controls");
   });
 
   test("Purple Heart uses fixed heroic character wording", () => {
@@ -217,10 +174,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
     payload.actionScope = "Single";
     payload.actionCharacter = "";
 
-    const singleResult = generateIndividual(
-      payload,
-      context,
-    );
+    const singleResult = generateIndividual(payload, context);
 
     expect(singleResult.ready).toBe(true);
 
@@ -230,10 +184,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.actionScope = "Multiple";
 
-    const multipleResult = generateIndividual(
-      payload,
-      context,
-    );
+    const multipleResult = generateIndividual(payload, context);
 
     expect(multipleResult.ready).toBe(true);
 
@@ -252,10 +203,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "The second sentence was completed. " +
       "The third sentence was completed.";
 
-    const softResult = generateIndividual(
-      softPayload,
-      context,
-    );
+    const softResult = generateIndividual(softPayload, context);
 
     expect(softResult.ready).toBe(true);
 
@@ -265,14 +213,9 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     const hardPayload = validIndividual();
 
-    hardPayload.narrative = "A".repeat(
-      context.limits.narrative + 1,
-    );
+    hardPayload.narrative = "A".repeat(context.limits.narrative + 1);
 
-    const hardResult = generateIndividual(
-      hardPayload,
-      context,
-    );
+    const hardResult = generateIndividual(hardPayload, context);
 
     expect(hardResult.ready).toBe(false);
 
@@ -282,9 +225,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
     );
 
     expect(failedCheck).toBeDefined();
-    expect(failedCheck.message).toContain(
-      "character limit",
-    );
+    expect(failedCheck.message).toContain("character limit");
   });
 
   test("supports multiple recipients on an individual Operation Medal", () => {
@@ -292,21 +233,14 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     const payload = validIndividual();
 
-    payload.recipients = [
-      "CPL Bravo.B",
-      "SGT Zebra.Z",
-      "SGT Alpha.A",
-    ];
+    payload.recipients = ["CPL Bravo.B", "SGT Zebra.Z", "SGT Alpha.A"];
 
     payload.narrative =
       "The group formed an ambush. " +
       "They held the line together. " +
       "The enemy attack failed.";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(true);
 
@@ -324,23 +258,15 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "Sergeant Adam Alpha, Sergeant Zach Zebra, and Corporal Beth Bravo's",
     );
 
-    expect(result.citation).not.toContain(
-      "Sergeant Adam Alpha's",
-    );
+    expect(result.citation).not.toContain("Sergeant Adam Alpha's");
 
-    expect(result.citation).not.toContain(
-      "Sergeant Zach Zebra's",
-    );
+    expect(result.citation).not.toContain("Sergeant Zach Zebra's");
 
     expect(result.ticketTitle).toContain("Multiple");
 
-    expect(result.bbcode).toContain(
-      "Sergeant Adam Alpha",
-    );
+    expect(result.bbcode).toContain("Sergeant Adam Alpha");
 
-    expect(result.bbcode).toContain(
-      "Corporal Beth Bravo",
-    );
+    expect(result.bbcode).toContain("Corporal Beth Bravo");
   });
 
   test("normalizes names for multiple individual recipients", () => {
@@ -348,20 +274,14 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     const payload = validIndividual();
 
-    payload.recipients = [
-      "PVT Smith.E.R",
-      "PFC Devine.D",
-    ];
+    payload.recipients = ["PVT Smith.E.R", "PFC Devine.D"];
 
     payload.narrative =
       "PVT. Smith, E.R. and Private First Class Dennis Devine, D. established the defense. " +
       "Squad Leader Smith directed the defense while Trooper Private First Class Devine reinforced the line. " +
       "Without PVT. Smith and Private First Class Devine, the position would have fallen.";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(true);
 
@@ -388,13 +308,9 @@ describe("Medal Recommendation Aid — citation engine", () => {
     expect(result.citation).not.toContain(", E.R.");
     expect(result.citation).not.toContain(", D.");
 
-    expect(result.citation).not.toContain(
-      "Squad Leader Private",
-    );
+    expect(result.citation).not.toContain("Squad Leader Private");
 
-    expect(result.citation).not.toContain(
-      "Trooper Private",
-    );
+    expect(result.citation).not.toContain("Trooper Private");
   });
 
   test("removes redundant roster initials from individual narratives", () => {
@@ -409,10 +325,7 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "Private First Class Cliff Bauvil, C. reinforced the position under sustained pressure. " +
       "PFC Bauvil C. completed the defensive works before the enemy assault.";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(true);
 
@@ -438,21 +351,13 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     const payload = validIndividual();
 
-    payload.recipients = [
-      "SGT Alpha.A",
-      "SGT Alpha.A",
-    ];
+    payload.recipients = ["SGT Alpha.A", "SGT Alpha.A"];
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
 
-    expect(
-      findFailedCheck(result, "No duplicate recipients"),
-    ).toBeDefined();
+    expect(findFailedCheck(result, "No duplicate recipients")).toBeDefined();
   });
 
   test("blocks BBCode injection in individual citation narratives", () => {
@@ -463,38 +368,25 @@ describe("Medal Recommendation Aid — citation engine", () => {
     payload.narrative =
       "The trooper held the line. [/CENTER] He defeated the attack. The mission succeeded.";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
     expect(result.bbcode).toBe("");
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Forum BBCode safety",
-    );
+    const failedCheck = findFailedCheck(result, "Forum BBCode safety");
 
     expect(failedCheck).toBeDefined();
-    expect(failedCheck.message).toContain(
-      "Citation narrative",
-    );
+    expect(failedCheck.message).toContain("Citation narrative");
   });
 
   test("generates and sorts Operation Unit Award recipients", () => {
     const context = createContext();
 
-    const result = generateUnit(
-      validUnit(),
-      context,
-    );
+    const result = generateUnit(validUnit(), context);
 
     expect(result.ready).toBe(true);
 
-    expect(result.statusText).toBe(
-      "READY FOR FINAL REVIEW",
-    );
+    expect(result.statusText).toBe("READY FOR FINAL REVIEW");
 
     expect(result.ticketTitle).toContain("Multiple");
 
@@ -518,24 +410,16 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.unitName = "Able Squad [B]Injected[/B]";
 
-    const result = generateUnit(
-      payload,
-      context,
-    );
+    const result = generateUnit(payload, context);
 
     expect(result.ready).toBe(false);
     expect(result.bbcode).toBe("");
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Forum BBCode safety",
-    );
+    const failedCheck = findFailedCheck(result, "Forum BBCode safety");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "Combat unit name",
-    );
+    expect(failedCheck.message).toContain("Combat unit name");
   });
 
   test("template replacement does not alter placeholder-like user text", () => {
@@ -545,20 +429,13 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.operationName = "Overlord {LOCATION}";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(true);
 
-    expect(result.citation).toContain(
-      "Operation Overlord {LOCATION}",
-    );
+    expect(result.citation).toContain("Operation Overlord {LOCATION}");
 
-    expect(result.citation).toContain(
-      "near Omaha Beach",
-    );
+    expect(result.citation).toContain("near Omaha Beach");
   });
 
   test("rejects duplicate recipients on an Operation Unit Award", () => {
@@ -573,16 +450,11 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "SPC Charlie.C",
     ];
 
-    const result = generateUnit(
-      payload,
-      context,
-    );
+    const result = generateUnit(payload, context);
 
     expect(result.ready).toBe(false);
 
-    expect(
-      findFailedCheck(result, "No duplicate recipients"),
-    ).toBeDefined();
+    expect(findFailedCheck(result, "No duplicate recipients")).toBeDefined();
   });
 
   test("rejects an Operation Unit Award recipient missing from the roster", () => {
@@ -597,18 +469,12 @@ describe("Medal Recommendation Aid — citation engine", () => {
       "PFC Missing.M",
     ];
 
-    const result = generateUnit(
-      payload,
-      context,
-    );
+    const result = generateUnit(payload, context);
 
     expect(result.ready).toBe(false);
 
     expect(
-      findFailedCheck(
-        result,
-        "Every recipient matches the roster",
-      ),
+      findFailedCheck(result, "Every recipient matches the roster"),
     ).toBeDefined();
   });
 
@@ -619,16 +485,11 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.operationDate = "not-a-date";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
 
-    expect(
-      findFailedCheck(result, "Operation date"),
-    ).toBeDefined();
+    expect(findFailedCheck(result, "Operation date")).toBeDefined();
   });
 
   test("rejects impossible calendar dates", () => {
@@ -638,23 +499,15 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.operationDate = "2026-02-31";
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Operation date",
-    );
+    const failedCheck = findFailedCheck(result, "Operation date");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "cannot be in the future",
-    );
+    expect(failedCheck.message).toContain("cannot be in the future");
   });
 
   test("rejects future Operation dates", () => {
@@ -672,23 +525,15 @@ describe("Medal Recommendation Aid — citation engine", () => {
       String(tomorrow.getDate()).padStart(2, "0"),
     ].join("-");
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Operation date",
-    );
+    const failedCheck = findFailedCheck(result, "Operation date");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "cannot be in the future",
-    );
+    expect(failedCheck.message).toContain("cannot be in the future");
   });
 
   test("rejects text above configured hard limits", () => {
@@ -696,27 +541,17 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     const payload = validIndividual();
 
-    payload.operationName = "X".repeat(
-      context.limits.operationName + 1,
-    );
+    payload.operationName = "X".repeat(context.limits.operationName + 1);
 
-    const result = generateIndividual(
-      payload,
-      context,
-    );
+    const result = generateIndividual(payload, context);
 
     expect(result.ready).toBe(false);
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Operation name length",
-    );
+    const failedCheck = findFailedCheck(result, "Operation name length");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "character limit",
-    );
+    expect(failedCheck.message).toContain("character limit");
   });
 
   test("rejects Operation Unit Awards above the maximum recipient count", () => {
@@ -726,29 +561,20 @@ describe("Medal Recommendation Aid — citation engine", () => {
 
     payload.recipients = Array.from(
       {
-        length:
-          context.limits.unitRecipients + 1,
+        length: context.limits.unitRecipients + 1,
       },
       (_, index) => `PFC Extra${index}.E`,
     );
 
-    const result = generateUnit(
-      payload,
-      context,
-    );
+    const result = generateUnit(payload, context);
 
     expect(result.ready).toBe(false);
 
-    const failedCheck = findFailedCheck(
-      result,
-      "Maximum recipient count",
-    );
+    const failedCheck = findFailedCheck(result, "Maximum recipient count");
 
     expect(failedCheck).toBeDefined();
 
-    expect(failedCheck.message).toContain(
-      "no more than",
-    );
+    expect(failedCheck.message).toContain("no more than");
   });
 
   test("sentence counting handles rank abbreviations correctly", () => {

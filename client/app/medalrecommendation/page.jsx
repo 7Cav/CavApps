@@ -33,11 +33,7 @@ export default async function MedalRecommendationPage() {
                     title="Return to CavApps"
                     className="flex items-center gap-2"
                   >
-                    <CavColor
-                      width="2.7em"
-                      height="2.7em"
-                      aria-hidden="true"
-                    />
+                    <CavColor width="2.7em" height="2.7em" aria-hidden="true" />
 
                     <span className="flex flex-col leading-[1.05] text-white">
                       <span className="whitespace-nowrap text-[0.88rem] font-bold tracking-[0.05em]">

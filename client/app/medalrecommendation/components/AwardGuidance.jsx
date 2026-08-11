@@ -16,9 +16,7 @@ export default function AwardGuidance({ award }) {
         </div>
 
         <div>
-          <h3 className="font-semibold text-[#ebc729]">
-            Citation Guidance
-          </h3>
+          <h3 className="font-semibold text-[#ebc729]">Citation Guidance</h3>
           <p className="mt-1 text-[#bcbcbc]">{award.guidance}</p>
         </div>
 
