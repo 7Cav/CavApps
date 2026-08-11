@@ -37,7 +37,7 @@ const updateCombatRosterCache = async () => {
     cacheTime["combat"] = Date.now();
     cacheStatus.combat = true;
   } catch (error) {
-    console.error("Failed to update combat cache:", error);
+    console.error("Failed to update combat cache:", error.message);
     cacheStatus.combat = false;
   }
 };
@@ -56,7 +56,7 @@ const updateReserveRosterCache = async () => {
     cacheTime["reserve"] = Date.now();
     cacheStatus.reserve = true;
   } catch (error) {
-    console.error("Failed to update reserve cache:", error);
+    console.error("Failed to update reserve cache:", error.message);
     cacheStatus.reserve = false;
   }
 };
@@ -79,7 +79,7 @@ const updateCachedIndividual = async (userName) => {
     cacheStatus.individual = true;
     return cachedIndividual;
   } catch (error) {
-    console.error("Failed to update individual user cache:", error);
+    console.error("Failed to update individual user cache:", error.message);
     cacheStatus.individual = false;
     return null;
   }
@@ -103,7 +103,7 @@ const updateCachedGroups = async () => {
     cacheStatus.groups = true;
     return cachedGroups;
   } catch (error) {
-    console.error("Failed to update individual user cache:", error);
+    console.error("Failed to update groups cache:", error.message);
     cacheStatus.groups = false;
     return null;
   }
@@ -142,7 +142,12 @@ const initializeCache = async () => {
     scheduleCacheUpdate(updateReserveRosterCache);
     scheduleCacheUpdate(updateCachedGroups);
   } catch (error) {
-    console.error("Critical error during cache initialization:", error);
+    // Fatal path: keep the stack, which is the only diagnostic before exit.
+    // Never the error object itself — that is what carried the token.
+    console.error(
+      "Critical error during cache initialization:",
+      error.stack || error.message || String(error),
+    );
     process.exit(1); // Exit to trigger Docker restart
   }
 };
