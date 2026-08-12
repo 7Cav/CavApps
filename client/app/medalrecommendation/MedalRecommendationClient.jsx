@@ -31,44 +31,95 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function normalizeFirstRecipientMention(narrative, recipient) {
+function normalizeRecipientMentions(narrative, recipient) {
   const text = narrative.trim();
 
   const rankFull = recipient?.rank?.rankFull?.trim() ?? "";
-
   const rankShort = recipient?.rank?.rankShort?.trim() ?? "";
-
   const fullName = recipient?.realName?.trim() ?? "";
 
   if (!rankFull || !fullName) {
     return text;
   }
 
-  const nameParts = fullName.split(/\s+/);
-  const lastName = nameParts[nameParts.length - 1];
+  const nameParts = fullName.split(/\s+/).filter(Boolean);
+  const firstName = nameParts[0] ?? "";
+  const lastName = nameParts[nameParts.length - 1] ?? "";
 
-  if (!lastName) {
+  if (!firstName || !lastName) {
     return text;
   }
 
-  const fullIdentity = `${rankFull} ${fullName}`;
+  const shortenedFullName =
+    nameParts.length > 2 ? `${firstName} ${lastName}` : fullName;
 
-  const possibleMentions = [
+  const fullIdentity = `${rankFull} ${fullName}`;
+  const shortIdentity = `${rankFull} ${lastName}`;
+  const token = "§§MEDAL_RECIPIENT§§";
+
+  const explicitMentions = [
     `${escapeRegExp(rankFull)}\\s+${escapeRegExp(fullName)}`,
+    `${escapeRegExp(rankFull)}\\s+${escapeRegExp(shortenedFullName)}`,
     `${escapeRegExp(rankFull)}\\s+${escapeRegExp(lastName)}`,
+    rankShort
+      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(fullName)}`
+      : "",
+    rankShort
+      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(shortenedFullName)}`
+      : "",
     rankShort
       ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(lastName)}`
       : "",
     escapeRegExp(fullName),
-    escapeRegExp(lastName),
-  ].filter(Boolean);
+    escapeRegExp(shortenedFullName),
+  ]
+    .filter(Boolean)
+    .filter((value, index, values) => values.indexOf(value) === index)
+    .sort((a, b) => b.length - a.length);
 
-  const firstMentionPattern = new RegExp(
-    `\\b(?:${possibleMentions.join("|")})\\b`,
-    "i",
+  let normalized = text;
+
+  if (explicitMentions.length > 0) {
+    const explicitMentionPattern = new RegExp(
+      `(^|[^A-Za-z0-9])(?:${explicitMentions.join("|")})(?=$|[^A-Za-z0-9])`,
+      "gi",
+    );
+
+    normalized = normalized.replace(
+      explicitMentionPattern,
+      (_match, prefix) => `${prefix}${token}`,
+    );
+  }
+
+  const firstAndLastPattern = new RegExp(
+    `(^|[^A-Za-z0-9])` +
+      `[A-Z][A-Za-z'.-]*\\s+${escapeRegExp(lastName)}` +
+      `(?=$|[^A-Za-z0-9])`,
+    "g",
   );
 
-  return text.replace(firstMentionPattern, fullIdentity);
+  normalized = normalized.replace(
+    firstAndLastPattern,
+    (_match, prefix) => `${prefix}${token}`,
+  );
+
+  const surnamePattern = new RegExp(
+    `(^|[^A-Za-z0-9])${escapeRegExp(lastName)}(?=$|[^A-Za-z0-9])`,
+    "g",
+  );
+
+  normalized = normalized.replace(
+    surnamePattern,
+    (_match, prefix) => `${prefix}${token}`,
+  );
+
+  let occurrence = 0;
+
+  return normalized.replace(new RegExp(token, "g"), () => {
+    occurrence += 1;
+
+    return occurrence === 1 ? fullIdentity : shortIdentity;
+  });
 }
 
 export default function MedalRecommendationClient({ combatRoster = [] }) {
@@ -140,6 +191,8 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
       narrative.trim();
 
     if (!isComplete) {
+      setRecommendation(null);
+
       setError(
         "Complete all required fields before generating a recommendation.",
       );
@@ -151,7 +204,7 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
 
     const formattedDate = formatOperationDate(operationDate);
 
-    const normalizedNarrative = normalizeFirstRecipientMention(
+    const normalizedNarrative = normalizeRecipientMentions(
       narrative,
       selectedRecipient,
     );

@@ -1,6 +1,7 @@
 import GetCombatRoster from "../reusableModules/getCombatRoster";
 import MedalRecommendationClient from "./MedalRecommendationClient";
 
+export const dynamic = "force-dynamic";
 export const metadata = {
   title: "Medal Recommendation Aid",
 };
