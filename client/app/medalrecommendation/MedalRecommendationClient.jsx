@@ -31,95 +31,66 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function normalizeRecipientMentions(narrative, recipient) {
+function getCitationName(fullName) {
+  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+
+  if (nameParts.length < 2) {
+    return fullName.trim();
+  }
+
+  return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+}
+
+function normalizeFirstRecipientMention(narrative, recipient) {
   const text = narrative.trim();
 
   const rankFull = recipient?.rank?.rankFull?.trim() ?? "";
   const rankShort = recipient?.rank?.rankShort?.trim() ?? "";
-  const fullName = recipient?.realName?.trim() ?? "";
+  const rosterFullName = recipient?.realName?.trim() ?? "";
 
-  if (!rankFull || !fullName) {
+  if (!rankFull || !rosterFullName) {
     return text;
   }
 
-  const nameParts = fullName.split(/\s+/).filter(Boolean);
-  const firstName = nameParts[0] ?? "";
-  const lastName = nameParts[nameParts.length - 1] ?? "";
+  const citationName = getCitationName(rosterFullName);
+  const nameParts = citationName.split(/\s+/);
+  const lastName = nameParts[nameParts.length - 1];
 
-  if (!firstName || !lastName) {
+  if (!citationName || !lastName) {
     return text;
   }
 
-  const shortenedFullName =
-    nameParts.length > 2 ? `${firstName} ${lastName}` : fullName;
+  const normalizedIdentity = `${rankFull} ${citationName}`;
 
-  const fullIdentity = `${rankFull} ${fullName}`;
-  const shortIdentity = `${rankFull} ${lastName}`;
-  const token = "§§MEDAL_RECIPIENT§§";
-
-  const explicitMentions = [
-    `${escapeRegExp(rankFull)}\\s+${escapeRegExp(fullName)}`,
-    `${escapeRegExp(rankFull)}\\s+${escapeRegExp(shortenedFullName)}`,
+  const possibleMentions = [
+    `${escapeRegExp(rankFull)}\\s+${escapeRegExp(rosterFullName)}`,
+    `${escapeRegExp(rankFull)}\\s+${escapeRegExp(citationName)}`,
     `${escapeRegExp(rankFull)}\\s+${escapeRegExp(lastName)}`,
     rankShort
-      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(fullName)}`
+      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(rosterFullName)}`
       : "",
     rankShort
-      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(shortenedFullName)}`
+      ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(citationName)}`
       : "",
     rankShort
       ? `${escapeRegExp(rankShort)}\\.?\\s+${escapeRegExp(lastName)}`
       : "",
-    escapeRegExp(fullName),
-    escapeRegExp(shortenedFullName),
+    escapeRegExp(rosterFullName),
+    escapeRegExp(citationName),
   ]
     .filter(Boolean)
     .filter((value, index, values) => values.indexOf(value) === index)
     .sort((a, b) => b.length - a.length);
 
-  let normalized = text;
-
-  if (explicitMentions.length > 0) {
-    const explicitMentionPattern = new RegExp(
-      `(^|[^A-Za-z0-9])(?:${explicitMentions.join("|")})(?=$|[^A-Za-z0-9])`,
-      "gi",
-    );
-
-    normalized = normalized.replace(
-      explicitMentionPattern,
-      (_match, prefix) => `${prefix}${token}`,
-    );
-  }
-
-  const firstAndLastPattern = new RegExp(
-    `(^|[^A-Za-z0-9])` +
-      `[A-Z][A-Za-z'.-]*\\s+${escapeRegExp(lastName)}` +
-      `(?=$|[^A-Za-z0-9])`,
-    "g",
+  const firstMentionPattern = new RegExp(
+    `(^|[^A-Za-z0-9])(?:${possibleMentions.join("|")})(?=$|[^A-Za-z0-9])`,
+    "i",
   );
 
-  normalized = normalized.replace(
-    firstAndLastPattern,
-    (_match, prefix) => `${prefix}${token}`,
+  return text.replace(
+    firstMentionPattern,
+    (_match, prefix) => `${prefix}${normalizedIdentity}`,
   );
-
-  const surnamePattern = new RegExp(
-    `(^|[^A-Za-z0-9])${escapeRegExp(lastName)}(?=$|[^A-Za-z0-9])`,
-    "g",
-  );
-
-  normalized = normalized.replace(
-    surnamePattern,
-    (_match, prefix) => `${prefix}${token}`,
-  );
-
-  let occurrence = 0;
-
-  return normalized.replace(new RegExp(token, "g"), () => {
-    occurrence += 1;
-
-    return occurrence === 1 ? fullIdentity : shortIdentity;
-  });
 }
 
 export default function MedalRecommendationClient({ combatRoster = [] }) {
@@ -176,13 +147,12 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
 
   function handleGenerate() {
     const recipientRank = selectedRecipient?.rank?.rankFull?.trim() ?? "";
-
-    const recipientFullName = selectedRecipient?.realName?.trim() ?? "";
+    const recipientRosterName = selectedRecipient?.realName?.trim() ?? "";
 
     const isComplete =
       selectedRecipient &&
       recipientRank &&
-      recipientFullName &&
+      recipientRosterName &&
       actionCharacter &&
       combatElement.trim() &&
       operationTitle.trim() &&
@@ -202,9 +172,10 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
 
     setError("");
 
+    const recipientCitationName = getCitationName(recipientRosterName);
     const formattedDate = formatOperationDate(operationDate);
 
-    const normalizedNarrative = normalizeRecipientMentions(
+    const normalizedNarrative = normalizeFirstRecipientMention(
       narrative,
       selectedRecipient,
     );
@@ -215,7 +186,7 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
       `Operation ${operationTitle.trim()} near ${location.trim()} on ${formattedDate}.`;
 
     const closingSentence =
-      `${recipientRank} ${recipientFullName}'s ${actionCharacter} actions ` +
+      `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
       "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
 
     const citationNarrative = [
@@ -225,7 +196,7 @@ export default function MedalRecommendationClient({ combatRoster = [] }) {
     ].join(" ");
 
     setRecommendation({
-      recipient: `${recipientRank} ${recipientFullName}`,
+      recipient: `${recipientRank} ${recipientCitationName}`,
       citationNarrative,
     });
   }
