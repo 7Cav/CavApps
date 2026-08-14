@@ -129,6 +129,7 @@ Create `client/.env.local` with:
 NEXT_PUBLIC_CLIENT_TOKEN=any-shared-secret-you-choose
 COMBAT_API_URL=http://localhost:4000/roster/combat
 RESERVE_API_URL=http://localhost:4000/roster/reserves
+MEDAL_RECIPIENT_API_URL=http://localhost:4000/roster/medal-recipients
 GROUP_API_URL=http://localhost:4000/roster/groups
 CACHE_TIMESTAMP_URL=http://localhost:4000/cache-timestamp
 NEXT_PUBLIC_INDIVIDUAL_API_URL=http://localhost:4000/roster/individual
