@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
 
@@ -162,6 +162,24 @@ const combatRoster = {
     primary: {
       positionTitle: "Trooper",
       positionId: "108",
+    },
+    secondaries: [],
+  },
+  1010: {
+    user: {
+      userId: "1010",
+      username: "General.M",
+    },
+    rank: {
+      rankShort: "MG",
+      rankFull: "Major General",
+      rankId: "12",
+    },
+    realName: "Morgan General",
+    roster: "ROSTER_TYPE_COMBAT",
+    primary: {
+      positionTitle: "Trooper",
+      positionId: "109",
     },
     secondaries: [],
   },
@@ -679,7 +697,7 @@ describe("Medal Recommendation Aid", () => {
     await renderMedalRecommendationAid();
 
     const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
@@ -734,7 +752,7 @@ describe("Medal Recommendation Aid", () => {
     await renderMedalRecommendationAid();
 
     const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
@@ -764,6 +782,40 @@ describe("Medal Recommendation Aid", () => {
     );
   });
 
+  test("does not duplicate Operation when the Operation Title already includes it", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
+      "His performance contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    const operationTitle = screen.getByRole("textbox", {
+      name: "Operation Title",
+    });
+
+    await user.clear(operationTitle);
+    await user.type(operationTitle, "Operation Exfor");
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    expect(citation).toHaveTextContent(
+      "during combat in Operation Exfor near Remagen",
+    );
+
+    expect(citation).not.toHaveTextContent("Operation Operation Exfor");
+  });
+
   test("uses the selected roster member identity without asking the user to re-enter it", async () => {
     const user = userEvent.setup();
 
@@ -786,353 +838,17 @@ describe("Medal Recommendation Aid", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("normalizes selected-recipient references throughout the narrative body", async () => {
+  test("warns about a possible rank abbreviation without rewriting the narrative", async () => {
     const user = userEvent.setup();
 
     await renderMedalRecommendationAid();
 
     const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
-      "Smith continued to support the squad during each major contact. " +
-      "John Smith completed the operation while maintaining control of the position.";
+      "Specialist John Smith dodged MG Fire while advancing toward the objective. " +
+      "He maintained the defensive position throughout the engagement. " +
+      "His actions contributed directly to the successful completion of the operation.";
 
     await completeRecommendation(user, narrative);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation).toHaveTextContent(
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-        "Specialist John Smith maintained an effective fighting position throughout the operation. " +
-        "Specialist Smith continued to support the squad during each major contact. " +
-        "Specialist Smith completed the operation while maintaining control of the position. " +
-        "Specialist John Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
-    );
-  });
-
-  test("expands an abbreviated rank for another Trooper in the narrative", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "SPC Smith maintained the defensive position during the opening engagement. " +
-      "SPC Perrier moved forward to reinforce the squad.";
-
-    await completeRecommendation(user, narrative);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation).toHaveTextContent(
-      "Specialist John Smith maintained the defensive position during the opening engagement. " +
-        "Specialist Perrier moved forward to reinforce the squad.",
-    );
-
-    expect(citation).not.toHaveTextContent("SPC Perrier");
-  });
-
-  test("shows a soft formatting notice when the generator changes narrative text", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    await completeRecommendation(
-      user,
-      "SPC Smith maintained the defensive position during the opening engagement.",
-    );
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    expect(
-      screen.getByRole("status", {
-        name: "Formatting Adjustments",
-      }),
-    ).toHaveTextContent(
-      "Formatting adjustments were applied automatically. Review the highlighted changes before submitting.",
-    );
-  });
-
-  test("softly highlights only references automatically changed inside the narrative", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "Cpl Kenton helped SPC Perrier during the engagement. " +
-      "Cpl Kenton won the engagement.";
-
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Ken",
-      recipientUsername: "Kenton.W",
-    });
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-    const highlights = Array.from(citation.querySelectorAll("mark"));
-
-    expect(highlights).toHaveLength(3);
-    expect(highlights[0]).toHaveTextContent(/^Corporal Wade Kenton$/);
-    expect(highlights[1]).toHaveTextContent(/^Specialist Perrier$/);
-    expect(highlights[2]).toHaveTextContent(/^Corporal Kenton$/);
-
-    for (const highlight of highlights) {
-      expect(highlight).toHaveClass("bg-amber-400/10");
-      expect(highlight).toHaveClass("text-inherit");
-      expect(highlight).not.toHaveClass("bg-amber-300");
-      expect(highlight).not.toHaveClass("text-black");
-    }
-  });
-
-  test("does not mark generated opening or closing language as a formatting adjustment", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    await completeRecommendation(
-      user,
-      "Cpl Kenton helped SPC Perrier during the engagement.",
-      {
-        recipientQuery: "Ken",
-        recipientUsername: "Kenton.W",
-      },
-    );
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-    const highlights = Array.from(citation.querySelectorAll("mark"));
-
-    expect(highlights).toHaveLength(2);
-
-    expect(
-      highlights.some((highlight) =>
-        highlight.textContent.includes(
-          "For skillful actions over an entire operation",
-        ),
-      ),
-    ).toBe(false);
-
-    expect(
-      highlights.some((highlight) =>
-        highlight.textContent.includes("reflect great credit upon themselves"),
-      ),
-    ).toBe(false);
-  });
-
-  test("normalizes abbreviated ranks without requiring matching capitalization", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "spc smith maintained the defensive position during the opening engagement. " +
-      "cpl Kenton moved forward to reinforce the squad.";
-
-    await completeRecommendation(user, narrative);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation).toHaveTextContent(
-      "Specialist John Smith maintained the defensive position during the opening engagement. " +
-        "Corporal Kenton moved forward to reinforce the squad.",
-    );
-
-    expect(citation).not.toHaveTextContent("spc smith");
-    expect(citation).not.toHaveTextContent("cpl Kenton");
-  });
-
-  test("does not show formatting adjustments when the narrative already follows the rank and name format", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "Specialist John Smith maintained the defensive position during the opening engagement. " +
-      "Specialist Smith continued to support the squad throughout the operation.";
-
-    await completeRecommendation(user, narrative);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    expect(
-      screen.queryByRole("status", {
-        name: "Formatting Adjustments",
-      }),
-    ).not.toBeInTheDocument();
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation.querySelector("mark")).not.toBeInTheDocument();
-  });
-
-  test("recomputes formatting adjustments when the user corrects the narrative and regenerates", async () => {
-    const user = userEvent.setup();
-
-    const originalNarrative =
-      "Cpl Kenton helped SPC Perrier during the engagement. " +
-      "Cpl Kenton won the engagement.";
-
-    await renderMedalRecommendationAid();
-
-    await completeRecommendation(user, originalNarrative, {
-      recipientQuery: "Ken",
-      recipientUsername: "Kenton.W",
-    });
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    expect(
-      screen.getByRole("status", {
-        name: "Formatting Adjustments",
-      }),
-    ).toBeVisible();
-
-    const narrative = screen.getByRole("textbox", {
-      name: "Narrative",
-    });
-
-    await user.clear(narrative);
-    await user.type(
-      narrative,
-      "Corporal Wade Kenton helped Specialist Perrier during the engagement. " +
-        "Corporal Kenton won the engagement.",
-    );
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    expect(
-      screen.queryByRole("status", {
-        name: "Formatting Adjustments",
-      }),
-    ).not.toBeInTheDocument();
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation.querySelector("mark")).not.toBeInTheDocument();
-  });
-
-  test("keeps the worksheet narrative unchanged while normalizing the generated citation", async () => {
-    const user = userEvent.setup();
-
-    const originalNarrative =
-      "Cpl Kenton helped SPC Perrier during the engagement. " +
-      "Cpl Kenton won the engagement.";
-
-    await renderMedalRecommendationAid();
-
-    await completeRecommendation(user, originalNarrative, {
-      recipientQuery: "Ken",
-      recipientUsername: "Kenton.W",
-    });
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    expect(
-      screen.getByRole("textbox", {
-        name: "Narrative",
-      }),
-    ).toHaveValue(originalNarrative);
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation).toHaveTextContent(
-      "Corporal Wade Kenton helped Specialist Perrier during the engagement. " +
-        "Corporal Kenton won the engagement.",
-    );
-  });
-
-  test("normalizes selected-recipient references without changing ordinary common-word surname text", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "SPC Long secured the position during the opening engagement. " +
-      "It was a long night, but SPC Long continued to hold the line. " +
-      "Adam Long completed the operation after the final enemy attack.";
-
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Lon",
-      recipientUsername: "Long.A",
-    });
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    expect(citation).toHaveTextContent(
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-        "Specialist Adam Long secured the position during the opening engagement. " +
-        "It was a long night, but Specialist Long continued to hold the line. " +
-        "Specialist Long completed the operation after the final enemy attack. " +
-        "Specialist Adam Long's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
-    );
-  });
-
-  test("removes middle names and normalizes later selected-recipient references", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "SPC Smith established the defensive position before the main engagement. " +
-      "Smith continued to support the squad during each major contact. " +
-      "Taylor Smith maintained control of the position through the final attack.";
-
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Smi",
-      recipientUsername: "Smith.TM",
-    });
 
     await user.click(
       screen.getByRole("button", {
@@ -1143,19 +859,375 @@ describe("Medal Recommendation Aid", () => {
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
     });
+    const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(preview).toHaveTextContent("Specialist Taylor Smith");
-    expect(preview).not.toHaveTextContent("Taylor Morgan Smith");
+    expect(preview).toBeVisible();
+    expect(citation).toHaveTextContent(narrative);
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      'Possible rank usage: "MG" was detected in the narrative. Verify that this usage and any rank formatting comply with the Medal SOP.',
+    );
+
+    const highlights = Array.from(citation.querySelectorAll("mark"));
+
+    expect(highlights).toHaveLength(1);
+    expect(highlights[0]).toHaveTextContent(/^MG$/);
+    expect(citation).toHaveTextContent("dodged MG Fire");
+    expect(citation).not.toHaveTextContent("dodged Major General Fire");
+  });
+
+  test("warns when the selected recipient Full Rank Full Name is not detected without highlighting the whole citation", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist Smith maintained the defensive position throughout the operation. " +
+      "He repeatedly engaged enemy forces during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const preview = screen.getByRole("region", {
+      name: "Recommendation Preview",
+    });
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    expect(preview).toBeVisible();
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      "Recipient mention: The selected recipient's Full Rank Full Name was not detected in the narrative. Verify that the recipient is identified correctly.",
+    );
+
+    expect(citation.querySelector("mark")).not.toBeInTheDocument();
+  });
+
+  test("does not show a recipient-mention warning when Full Rank Full Name is present", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist John Smith maintained the defensive position throughout the operation. " +
+      "He repeatedly engaged enemy forces during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.queryByText(
+        /the selected recipient's full rank full name was not detected in the narrative/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  test("accepts the citation name format when a roster name contains a middle name or initial", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist Taylor Smith maintained the defensive position throughout the operation. " +
+      "He repeatedly engaged enemy forces during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative, {
+      recipientQuery: "Smith.TJ",
+      recipientUsername: "Smith.TJ",
+    });
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.getByRole("region", {
+        name: "Recommendation Preview",
+      }),
+    ).toBeVisible();
+
+    expect(
+      screen.getByRole("region", {
+        name: "Recommendation Preview",
+      }),
+    ).toHaveTextContent("Specialist Taylor Smith");
+
+    expect(
+      screen.queryByText(
+        /the selected recipient's full rank full name was not detected in the narrative/i,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  test("shows a soft sentence-count warning without blocking generation", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    await completeRecommendation(
+      user,
+      "Specialist John Smith maintained the defensive position throughout the operation.",
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.getByRole("region", {
+        name: "Recommendation Preview",
+      }),
+    ).toBeVisible();
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      "Sentence count: This medal requires a minimum of three sentences. The narrative may not meet that requirement. Please verify before submitting.",
+    );
+  });
+
+  test("warns about a consecutive duplicate word and highlights only the duplicated words", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist John Smith maintained the the defensive position throughout the operation. " +
+      "He repeatedly engaged enemy forces during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation).toHaveTextContent(
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-        "Specialist Taylor Smith established the defensive position before the main engagement. " +
-        "Specialist Smith continued to support the squad during each major contact. " +
-        "Specialist Smith maintained control of the position through the final attack. " +
-        "Specialist Taylor Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      'Possible duplicate: "the the" was detected in the narrative. Verify that the repetition is intentional.',
     );
+
+    const highlights = Array.from(citation.querySelectorAll("mark"));
+
+    expect(highlights).toHaveLength(1);
+    expect(highlights[0]).toHaveTextContent(/^the the$/);
+    expect(citation).toHaveTextContent(narrative);
+  });
+
+  test("warns about an exact duplicate sentence and highlights both copies", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const duplicatedSentence =
+      "Specialist John Smith secured the defensive position.";
+
+    const narrative =
+      `${duplicatedSentence} ${duplicatedSentence} ` +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      "Possible duplicate sentence: This sentence appears more than once in the narrative. Verify that it was not duplicated accidentally.",
+    );
+
+    const duplicateHighlights = Array.from(
+      citation.querySelectorAll("mark"),
+    ).filter((highlight) => highlight.textContent === duplicatedSentence);
+
+    expect(duplicateHighlights).toHaveLength(2);
+    expect(citation).toHaveTextContent(narrative);
+  });
+
+  test("warns about repeated punctuation and highlights only the punctuation", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist John Smith maintained the defensive position,, while the squad advanced. " +
+      "He repeatedly engaged enemy forces during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toHaveTextContent(
+      "Possible punctuation error: Repeated punctuation was detected. Verify this section before submitting.",
+    );
+
+    const highlights = Array.from(citation.querySelectorAll("mark"));
+
+    expect(highlights).toHaveLength(1);
+    expect(highlights[0]).toHaveTextContent(/^,,$/);
+    expect(citation).toHaveTextContent(narrative);
+  });
+
+  test("does not warn about a standard three-dot ellipsis", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist John Smith maintained the defensive position... despite sustained enemy fire. " +
+      "He repeatedly supported his squad during each major contact. " +
+      "His actions contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    expect(
+      screen.queryByText(/possible punctuation error/i),
+    ).not.toBeInTheDocument();
+
+    expect(citation).toHaveTextContent("position... despite");
+    expect(citation).toHaveTextContent(narrative);
+  });
+
+  test("clears narrative warnings when the user corrects the narrative and regenerates", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    await completeRecommendation(
+      user,
+      "Specialist John Smith maintained the the defensive position throughout the operation. " +
+        "He repeatedly engaged enemy forces during each major contact. " +
+        "His actions contributed directly to the successful completion of the operation.",
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.getByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).toBeVisible();
+
+    const narrativeField = screen.getByRole("textbox", {
+      name: "Narrative",
+    });
+
+    await user.clear(narrativeField);
+    await user.type(
+      narrativeField,
+      "Specialist John Smith maintained the defensive position throughout the operation. " +
+        "He repeatedly engaged enemy forces during each major contact. " +
+        "His actions contributed directly to the successful completion of the operation.",
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.queryByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText("Citation Narrative").querySelector("mark"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("shows no narrative warnings for compliant narrative text", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    await completeRecommendation(
+      user,
+      "Specialist John Smith maintained the defensive position throughout the operation. " +
+        "He repeatedly engaged enemy forces during each major contact. " +
+        "His actions contributed directly to the successful completion of the operation.",
+    );
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.queryByRole("status", {
+        name: "Narrative Warnings",
+      }),
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText("Citation Narrative").querySelector("mark"),
+    ).not.toBeInTheDocument();
   });
 
   test("prevents generation when no recipient is selected", async () => {
@@ -1202,7 +1274,7 @@ describe("Medal Recommendation Aid", () => {
       screen.getByRole("textbox", {
         name: "Narrative",
       }),
-      "SPC Smith maintained the position throughout the operation.",
+      "Specialist John Smith maintained the position throughout the operation.",
     );
 
     await user.click(
@@ -1353,7 +1425,7 @@ describe("Medal Recommendation Aid", () => {
 
     await completeRecommendation(
       user,
-      "SPC Smith maintained the position throughout the operation.",
+      "Specialist John Smith maintained the position throughout the operation.",
       {
         omit: "combatElement",
       },
@@ -1390,7 +1462,7 @@ describe("Medal Recommendation Aid", () => {
 
     await completeRecommendation(
       user,
-      "SPC Smith maintained the position throughout the operation.",
+      "Specialist John Smith maintained the position throughout the operation.",
       {
         omit: "operationTitle",
       },
@@ -1427,7 +1499,7 @@ describe("Medal Recommendation Aid", () => {
 
     await completeRecommendation(
       user,
-      "SPC Smith maintained the position throughout the operation.",
+      "Specialist John Smith maintained the position throughout the operation.",
       {
         omit: "location",
       },
@@ -1490,19 +1562,22 @@ describe("Medal Recommendation Aid", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("normalizes an explicit full-rank full-roster-name first mention and later references", async () => {
+  test("prevents generation when Operation Date is in the future", async () => {
     const user = userEvent.setup();
 
     await renderMedalRecommendationAid();
 
-    const narrative =
-      "Specialist Taylor Morgan Smith established the defensive position. " +
-      "Taylor Smith maintained control through the final engagement.";
+    await completeRecommendation(
+      user,
+      "Specialist John Smith maintained the defensive position throughout the operation. " +
+        "He repeatedly engaged enemy forces during each major contact. " +
+        "His actions contributed directly to the successful completion of the operation.",
+      {
+        omit: "operationDate",
+      },
+    );
 
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Smi",
-      recipientUsername: "Smith.TM",
-    });
+    await user.type(screen.getByLabelText("Operation Date"), "2099-01-01");
 
     await user.click(
       screen.getByRole("button", {
@@ -1510,110 +1585,131 @@ describe("Medal Recommendation Aid", () => {
       }),
     );
 
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    const expectedCitation =
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-      "Specialist Taylor Smith established the defensive position. " +
-      "Specialist Smith maintained control through the final engagement. " +
-      "Specialist Taylor Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
-
-    expect(citation.textContent).toBe(expectedCitation);
-  });
-
-  test("normalizes the first recipient mention without requiring matching capitalization", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "spc smith maintained the defensive position. " +
-      "Smith continued to support the squad.";
-
-    await completeRecommendation(user, narrative);
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
+    expect(screen.getByLabelText("Operation Date")).toHaveAttribute(
+      "aria-invalid",
+      "true",
     );
 
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    const expectedCitation =
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-      "Specialist John Smith maintained the defensive position. " +
-      "Specialist Smith continued to support the squad. " +
-      "Specialist John Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
-
-    expect(citation.textContent).toBe(expectedCitation);
-  });
-
-  test("does not treat regex characters in a roster name as wildcard matches", async () => {
-    const user = userEvent.setup();
-
-    await renderMedalRecommendationAid();
-
-    const narrative =
-      "Specialist Taylor JX Smith maintained the defensive position throughout the operation.";
-
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Smi",
-      recipientUsername: "Smith.TJ",
-    });
-
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /complete all required fields before generating a recommendation/i,
     );
-
-    const citation = screen.getByLabelText("Citation Narrative");
-
-    const expectedCitation =
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-      "Specialist Taylor JX Smith maintained the defensive position throughout the operation. " +
-      "Specialist Taylor Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
-
-    expect(citation.textContent).toBe(expectedCitation);
-    expect(citation.querySelector("mark")).not.toBeInTheDocument();
 
     expect(
-      screen.queryByRole("status", {
-        name: "Formatting Adjustments",
+      screen.queryByRole("region", {
+        name: "Recommendation Preview",
       }),
     ).not.toBeInTheDocument();
   });
 
-  test("normalizes a first mention containing regex characters in the roster name", async () => {
+  test("treats tomorrow in the user's local timezone as a future Operation Date", async () => {
+    const originalTimezone = process.env.TZ;
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    process.env.TZ = "America/Los_Angeles";
 
-    const narrative =
-      "Specialist Taylor J. Smith maintained the defensive position throughout the operation. " +
-      "Taylor Smith continued to support the squad.";
+    try {
+      await renderMedalRecommendationAid();
 
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Smi",
-      recipientUsername: "Smith.TJ",
-    });
+      await completeRecommendation(
+        user,
+        "Specialist John Smith maintained the defensive position throughout the operation. " +
+          "He repeatedly engaged enemy forces during each major contact. " +
+          "His actions contributed directly to the successful completion of the operation.",
+        {
+          omit: "operationDate",
+        },
+      );
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-15T03:30:00.000Z"));
 
-    const citation = screen.getByLabelText("Citation Narrative");
+      fireEvent.change(screen.getByLabelText("Operation Date"), {
+        target: { value: "2026-08-15" },
+      });
 
-    const expectedCitation =
-      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
-      "Specialist Taylor Smith maintained the defensive position throughout the operation. " +
-      "Specialist Smith continued to support the squad. " +
-      "Specialist Taylor Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Generate Recommendation",
+        }),
+      );
 
-    expect(citation.textContent).toBe(expectedCitation);
+      expect(screen.getByLabelText("Operation Date")).toHaveAttribute(
+        "aria-invalid",
+        "true",
+      );
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /complete all required fields before generating a recommendation/i,
+      );
+
+      expect(
+        screen.queryByRole("region", {
+          name: "Recommendation Preview",
+        }),
+      ).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimezone;
+      }
+    }
+  });
+
+  test("allows generation when Operation Date is today in the user's local timezone", async () => {
+    const originalTimezone = process.env.TZ;
+    const user = userEvent.setup();
+
+    process.env.TZ = "America/Los_Angeles";
+
+    try {
+      await renderMedalRecommendationAid();
+
+      await completeRecommendation(
+        user,
+        "Specialist John Smith maintained the defensive position throughout the operation. " +
+          "He repeatedly engaged enemy forces during each major contact. " +
+          "His actions contributed directly to the successful completion of the operation.",
+        {
+          omit: "operationDate",
+        },
+      );
+
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date("2026-08-15T03:30:00.000Z"));
+
+      fireEvent.change(screen.getByLabelText("Operation Date"), {
+        target: { value: "2026-08-14" },
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Generate Recommendation",
+        }),
+      );
+
+      expect(screen.getByLabelText("Operation Date")).not.toHaveAttribute(
+        "aria-invalid",
+      );
+
+      expect(
+        screen.getByRole("region", {
+          name: "Recommendation Preview",
+        }),
+      ).toBeVisible();
+
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+
+      if (originalTimezone === undefined) {
+        delete process.env.TZ;
+      } else {
+        process.env.TZ = originalTimezone;
+      }
+    }
   });
 
   test("trims valid text fields before generating the citation", async () => {
@@ -1662,7 +1758,7 @@ describe("Medal Recommendation Aid", () => {
       screen.getByRole("textbox", {
         name: "Narrative",
       }),
-      "  SPC Smith maintained the position throughout the operation.  ",
+      "  Specialist John Smith maintained the position throughout the operation.  ",
     );
 
     await user.click(
@@ -1688,7 +1784,7 @@ describe("Medal Recommendation Aid", () => {
 
     await completeRecommendation(
       user,
-      "SPC Smith maintained the position throughout the operation.",
+      "Specialist John Smith maintained the position throughout the operation.",
     );
 
     await user.click(
@@ -1712,7 +1808,7 @@ describe("Medal Recommendation Aid", () => {
     await renderMedalRecommendationAid();
 
     const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
@@ -1741,7 +1837,7 @@ describe("Medal Recommendation Aid", () => {
     await renderMedalRecommendationAid();
 
     const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 

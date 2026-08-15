@@ -11,6 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  analyzeNarrative,
+  getRankEntries,
+  mergeHighlightRanges,
+} from "./lib/narrative-validation";
 
 const ARCOM_RIBBON_URL = "https://wiki.7cav.us/images/d/dc/ARCOM.jpg";
 
@@ -27,10 +32,6 @@ function formatOperationDate(value) {
   }).format(date);
 }
 
-function escapeRegExp(value) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 function getCitationName(fullName) {
   const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
 
@@ -41,210 +42,64 @@ function getCitationName(fullName) {
   return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
 }
 
-function getRankEntries(rosterMembers) {
-  const rankEntriesByShortName = new Map();
-
-  for (const member of rosterMembers) {
-    const rankShort = member?.rank?.rankShort?.trim() ?? "";
-    const rankFull = member?.rank?.rankFull?.trim() ?? "";
-
-    if (
-      !rankShort ||
-      !rankFull ||
-      rankShort.toLowerCase() === rankFull.toLowerCase()
-    ) {
-      continue;
-    }
-
-    const key = rankShort.toLowerCase();
-
-    if (!rankEntriesByShortName.has(key)) {
-      rankEntriesByShortName.set(key, {
-        short: rankShort,
-        full: rankFull,
-      });
-    }
-  }
-
-  return Array.from(rankEntriesByShortName.values()).sort(
-    (a, b) => b.short.length - a.short.length,
-  );
-}
-
-function isBareLastNameInsideAnotherName(text, matchIndex) {
-  const precedingText = text.slice(0, matchIndex);
-  const precedingTokenMatch = precedingText.match(
-    /([A-Za-z][A-Za-z.'’\-]*)\s+$/,
-  );
-
-  if (!precedingTokenMatch) {
+function isOperationDateValid(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
   }
 
-  const precedingToken = precedingTokenMatch[1];
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
 
-  return /[A-Z]/.test(precedingToken);
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  ) {
+    return false;
+  }
+
+  const now = new Date();
+  const localToday = [
+    String(now.getFullYear()).padStart(4, "0"),
+    String(now.getMonth() + 1).padStart(2, "0"),
+    String(now.getDate()).padStart(2, "0"),
+  ].join("-");
+
+  return value <= localToday;
 }
 
-function normalizeNarrativeFormatting(narrative, recipient, rankEntries) {
-  const text = narrative.trim();
+function renderNarrativeWithHighlights(text, highlightRanges) {
+  const ranges = mergeHighlightRanges(highlightRanges);
 
-  const recipientRankFull = recipient?.rank?.rankFull?.trim() ?? "";
-  const recipientRankShort = recipient?.rank?.rankShort?.trim() ?? "";
-  const rosterFullName = recipient?.realName?.trim() ?? "";
-
-  if (!recipientRankFull || !rosterFullName) {
-    return {
-      segments: [{ text, adjusted: false }],
-      hasAdjustments: false,
-    };
+  if (ranges.length === 0) {
+    return text;
   }
 
-  const citationName = getCitationName(rosterFullName);
-  const nameParts = citationName.split(/\s+/);
-  const lastName = nameParts[nameParts.length - 1];
-
-  if (!citationName || !lastName) {
-    return {
-      segments: [{ text, adjusted: false }],
-      hasAdjustments: false,
-    };
-  }
-
-  const possibleRecipientMentions = [
-    `${escapeRegExp(recipientRankFull)}\\s+${escapeRegExp(rosterFullName)}`,
-    `${escapeRegExp(recipientRankFull)}\\s+${escapeRegExp(citationName)}`,
-    `${escapeRegExp(recipientRankFull)}\\s+${escapeRegExp(lastName)}`,
-    recipientRankShort
-      ? `${escapeRegExp(recipientRankShort)}\\.?\\s+${escapeRegExp(rosterFullName)}`
-      : "",
-    recipientRankShort
-      ? `${escapeRegExp(recipientRankShort)}\\.?\\s+${escapeRegExp(citationName)}`
-      : "",
-    recipientRankShort
-      ? `${escapeRegExp(recipientRankShort)}\\.?\\s+${escapeRegExp(lastName)}`
-      : "",
-    escapeRegExp(rosterFullName),
-    escapeRegExp(citationName),
-    escapeRegExp(lastName),
-  ]
-    .filter(Boolean)
-    .filter((value, index, values) => values.indexOf(value) === index)
-    .sort((a, b) => b.length - a.length);
-
-  const rankShortPattern = rankEntries
-    .map((rankEntry) => escapeRegExp(rankEntry.short))
-    .join("|");
-
-  const otherTrooperRankPattern = rankShortPattern
-    ? `(?:${rankShortPattern})\\.?\\s+(?:[A-Za-z]\\.|[A-Za-z][A-Za-z'’\\-]*)`
-    : "(?!)";
-
-  const combinedPattern = new RegExp(
-    `(^|[^A-Za-z0-9])(?:(${possibleRecipientMentions.join("|")})|(${otherTrooperRankPattern}))(?=$|[^A-Za-z0-9])`,
-    "gi",
-  );
-
-  const segments = [];
+  const parts = [];
   let cursor = 0;
-  let recipientMentionCount = 0;
 
-  for (const match of text.matchAll(combinedPattern)) {
-    const prefix = match[1] ?? "";
-    const originalText = match[2] ?? match[3] ?? "";
-    const matchIndex = (match.index ?? 0) + prefix.length;
-
-    if (matchIndex > cursor) {
-      segments.push({
-        text: text.slice(cursor, matchIndex),
-        adjusted: false,
-      });
+  for (const [index, range] of ranges.entries()) {
+    if (range.start > cursor) {
+      parts.push(text.slice(cursor, range.start));
     }
 
-    if (match[2] !== undefined) {
-      const isBareLastName =
-        originalText.toLowerCase() === lastName.toLowerCase();
+    parts.push(
+      <mark
+        key={`warning-${index}`}
+        className="rounded-sm border-b border-amber-400/50 bg-amber-400/10 px-0.5 text-inherit"
+      >
+        {text.slice(range.start, range.end)}
+      </mark>,
+    );
 
-      const shouldPreserveBareLastName =
-        isBareLastName &&
-        (originalText !== lastName ||
-          isBareLastNameInsideAnotherName(text, matchIndex));
-
-      if (shouldPreserveBareLastName) {
-        segments.push({
-          text: originalText,
-          adjusted: false,
-        });
-
-        cursor = matchIndex + originalText.length;
-        continue;
-      }
-
-      const replacement =
-        recipientMentionCount === 0
-          ? `${recipientRankFull} ${citationName}`
-          : `${recipientRankFull} ${lastName}`;
-
-      recipientMentionCount += 1;
-
-      segments.push({
-        text: replacement,
-        adjusted: originalText !== replacement,
-      });
-    } else {
-      const rankEntry = rankEntries.find((entry) => {
-        const rankPrefixPattern = new RegExp(
-          `^${escapeRegExp(entry.short)}\\.?\\s`,
-          "i",
-        );
-
-        return rankPrefixPattern.test(originalText);
-      });
-
-      if (!rankEntry) {
-        segments.push({
-          text: originalText,
-          adjusted: false,
-        });
-      } else {
-        const rankPrefixPattern = new RegExp(
-          `^${escapeRegExp(rankEntry.short)}\\.?`,
-          "i",
-        );
-
-        const replacement = originalText.replace(
-          rankPrefixPattern,
-          rankEntry.full,
-        );
-
-        segments.push({
-          text: replacement,
-          adjusted: replacement !== originalText,
-        });
-      }
-    }
-
-    cursor = matchIndex + originalText.length;
+    cursor = range.end;
   }
 
   if (cursor < text.length) {
-    segments.push({
-      text: text.slice(cursor),
-      adjusted: false,
-    });
+    parts.push(text.slice(cursor));
   }
 
-  if (segments.length === 0) {
-    segments.push({
-      text,
-      adjusted: false,
-    });
-  }
-
-  return {
-    segments,
-    hasAdjustments: segments.some((segment) => segment.adjusted),
-  };
+  return parts;
 }
 
 function requiresEligibilityWarning(recipient) {
@@ -255,17 +110,9 @@ function renderCitationNarrative(recommendation) {
   return (
     <>
       {recommendation.openingSentence}{" "}
-      {recommendation.narrativeSegments.map((segment, index) =>
-        segment.adjusted ? (
-          <mark
-            key={`adjustment-${index}`}
-            className="rounded-sm border-b border-amber-400/50 bg-amber-400/10 px-0.5 text-inherit"
-          >
-            {segment.text}
-          </mark>
-        ) : (
-          segment.text
-        ),
+      {renderNarrativeWithHighlights(
+        recommendation.narrative,
+        recommendation.highlightRanges,
       )}{" "}
       {recommendation.closingSentence}
     </>
@@ -331,7 +178,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
   const locationIsValid = Boolean(location.trim());
 
-  const operationDateIsValid = Boolean(operationDate);
+  const operationDateIsValid = isOperationDateValid(operationDate);
 
   const narrativeIsValid = Boolean(narrative.trim());
 
@@ -360,6 +207,14 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
   const narrativeIsInvalid = hasAttemptedGenerate && !narrativeIsValid;
 
+  const hasNarrativeWarnings = Boolean(
+    recommendation?.narrativeWarnings?.length,
+  );
+
+  const operationDateErrorMessage = operationDate
+    ? "Date must be today or earlier"
+    : "Required";
+
   function selectRecipient(member) {
     setSelectedRecipient(member);
     setRecipientQuery(member.user.username);
@@ -386,16 +241,20 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
     const formattedDate = formatOperationDate(operationDate);
 
-    const normalizedNarrative = normalizeNarrativeFormatting(
-      narrative,
-      selectedRecipient,
+    const normalizedOperationTitle = operationTitle
+      .trim()
+      .replace(/^operation\s+/i, "");
+
+    const narrativeAnalysis = analyzeNarrative(narrative, {
+      recipientRank,
+      recipientCitationName,
       rankEntries,
-    );
+    });
 
     const openingSentence =
       `For ${actionCharacter} actions over an entire operation while serving as ` +
       `${combatElement.trim()} in the 7th Cavalry Regiment during combat in ` +
-      `Operation ${operationTitle.trim()} near ${location.trim()} on ${formattedDate}.`;
+      `Operation ${normalizedOperationTitle} near ${location.trim()} on ${formattedDate}.`;
 
     const closingSentence =
       `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
@@ -404,9 +263,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
     setRecommendation({
       recipient: `${recipientRank} ${recipientCitationName}`,
       openingSentence,
-      narrativeSegments: normalizedNarrative.segments,
+      narrative: narrativeAnalysis.text,
+      highlightRanges: narrativeAnalysis.highlightRanges,
+      narrativeWarnings: narrativeAnalysis.warnings,
       closingSentence,
-      hasFormattingAdjustments: normalizedNarrative.hasAdjustments,
     });
   }
 
@@ -652,7 +512,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                 id="operation-date-required"
                 className="text-sm font-medium text-destructive"
               >
-                Required
+                {operationDateErrorMessage}
               </p>
             )}
           </div>
@@ -667,14 +527,20 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
               value={narrative}
               aria-invalid={narrativeIsInvalid ? "true" : undefined}
               aria-describedby={
-                narrativeIsInvalid ? "narrative-required" : undefined
+                narrativeIsInvalid
+                  ? "narrative-required"
+                  : hasNarrativeWarnings
+                    ? "narrative-warnings"
+                    : undefined
               }
               onChange={(event) => setNarrative(event.target.value)}
               rows={8}
               className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 narrativeIsInvalid
                   ? "border-destructive focus-visible:ring-destructive"
-                  : "border-input"
+                  : hasNarrativeWarnings
+                    ? "border-amber-500/50 focus-visible:ring-amber-500/30"
+                    : "border-input"
               }`}
             />
 
@@ -685,6 +551,19 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
               >
                 Required
               </p>
+            )}
+
+            {hasNarrativeWarnings && (
+              <div
+                id="narrative-warnings"
+                role="status"
+                aria-label="Narrative Warnings"
+                className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+              >
+                {recommendation.narrativeWarnings.map((warning) => (
+                  <p key={warning.key}>{warning.message}</p>
+                ))}
+              </div>
             )}
           </div>
 
@@ -717,17 +596,6 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
               <p aria-label="Citation Narrative">
                 {renderCitationNarrative(recommendation)}
               </p>
-
-              {recommendation.hasFormattingAdjustments && (
-                <div
-                  role="status"
-                  aria-label="Formatting Adjustments"
-                  className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-                >
-                  Formatting adjustments were applied automatically. Review the
-                  highlighted changes before submitting.
-                </div>
-              )}
             </section>
           )}
         </CardContent>
