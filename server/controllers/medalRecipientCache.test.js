@@ -1,6 +1,7 @@
 "use strict";
 
 const assert = require("assert");
+const axios = require("axios");
 const dns = require("dns");
 const http = require("http");
 const net = require("net");
@@ -244,6 +245,22 @@ const main = async () => {
 
   const restoreNetwork = redirectUpstreamTo(port);
 
+  const medalRequestConfigs = [];
+
+  const interceptorId = axios.interceptors.request.use((config) => {
+    if (
+      config.url?.includes("/api/v1/roster/") &&
+      config.url.endsWith("/lite")
+    ) {
+      medalRequestConfigs.push({
+        url: config.url,
+        timeout: config.timeout,
+      });
+    }
+
+    return config;
+  });
+
   try {
     await cacheManager.updateMedalRecipientRosterCache();
 
@@ -264,6 +281,19 @@ const main = async () => {
         "/api/v1/roster/6/lite",
       ],
       "expected all five required lite rosters to be fetched",
+    );
+
+    assert.strictEqual(
+      medalRequestConfigs.length,
+      5,
+      "expected to inspect all five Medal recipient roster requests",
+    );
+
+    assert.ok(
+      medalRequestConfigs.every(
+        ({ timeout }) => Number.isFinite(timeout) && timeout > 0,
+      ),
+      "expected every Medal recipient roster request to have a finite timeout",
     );
 
     assert.ok(
@@ -327,6 +357,7 @@ const main = async () => {
       "cacheManager: Medal recipient roster includes supported recipient pools only — OK",
     );
   } finally {
+    axios.interceptors.request.eject(interceptorId);
     restoreNetwork();
 
     await new Promise((resolve) => {

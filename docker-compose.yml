@@ -1,4 +1,4 @@
-# CavApps stack â€” builds the server and client from source so your local changes
+# CavApps stack - builds the server and client from source so your local changes
 # are what runs. The client is bind-mounted and hot-reloads; the server is baked
 # into its image at build time, so server changes need a rebuild (--build), not
 # just a restart. For local development always layer the dev override on top:
@@ -13,7 +13,7 @@
 services:
   # Postgres backs the roster-history diff store and the user-search cache.
   # The server runs its migrations on startup and will not boot until this is
-  # reachable, so it comes up first as part of the stack â€” no setup required.
+  # reachable, so it comes up first as part of the stack - no setup required.
   postgres:
     image: postgres:16-alpine
     container_name: cavapps-postgres

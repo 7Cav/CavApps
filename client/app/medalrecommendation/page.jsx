@@ -1,3 +1,5 @@
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import GetMedalRecipientRoster from "../reusableModules/getMedalRecipientRoster";
 import MedalRecommendationClient from "./MedalRecommendationClient";
 
@@ -8,7 +10,38 @@ export const metadata = {
 };
 
 export default async function MedalRecommendationPage() {
-  const rosterResponse = await GetMedalRecipientRoster();
+  let rosterResponse;
+
+  try {
+    rosterResponse = await GetMedalRecipientRoster();
+  } catch {
+    return (
+      <main className="mx-auto max-w-4xl px-4 py-6">
+        <Card>
+          <CardHeader>
+            <h2 className="text-2xl font-semibold">
+              Unable to load Medal Recommendation Aid
+            </h2>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <p>
+              The medal recipient roster could not be loaded. Please try again.
+            </p>
+
+            <Button asChild>
+              <a
+                href="/medalrecommendation"
+                className="!text-primary-foreground hover:!text-primary-foreground"
+              >
+                Try Again
+              </a>
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
 
   const profiles = Object.values(rosterResponse?.profiles ?? {});
 

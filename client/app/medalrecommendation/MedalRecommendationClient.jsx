@@ -358,7 +358,13 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
               Action Character
             </label>
 
-            <Select value={actionCharacter} onValueChange={setActionCharacter}>
+            <Select
+              value={actionCharacter}
+              onValueChange={(value) => {
+                setActionCharacter(value);
+                setRecommendation(null);
+              }}
+            >
               <SelectTrigger
                 id="action-character"
                 aria-invalid={actionCharacterIsInvalid ? "true" : undefined}
@@ -411,7 +417,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                   ? "border-destructive focus-visible:ring-destructive"
                   : undefined
               }
-              onChange={(event) => setCombatElement(event.target.value)}
+              onChange={(event) => {
+                setCombatElement(event.target.value);
+                setRecommendation(null);
+              }}
             />
 
             {combatElementIsInvalid && (
@@ -442,7 +451,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                   ? "border-destructive focus-visible:ring-destructive"
                   : undefined
               }
-              onChange={(event) => setOperationTitle(event.target.value)}
+              onChange={(event) => {
+                setOperationTitle(event.target.value);
+                setRecommendation(null);
+              }}
             />
 
             {operationTitleIsInvalid && (
@@ -473,7 +485,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                   ? "border-destructive focus-visible:ring-destructive"
                   : undefined
               }
-              onChange={(event) => setLocation(event.target.value)}
+              onChange={(event) => {
+                setLocation(event.target.value);
+                setRecommendation(null);
+              }}
             />
 
             {locationIsInvalid && (
@@ -504,7 +519,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                   ? "border-destructive focus-visible:ring-destructive"
                   : undefined
               }
-              onChange={(event) => setOperationDate(event.target.value)}
+              onChange={(event) => {
+                setOperationDate(event.target.value);
+                setRecommendation(null);
+              }}
             />
 
             {operationDateIsInvalid && (
@@ -533,7 +551,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
                     ? "narrative-warnings"
                     : undefined
               }
-              onChange={(event) => setNarrative(event.target.value)}
+              onChange={(event) => {
+                setNarrative(event.target.value);
+                setRecommendation(null);
+              }}
               rows={8}
               className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
                 narrativeIsInvalid

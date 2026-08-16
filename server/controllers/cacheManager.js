@@ -68,6 +68,7 @@ const updateReserveRosterCache = async () => {
 const updateMedalRecipientRosterCache = async () => {
   try {
     const requestOptions = {
+      timeout: 5000,
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
@@ -176,10 +177,6 @@ const initializeCache = async () => {
     await updateReserveRosterCache();
     await updateCachedGroups();
 
-    // Medal Recommendation recipient data is useful to the Medal Aid,
-    // but it is not a startup-critical dependency for the rest of CavApps.
-    await updateMedalRecipientRosterCache();
-
     // Check only the existing startup-critical caches.
     if (
       !cacheStatus["combat"] ||
@@ -189,6 +186,11 @@ const initializeCache = async () => {
       console.error("Failed to initialize cache. Exiting...");
       process.exit(1); // Exit to trigger Docker restart
     }
+
+    // Medal Recommendation recipient data is useful to the Medal Aid,
+    // but it is not a startup-critical dependency for the rest of CavApps.
+    // Start the initial refresh without delaying server startup.
+    void updateMedalRecipientRosterCache();
 
     // Schedule the updates
     scheduleCacheUpdate(updateCombatRosterCache);

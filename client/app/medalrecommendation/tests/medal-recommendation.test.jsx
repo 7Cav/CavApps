@@ -290,6 +290,30 @@ describe("Medal Recommendation Aid", () => {
     expect(screen.getByText("Army Commendation Medal")).toBeVisible();
   });
 
+  test("shows a graceful unavailable state when the medal recipient roster cannot be loaded", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new TypeError("fetch failed"),
+    );
+
+    render(await MedalRecommendationPage());
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Unable to load Medal Recommendation Aid",
+      }),
+    ).toBeVisible();
+
+    expect(
+      screen.getByText(/the medal recipient roster could not be loaded/i),
+    ).toBeVisible();
+
+    const retryLink = screen.getByRole("link", {
+      name: "Try Again",
+    });
+
+    expect(retryLink).toHaveAttribute("href", "/medalrecommendation");
+  });
+
   test("does not show required-field errors before generation is attempted", async () => {
     await renderMedalRecommendationAid();
 
@@ -746,6 +770,138 @@ describe("Medal Recommendation Aid", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("clears the generated preview when the narrative changes", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "SPC Smith maintained an effective fighting position throughout the operation. " +
+      "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
+      "His performance contributed directly to the successful completion of the operation.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    expect(
+      screen.getByRole("region", {
+        name: "Recommendation Preview",
+      }),
+    ).toBeVisible();
+
+    const narrativeField = screen.getByRole("textbox", {
+      name: "Narrative",
+    });
+
+    await user.type(narrativeField, " Additional text.");
+
+    expect(
+      screen.queryByRole("region", {
+        name: "Recommendation Preview",
+      }),
+    ).not.toBeInTheDocument();
+  });
+
+  test.each([
+    [
+      "Action Character",
+      async (user) => {
+        await user.click(
+          screen.getByRole("combobox", {
+            name: "Action Character",
+          }),
+        );
+
+        await user.click(
+          screen.getByRole("option", {
+            name: "Heroic",
+          }),
+        );
+      },
+    ],
+    [
+      "Combat Element",
+      async (user) => {
+        const field = screen.getByRole("textbox", {
+          name: "Combat Element",
+        });
+
+        await user.clear(field);
+        await user.type(field, "squad leader");
+      },
+    ],
+    [
+      "Operation Title",
+      async (user) => {
+        const field = screen.getByRole("textbox", {
+          name: "Operation Title",
+        });
+
+        await user.clear(field);
+        await user.type(field, "Operation Market Garden");
+      },
+    ],
+    [
+      "Location",
+      async (user) => {
+        const field = screen.getByRole("textbox", {
+          name: "Location",
+        });
+
+        await user.clear(field);
+        await user.type(field, "Arnhem");
+      },
+    ],
+    [
+      "Operation Date",
+      async (user) => {
+        const field = screen.getByLabelText("Operation Date");
+
+        await user.clear(field);
+        await user.type(field, "2026-08-10");
+      },
+    ],
+  ])(
+    "clears the generated preview when %s changes",
+    async (_field, changeField) => {
+      const user = userEvent.setup();
+
+      await renderMedalRecommendationAid();
+
+      const narrative =
+        "SPC Smith maintained an effective fighting position throughout the operation. " +
+        "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
+        "His performance contributed directly to the successful completion of the operation.";
+
+      await completeRecommendation(user, narrative);
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Generate Recommendation",
+        }),
+      );
+
+      expect(
+        screen.getByRole("region", {
+          name: "Recommendation Preview",
+        }),
+      ).toBeVisible();
+
+      await changeField(user);
+
+      expect(
+        screen.queryByRole("region", {
+          name: "Recommendation Preview",
+        }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   test("generates a complete Army Commendation Medal recommendation", async () => {
     const user = userEvent.setup();
 
@@ -836,6 +992,101 @@ describe("Medal Recommendation Aid", () => {
         name: "Recipient Full Name",
       }),
     ).not.toBeInTheDocument();
+  });
+
+  test.each(["SPC.", "CPL.", "MG."])(
+    "highlights the full abbreviated rank including the period for %s",
+    async (rankToken) => {
+      const user = userEvent.setup();
+
+      await renderMedalRecommendationAid();
+
+      const narrative =
+        "Specialist John Smith maintained the defensive position during the opening engagement. " +
+        `The ${rankToken} Kenton moved forward to reinforce the squad. ` +
+        "The unit maintained control of the objective through the final contact.";
+
+      await completeRecommendation(user, narrative);
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Generate Recommendation",
+        }),
+      );
+
+      const citation = screen.getByLabelText("Citation Narrative");
+
+      const highlights = Array.from(citation.querySelectorAll("mark")).map(
+        (highlight) => highlight.textContent,
+      );
+
+      expect(highlights).toContain(rankToken);
+    },
+  );
+
+  test("preserves citation text exactly when highlight ranges overlap", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "The MG jammed. " +
+      "The MG jammed. " +
+      "Specialist John Smith cleared it.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    const expectedCitation =
+      "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
+      narrative +
+      " Specialist John Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
+
+    expect(citation.textContent).toBe(expectedCitation);
+  });
+
+  test("shows one rank warning when the same abbreviation appears with and without a period", async () => {
+    const user = userEvent.setup();
+
+    await renderMedalRecommendationAid();
+
+    const narrative =
+      "Specialist John Smith maintained the defensive position during the opening engagement. " +
+      "MG Kenton coordinated the supporting element during the assault. " +
+      "MG. Kenton continued directing the element through the final contact.";
+
+    await completeRecommendation(user, narrative);
+
+    await user.click(
+      screen.getByRole("button", {
+        name: "Generate Recommendation",
+      }),
+    );
+
+    const warnings = screen.getByRole("status", {
+      name: "Narrative Warnings",
+    });
+
+    const rankWarnings = Array.from(warnings.querySelectorAll("p")).filter(
+      (warning) => warning.textContent.startsWith("Possible rank usage:"),
+    );
+
+    expect(rankWarnings).toHaveLength(1);
+
+    const citation = screen.getByLabelText("Citation Narrative");
+
+    const rankHighlights = Array.from(citation.querySelectorAll("mark"))
+      .map((highlight) => highlight.textContent)
+      .filter((text) => text === "MG" || text === "MG.");
+
+    expect(rankHighlights).toEqual(["MG", "MG."]);
   });
 
   test("warns about a possible rank abbreviation without rewriting the narrative", async () => {

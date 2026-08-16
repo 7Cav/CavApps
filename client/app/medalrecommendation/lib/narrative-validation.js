@@ -86,9 +86,7 @@ export function getRankEntries(rosterMembers) {
     }
   }
 
-  return Array.from(rankEntriesByShortName.values()).sort(
-    (a, b) => b.short.length - a.short.length,
-  );
+  return Array.from(rankEntriesByShortName.values());
 }
 
 export function analyzeNarrative(
@@ -132,17 +130,16 @@ export function analyzeNarrative(
       .join("|");
 
     const possibleRankPattern = new RegExp(
-      `(^|[^A-Za-z0-9])(${rankPattern}\\.?)` + `(?=$|[^A-Za-z0-9])`,
+      `(^|[^A-Za-z0-9])((?:${rankPattern})\\.?)` + `(?=$|[^A-Za-z0-9])`,
       "gi",
     );
-
     const warnedRankTokens = new Set();
 
     for (const match of text.matchAll(possibleRankPattern)) {
       const prefix = match[1] ?? "";
       const token = match[2] ?? "";
       const start = (match.index ?? 0) + prefix.length;
-      const warningKey = token.toLowerCase();
+      const warningKey = token.replace(/\.$/, "").toLowerCase();
 
       addHighlightRange(highlightRanges, start, start + token.length);
 
