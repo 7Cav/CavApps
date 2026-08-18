@@ -16,8 +16,7 @@ import {
   getRankEntries,
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
-
-const ARCOM_RIBBON_URL = "https://wiki.7cav.us/images/d/dc/ARCOM.jpg";
+import { OPERATION_MEDALS } from "./lib/medal-definitions";
 
 function formatOperationDate(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -120,11 +119,15 @@ function renderCitationNarrative(recommendation) {
 }
 
 export default function MedalRecommendationClient({ recipientRoster = [] }) {
+  const [selectedMedalId, setSelectedMedalId] = useState("");
+
   const [recipientQuery, setRecipientQuery] = useState("");
 
   const [selectedRecipient, setSelectedRecipient] = useState(null);
 
   const [actionCharacter, setActionCharacter] = useState("");
+
+  const [scope, setScope] = useState("");
 
   const [combatElement, setCombatElement] = useState("");
 
@@ -141,6 +144,9 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
   const [recommendation, setRecommendation] = useState(null);
 
   const rosterMembers = useMemo(() => recipientRoster ?? [], [recipientRoster]);
+
+  const selectedMedal =
+    OPERATION_MEDALS.find((medal) => medal.id === selectedMedalId) ?? null;
 
   const rankEntries = useMemo(
     () => getRankEntries(rosterMembers),
@@ -170,7 +176,10 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
     selectedRecipient && recipientRank && recipientRosterName,
   );
 
-  const actionCharacterIsValid = Boolean(actionCharacter);
+  const actionCharacterIsValid =
+    !selectedMedal?.fields.actionCharacter || Boolean(actionCharacter);
+
+  const scopeIsValid = !selectedMedal?.fields.scope || Boolean(scope);
 
   const combatElementIsValid = Boolean(combatElement.trim());
 
@@ -185,6 +194,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
   const isComplete =
     recipientIsValid &&
     actionCharacterIsValid &&
+    scopeIsValid &&
     combatElementIsValid &&
     operationTitleIsValid &&
     locationIsValid &&
@@ -194,7 +204,14 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
   const recipientIsInvalid = hasAttemptedGenerate && !recipientIsValid;
 
   const actionCharacterIsInvalid =
-    hasAttemptedGenerate && !actionCharacterIsValid;
+    hasAttemptedGenerate &&
+    Boolean(selectedMedal?.fields.actionCharacter) &&
+    !actionCharacterIsValid;
+
+  const scopeIsInvalid =
+    hasAttemptedGenerate &&
+    Boolean(selectedMedal?.fields.scope) &&
+    !scopeIsValid;
 
   const combatElementIsInvalid = hasAttemptedGenerate && !combatElementIsValid;
 
@@ -249,17 +266,28 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
       recipientRank,
       recipientCitationName,
       rankEntries,
+      minimumNarrativeSentences: selectedMedal.minimumNarrativeSentences,
     });
 
-    const openingSentence =
-      `For ${actionCharacter} actions over an entire operation while serving as ` +
-      `${combatElement.trim()} in the 7th Cavalry Regiment during combat in ` +
-      `Operation ${normalizedOperationTitle} near ${location.trim()} on ${formattedDate}.`;
+    if (!selectedMedal?.buildOpening || !selectedMedal?.buildClosing) {
+      setRecommendation(null);
+      return;
+    }
 
-    const closingSentence =
-      `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
-      "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
+    const citationContext = {
+      actionCharacter,
+      scope,
+      combatElement: combatElement.trim(),
+      operationTitle: normalizedOperationTitle,
+      location: location.trim(),
+      date: formattedDate,
+      recipientRank,
+      recipientCitationName,
+    };
 
+    const openingSentence = selectedMedal.buildOpening(citationContext);
+
+    const closingSentence = selectedMedal.buildClosing(citationContext);
     setRecommendation({
       recipient: `${recipientRank} ${recipientCitationName}`,
       openingSentence,
@@ -272,355 +300,504 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-6">
-      <h1 className="mb-6 text-3xl font-bold">Medal Recommendation Aid</h1>
+      <h1 className="mb-6 text-3xl font-bold text-primary">
+        Medal Recommendation Aid
+      </h1>
 
-      <Card>
-        <CardHeader>
-          <h2 className="text-2xl font-semibold">Army Commendation Medal</h2>
-        </CardHeader>
+      <div className="mb-6 flex flex-col gap-2">
+        <label
+          htmlFor="award"
+          className="pb-1 text-sm font-medium text-foreground"
+        >
+          Award
+        </label>
 
-        <CardContent className="space-y-6">
-          <p>Create an Army Commendation Medal recommendation.</p>
+        <Select
+          value={selectedMedalId}
+          onValueChange={(value) => {
+            const nextMedal =
+              OPERATION_MEDALS.find((medal) => medal.id === value) ?? null;
 
-          <div className="space-y-2">
-            <label htmlFor="recipient" className="text-sm font-medium">
-              Recipient
-            </label>
+            if (
+              selectedMedal?.fields.combatElementLabel !==
+              nextMedal?.fields.combatElementLabel
+            ) {
+              setCombatElement("");
+            }
 
-            <Input
-              id="recipient"
-              type="text"
-              value={recipientQuery}
-              autoComplete="off"
-              placeholder="Enter a 7Cav username"
-              aria-invalid={recipientIsInvalid ? "true" : undefined}
-              aria-describedby={
-                recipientIsInvalid ? "recipient-required" : undefined
-              }
-              className={
-                recipientIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : undefined
-              }
-              onChange={handleRecipientQueryChange}
-            />
+            setSelectedMedalId(value);
+            setActionCharacter("");
+            setScope("");
+            setHasAttemptedGenerate(false);
+            setRecommendation(null);
+          }}
+        >
+          <SelectTrigger id="award">
+            <SelectValue placeholder="Select an Operation Medal" />
+          </SelectTrigger>
 
-            {recipientIsInvalid && (
-              <p
-                id="recipient-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
+          <SelectContent>
+            {OPERATION_MEDALS.map((medal) => (
+              <SelectItem key={medal.id} value={medal.id}>
+                {medal.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-            {suggestions.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {suggestions.map((member) => (
-                  <Button
-                    key={member.user.userId}
-                    type="button"
-                    variant="outline"
-                    onClick={() => selectRecipient(member)}
-                  >
-                    {member.user.username}
-                  </Button>
-                ))}
+      {selectedMedal && (
+        <Card className="mb-6">
+          <CardHeader>
+            <h2 className="text-2xl font-semibold text-primary">
+              {selectedMedal.name}
+            </h2>
+          </CardHeader>
+
+          <CardContent className="space-y-4">
+            <p>{selectedMedal.criteria}</p>
+
+            <div className="space-y-2">
+              <h3 className="font-semibold text-primary">Narrative Guidance</h3>
+              <p>{selectedMedal.narrativeGuidance}</p>
+            </div>
+
+            {selectedMedal.eligibilityNotes.length > 0 && (
+              <div className="space-y-2">
+                <h3 className="font-semibold text-primary">Eligibility</h3>
+                <ul className="list-disc space-y-1 pl-5">
+                  {selectedMedal.eligibilityNotes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
               </div>
             )}
+          </CardContent>
+        </Card>
+      )}
 
-            {selectedRecipient && (
-              <div className="space-y-2">
-                <div className="space-y-1">
-                  <p>Selected recipient: {selectedRecipient.user.username}</p>
+      {selectedMedal && (
+        <Card>
+          <CardHeader>
+            <h2 className="text-2xl font-semibold text-primary">
+              {selectedMedal.name}
+            </h2>
+          </CardHeader>
 
-                  <p className="font-medium">
-                    {selectedRecipient.rank?.rankFull}{" "}
-                    {selectedRecipient.realName}
-                  </p>
+          <CardContent className="space-y-6">
+            <p>
+              Create {/^[aeiou]/i.test(selectedMedal.name) ? "an" : "a"}{" "}
+              {selectedMedal.name} recommendation.
+            </p>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="recipient" className="pb-1 text-sm font-medium">
+                Recipient
+              </label>
+
+              <Input
+                id="recipient"
+                type="text"
+                value={recipientQuery}
+                autoComplete="off"
+                placeholder="Start typing a last name"
+                aria-invalid={recipientIsInvalid ? "true" : undefined}
+                aria-describedby={
+                  recipientIsInvalid ? "recipient-required" : undefined
+                }
+                className={
+                  recipientIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
+                onChange={handleRecipientQueryChange}
+              />
+
+              {recipientIsInvalid && (
+                <p
+                  id="recipient-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  Required
+                </p>
+              )}
+
+              {suggestions.length > 0 && (
+                <div className="flex flex-col gap-2">
+                  {suggestions.map((member) => (
+                    <Button
+                      key={member.user.userId}
+                      type="button"
+                      variant="outline"
+                      onClick={() => selectRecipient(member)}
+                    >
+                      {member.user.username}
+                    </Button>
+                  ))}
                 </div>
+              )}
 
-                {requiresEligibilityWarning(selectedRecipient) && (
-                  <div
-                    role="status"
-                    className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
-                  >
-                    This member is not an active member, please confirm
-                    eligibility.
+              {selectedRecipient && (
+                <div className="space-y-2">
+                  <div className="space-y-1">
+                    <p>Selected recipient: {selectedRecipient.user.username}</p>
+
+                    <p className="font-medium">
+                      {selectedRecipient.rank?.rankFull}{" "}
+                      {selectedRecipient.realName}
+                    </p>
                   </div>
+
+                  {requiresEligibilityWarning(selectedRecipient) && (
+                    <div
+                      role="status"
+                      className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
+                    >
+                      This member is not an active member, please confirm
+                      eligibility.
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {selectedMedal.fields.actionCharacter && (
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="action-character"
+                  className="pb-1 text-sm font-medium"
+                >
+                  Action Character
+                </label>
+
+                <Select
+                  value={actionCharacter}
+                  onValueChange={(value) => {
+                    setActionCharacter(value);
+                    setRecommendation(null);
+                  }}
+                >
+                  <SelectTrigger
+                    id="action-character"
+                    aria-invalid={actionCharacterIsInvalid ? "true" : undefined}
+                    aria-describedby={
+                      actionCharacterIsInvalid
+                        ? "action-character-required"
+                        : undefined
+                    }
+                    className={
+                      actionCharacterIsInvalid
+                        ? "border-destructive focus:ring-destructive"
+                        : undefined
+                    }
+                  >
+                    <SelectValue placeholder="Select action character" />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    {selectedMedal.actionCharacterOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {actionCharacterIsInvalid && (
+                  <p
+                    id="action-character-required"
+                    className="text-sm font-medium text-destructive"
+                  >
+                    Required
+                  </p>
                 )}
               </div>
             )}
-          </div>
+            {selectedMedal.fields.scope && (
+              <div className="flex flex-col gap-2">
+                <label htmlFor="scope" className="pb-1 text-sm font-medium">
+                  Scope
+                </label>
 
-          <div className="space-y-2">
-            <label htmlFor="action-character" className="text-sm font-medium">
-              Action Character
-            </label>
+                <Select
+                  value={scope}
+                  onValueChange={(value) => {
+                    setScope(value);
+                    setRecommendation(null);
+                  }}
+                >
+                  <SelectTrigger
+                    id="scope"
+                    aria-invalid={scopeIsInvalid ? "true" : undefined}
+                    aria-describedby={
+                      scopeIsInvalid ? "scope-required" : undefined
+                    }
+                    className={
+                      scopeIsInvalid
+                        ? "border-destructive focus:ring-destructive"
+                        : undefined
+                    }
+                  >
+                    <SelectValue placeholder="Select action scope" />
+                  </SelectTrigger>
 
-            <Select
-              value={actionCharacter}
-              onValueChange={(value) => {
-                setActionCharacter(value);
-                setRecommendation(null);
-              }}
-            >
-              <SelectTrigger
-                id="action-character"
-                aria-invalid={actionCharacterIsInvalid ? "true" : undefined}
+                  <SelectContent>
+                    {selectedMedal.scopeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {scopeIsInvalid && (
+                  <p
+                    id="scope-required"
+                    className="text-sm font-medium text-destructive"
+                  >
+                    Required
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="combat-element"
+                className="pb-1 text-sm font-medium"
+              >
+                {selectedMedal.fields.combatElementLabel}
+              </label>
+
+              <Input
+                id="combat-element"
+                type="text"
+                value={combatElement}
+                placeholder={selectedMedal.fields.combatElementPlaceholder}
+                aria-invalid={combatElementIsInvalid ? "true" : undefined}
                 aria-describedby={
-                  actionCharacterIsInvalid
-                    ? "action-character-required"
+                  combatElementIsInvalid ? "combat-element-required" : undefined
+                }
+                className={
+                  combatElementIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
+                onChange={(event) => {
+                  setCombatElement(event.target.value);
+                  setRecommendation(null);
+                }}
+              />
+
+              {combatElementIsInvalid && (
+                <p
+                  id="combat-element-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  Required
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="operation-title"
+                className="pb-1 text-sm font-medium"
+              >
+                Operation Title
+              </label>
+
+              <Input
+                id="operation-title"
+                type="text"
+                value={operationTitle}
+                placeholder="Overlord"
+                aria-invalid={operationTitleIsInvalid ? "true" : undefined}
+                aria-describedby={
+                  operationTitleIsInvalid
+                    ? "operation-title-required"
                     : undefined
                 }
                 className={
-                  actionCharacterIsInvalid
-                    ? "border-destructive focus:ring-destructive"
+                  operationTitleIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
                     : undefined
                 }
-              >
-                <SelectValue placeholder="Select action character" />
-              </SelectTrigger>
-
-              <SelectContent>
-                <SelectItem value="skillful">Skillful</SelectItem>
-
-                <SelectItem value="heroic">Heroic</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {actionCharacterIsInvalid && (
-              <p
-                id="action-character-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="combat-element" className="text-sm font-medium">
-              Combat Element
-            </label>
-
-            <Input
-              id="combat-element"
-              type="text"
-              value={combatElement}
-              aria-invalid={combatElementIsInvalid ? "true" : undefined}
-              aria-describedby={
-                combatElementIsInvalid ? "combat-element-required" : undefined
-              }
-              className={
-                combatElementIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : undefined
-              }
-              onChange={(event) => {
-                setCombatElement(event.target.value);
-                setRecommendation(null);
-              }}
-            />
-
-            {combatElementIsInvalid && (
-              <p
-                id="combat-element-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="operation-title" className="text-sm font-medium">
-              Operation Title
-            </label>
-
-            <Input
-              id="operation-title"
-              type="text"
-              value={operationTitle}
-              aria-invalid={operationTitleIsInvalid ? "true" : undefined}
-              aria-describedby={
-                operationTitleIsInvalid ? "operation-title-required" : undefined
-              }
-              className={
-                operationTitleIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : undefined
-              }
-              onChange={(event) => {
-                setOperationTitle(event.target.value);
-                setRecommendation(null);
-              }}
-            />
-
-            {operationTitleIsInvalid && (
-              <p
-                id="operation-title-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="location" className="text-sm font-medium">
-              Location
-            </label>
-
-            <Input
-              id="location"
-              type="text"
-              value={location}
-              aria-invalid={locationIsInvalid ? "true" : undefined}
-              aria-describedby={
-                locationIsInvalid ? "location-required" : undefined
-              }
-              className={
-                locationIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : undefined
-              }
-              onChange={(event) => {
-                setLocation(event.target.value);
-                setRecommendation(null);
-              }}
-            />
-
-            {locationIsInvalid && (
-              <p
-                id="location-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="operation-date" className="text-sm font-medium">
-              Operation Date
-            </label>
-
-            <Input
-              id="operation-date"
-              type="date"
-              value={operationDate}
-              aria-invalid={operationDateIsInvalid ? "true" : undefined}
-              aria-describedby={
-                operationDateIsInvalid ? "operation-date-required" : undefined
-              }
-              className={
-                operationDateIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : undefined
-              }
-              onChange={(event) => {
-                setOperationDate(event.target.value);
-                setRecommendation(null);
-              }}
-            />
-
-            {operationDateIsInvalid && (
-              <p
-                id="operation-date-required"
-                className="text-sm font-medium text-destructive"
-              >
-                {operationDateErrorMessage}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label htmlFor="narrative" className="text-sm font-medium">
-              Narrative
-            </label>
-
-            <textarea
-              id="narrative"
-              value={narrative}
-              aria-invalid={narrativeIsInvalid ? "true" : undefined}
-              aria-describedby={
-                narrativeIsInvalid
-                  ? "narrative-required"
-                  : hasNarrativeWarnings
-                    ? "narrative-warnings"
-                    : undefined
-              }
-              onChange={(event) => {
-                setNarrative(event.target.value);
-                setRecommendation(null);
-              }}
-              rows={8}
-              className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                narrativeIsInvalid
-                  ? "border-destructive focus-visible:ring-destructive"
-                  : hasNarrativeWarnings
-                    ? "border-amber-500/50 focus-visible:ring-amber-500/30"
-                    : "border-input"
-              }`}
-            />
-
-            {narrativeIsInvalid && (
-              <p
-                id="narrative-required"
-                className="text-sm font-medium text-destructive"
-              >
-                Required
-              </p>
-            )}
-
-            {hasNarrativeWarnings && (
-              <div
-                id="narrative-warnings"
-                role="status"
-                aria-label="Narrative Warnings"
-                className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-              >
-                {recommendation.narrativeWarnings.map((warning) => (
-                  <p key={warning.key}>{warning.message}</p>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Button type="button" onClick={handleGenerate}>
-            Generate Recommendation
-          </Button>
-
-          {hasAttemptedGenerate && !isComplete && (
-            <p role="alert" className="text-sm font-medium">
-              Complete all required fields before generating a recommendation.
-            </p>
-          )}
-
-          {recommendation && (
-            <section
-              role="region"
-              aria-label="Recommendation Preview"
-              className="space-y-4 rounded-lg border p-4"
-            >
-              <h3 className="text-xl font-semibold">Army Commendation Medal</h3>
-
-              <img
-                src={ARCOM_RIBBON_URL}
-                alt="Army Commendation Medal ribbon"
-                className="h-auto w-40 max-w-full"
+                onChange={(event) => {
+                  setOperationTitle(event.target.value);
+                  setRecommendation(null);
+                }}
               />
 
-              <p>{recommendation.recipient}</p>
+              {operationTitleIsInvalid && (
+                <p
+                  id="operation-title-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  Required
+                </p>
+              )}
+            </div>
 
-              <p aria-label="Citation Narrative">
-                {renderCitationNarrative(recommendation)}
+            <div className="flex flex-col gap-2">
+              <label htmlFor="location" className="pb-1 text-sm font-medium">
+                Location
+              </label>
+
+              <Input
+                id="location"
+                type="text"
+                value={location}
+                placeholder="Omaha Beach"
+                aria-invalid={locationIsInvalid ? "true" : undefined}
+                aria-describedby={
+                  locationIsInvalid ? "location-required" : undefined
+                }
+                className={
+                  locationIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
+                onChange={(event) => {
+                  setLocation(event.target.value);
+                  setRecommendation(null);
+                }}
+              />
+
+              {locationIsInvalid && (
+                <p
+                  id="location-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  Required
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="operation-date"
+                className="pb-1 text-sm font-medium"
+              >
+                Operation Date
+              </label>
+
+              <Input
+                id="operation-date"
+                type="date"
+                value={operationDate}
+                aria-invalid={operationDateIsInvalid ? "true" : undefined}
+                aria-describedby={
+                  operationDateIsInvalid ? "operation-date-required" : undefined
+                }
+                className={
+                  operationDateIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : undefined
+                }
+                onChange={(event) => {
+                  setOperationDate(event.target.value);
+                  setRecommendation(null);
+                }}
+              />
+
+              {operationDateIsInvalid && (
+                <p
+                  id="operation-date-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  {operationDateErrorMessage}
+                </p>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="narrative" className="pb-1 text-sm font-medium">
+                Narrative
+              </label>
+
+              <textarea
+                id="narrative"
+                value={narrative}
+                placeholder="Explain the lead-up, actions, and outcome..."
+                aria-invalid={narrativeIsInvalid ? "true" : undefined}
+                aria-describedby={
+                  narrativeIsInvalid
+                    ? "narrative-required"
+                    : hasNarrativeWarnings
+                      ? "narrative-warnings"
+                      : undefined
+                }
+                onChange={(event) => {
+                  setNarrative(event.target.value);
+                  setRecommendation(null);
+                }}
+                rows={8}
+                className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+                  narrativeIsInvalid
+                    ? "border-destructive focus-visible:ring-destructive"
+                    : hasNarrativeWarnings
+                      ? "border-amber-500/50 focus-visible:ring-amber-500/30"
+                      : "border-input"
+                }`}
+              />
+
+              {narrativeIsInvalid && (
+                <p
+                  id="narrative-required"
+                  className="text-sm font-medium text-destructive"
+                >
+                  Required
+                </p>
+              )}
+
+              {hasNarrativeWarnings && (
+                <div
+                  id="narrative-warnings"
+                  role="status"
+                  aria-label="Narrative Warnings"
+                  className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+                >
+                  {recommendation.narrativeWarnings.map((warning) => (
+                    <p key={warning.key}>{warning.message}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Button type="button" onClick={handleGenerate}>
+              Generate Recommendation
+            </Button>
+
+            {hasAttemptedGenerate && !isComplete && (
+              <p role="alert" className="text-sm font-medium">
+                Complete all required fields before generating a recommendation.
               </p>
-            </section>
-          )}
-        </CardContent>
-      </Card>
+            )}
+
+            {recommendation && (
+              <section
+                role="region"
+                aria-label="Recommendation Preview"
+                className="space-y-4 rounded-lg border p-4 text-center"
+              >
+                <h3 className="text-xl font-semibold">{selectedMedal.name}</h3>
+
+                <img
+                  src={selectedMedal.ribbonUrl}
+                  alt={`${selectedMedal.name} ribbon`}
+                  className="mx-auto"
+                />
+
+                <p>{recommendation.recipient}</p>
+
+                <p aria-label="Citation Narrative">
+                  {renderCitationNarrative(recommendation)}
+                </p>
+              </section>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </main>
   );
 }

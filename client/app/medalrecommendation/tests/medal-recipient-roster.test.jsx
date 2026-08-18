@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
+import { selectAward } from "./test-helpers.js";
 
 const medalRecipientRoster = {
   2000: {
@@ -140,6 +141,7 @@ describe("Medal Recommendation recipient roster", () => {
     const user = userEvent.setup();
 
     await renderMedalRecommendationAid();
+    await selectAward(user);
 
     await selectRecipient(user, "Res", "Reserve.R");
 
@@ -152,6 +154,7 @@ describe("Medal Recommendation recipient roster", () => {
     const user = userEvent.setup();
 
     await renderMedalRecommendationAid();
+    await selectAward(user);
 
     await selectRecipient(user, "Com", "Combat.C");
 
@@ -173,6 +176,7 @@ describe("Medal Recommendation recipient roster", () => {
       const user = userEvent.setup();
 
       await renderMedalRecommendationAid();
+      await selectAward(user);
 
       await selectRecipient(user, query, username);
 
@@ -188,6 +192,7 @@ describe("Medal Recommendation recipient roster", () => {
     const user = userEvent.setup();
 
     await renderMedalRecommendationAid();
+    await selectAward(user);
 
     await selectRecipient(user, "Res", "Reserve.R");
 
