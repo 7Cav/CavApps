@@ -1,5 +1,7 @@
 const axios = require("axios");
 const axiosRetry = require("axios-retry").default || require("axios-retry");
+const { filterRetiredRoster } = require("./rosterFilters");
+
 const API_TOKEN = process.env.API_TOKEN;
 
 let cacheStatus = {
@@ -7,12 +9,14 @@ let cacheStatus = {
   reserve: false,
   individual: false,
   groups: false,
+  medalRecipients: false,
 };
 
 let cachedCombatRoster;
 let cachedReserveRoster;
 let cachedIndividual;
 let cachedGroups;
+let cachedMedalRecipientRoster;
 let cacheTime = {};
 
 axiosRetry(axios, {
@@ -61,6 +65,52 @@ const updateReserveRosterCache = async () => {
   }
 };
 
+const updateMedalRecipientRosterCache = async () => {
+  try {
+    const requestOptions = {
+      timeout: 5000,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + API_TOKEN,
+        "Accept-Encoding": "gzip",
+      },
+    };
+
+    const [
+      combatResponse,
+      reserveResponse,
+      eloaResponse,
+      wallOfHonorResponse,
+      pastMembersResponse,
+    ] = await Promise.all([
+      axios("https://api.7cav.us/api/v1/roster/1/lite", requestOptions),
+      axios("https://api.7cav.us/api/v1/roster/2/lite", requestOptions),
+      axios("https://api.7cav.us/api/v1/roster/3/lite", requestOptions),
+      axios("https://api.7cav.us/api/v1/roster/4/lite", requestOptions),
+      axios("https://api.7cav.us/api/v1/roster/6/lite", requestOptions),
+    ]);
+
+    const retiredResponse = filterRetiredRoster(pastMembersResponse.data);
+
+    cachedMedalRecipientRoster = {
+      profiles: {
+        ...(combatResponse.data?.profiles ?? {}),
+        ...(reserveResponse.data?.profiles ?? {}),
+        ...(eloaResponse.data?.profiles ?? {}),
+        ...(wallOfHonorResponse.data?.profiles ?? {}),
+        ...(retiredResponse.profiles ?? {}),
+      },
+    };
+
+    cacheTime["medalRecipients"] = Date.now();
+    cacheStatus.medalRecipients = true;
+  } catch (error) {
+    console.error("Failed to update Medal recipient cache:", error.message);
+    cacheStatus.medalRecipients = false;
+  }
+};
+
 const updateCachedIndividual = async (userName) => {
   try {
     const response = await axios(
@@ -88,7 +138,7 @@ const updateCachedIndividual = async (userName) => {
 const updateCachedGroups = async () => {
   try {
     const response = await axios(
-      `https://api.7cav.us/api/v1/milpacs/position/groups`,
+      "https://api.7cav.us/api/v1/milpacs/position/groups",
       {
         headers: {
           Accept: "application/json",
@@ -127,7 +177,7 @@ const initializeCache = async () => {
     await updateReserveRosterCache();
     await updateCachedGroups();
 
-    // Check if cache is valid
+    // Check only the existing startup-critical caches.
     if (
       !cacheStatus["combat"] ||
       !cacheStatus["reserve"] ||
@@ -137,10 +187,16 @@ const initializeCache = async () => {
       process.exit(1); // Exit to trigger Docker restart
     }
 
+    // Medal Recommendation recipient data is useful to the Medal Aid,
+    // but it is not a startup-critical dependency for the rest of CavApps.
+    // Start the initial refresh without delaying server startup.
+    void updateMedalRecipientRosterCache();
+
     // Schedule the updates
     scheduleCacheUpdate(updateCombatRosterCache);
     scheduleCacheUpdate(updateReserveRosterCache);
     scheduleCacheUpdate(updateCachedGroups);
+    scheduleCacheUpdate(updateMedalRecipientRosterCache);
   } catch (error) {
     // Fatal path: keep the stack, which is the only diagnostic before exit.
     // Never the error object itself — that is what carried the token.
@@ -160,6 +216,10 @@ const getCachedReserveRoster = () => {
   return cachedReserveRoster;
 };
 
+const getCachedMedalRecipientRoster = () => {
+  return cachedMedalRecipientRoster;
+};
+
 const getCachedIndividual = () => {
   return cachedIndividual;
 };
@@ -170,8 +230,10 @@ const getCachedGroups = () => {
 
 module.exports = {
   updateCachedIndividual,
+  updateMedalRecipientRosterCache,
   getCachedCombatRoster,
   getCachedReserveRoster,
+  getCachedMedalRecipientRoster,
   getCachedIndividual,
   getCachedGroups,
   cacheTime,

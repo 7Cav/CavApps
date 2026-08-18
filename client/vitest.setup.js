@@ -1,6 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 
 process.env.COMBAT_API_URL = "https://combat-roster.test/";
+process.env.MEDAL_RECIPIENT_API_URL = "https://medal-recipient-roster.test/";
 
 process.env.NEXT_PUBLIC_CLIENT_TOKEN = "test-client-token";
 
