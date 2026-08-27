@@ -8,6 +8,7 @@ import {
   MedalTiered,
   RibbonDonationLogic,
 } from "./AwardClasses";
+import { combatBadgeImagePath } from "./constants";
 
 function Canvas(props) {
   const canvasRef = useRef(null);
@@ -59,10 +60,7 @@ function Canvas(props) {
 
     if (data[4] != null) {
       imagePromises.push(
-        loadImage(
-          `skunkworks/uniformBadges/combatBadges/${data[4].imageNum}.png`,
-          "uniformCombatBadge",
-        ),
+        loadImage(combatBadgeImagePath(data[4].imageNum), "uniformCombatBadge"),
       );
     }
 

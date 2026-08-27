@@ -1,10 +1,7 @@
 import {
   AwardAttachmentType,
-  MosGroup,
-  AwardNameFragment,
   hasValorDevice,
   stripValorDevice,
-  BadgeImages,
 } from "./constants";
 
 export class Award {
@@ -192,109 +189,30 @@ export class Badge extends Award {
   // Do things
 }
 
+// A member wears one combat badge: the highest-ranked of those they hold and
+// their MOS may display. Eligibility is settled before construction, in
+// getCanvasObject.jsx — every award reaching this class is one the member may
+// wear, so all that is left is to keep the highest.
 export class BadgeCombat extends Badge {
-  isMedical = false;
-  isAviation = false;
   imageNum = 0;
-  maxAllowed;
-  userMos = "";
 
-  constructor(awardData, userMos, AwardRegistry) {
+  constructor(awardData, AwardRegistry) {
     super(awardData, AwardRegistry);
 
     const registryDetails = AwardRegistry.getAwardDetails(awardData.awardName);
     this.awardPriority = registryDetails.awardPriority;
-
-    this.userMos = userMos;
-    if (MosGroup.AVIATION.includes(this.userMos)) {
-      this.isAviation = true;
-    }
-
-    if (MosGroup.MEDICAL.includes(this.userMos)) {
-      this.isMedical = true;
-    }
-
-    this.imageNum = this.getImageNum(this.awardPriority);
-    this.setMaxAllowed();
-  }
-
-  setMaxAllowed() {
-    if (this.isMedical) {
-      this.maxAllowed = 6;
-      return;
-    }
-
-    //we need to give 15T (aircrew) an exception so that they stop at aircrew badges.
-    if (this.isAviation) {
-      if (MosGroup.AIRCREW.includes(this.userMos)) {
-        this.maxAllowed = 8;
-      } else {
-        this.maxAllowed = 11;
-      }
-      return;
-    }
-
-    this.maxAllowed = 5;
-  }
-
-  getImageNum(awardPriority) {
-    // Maps awardPriority from constants/awardCatalog.js to a badge image that
-    // canvas.jsx will use to render from client/public/skunkworks/uniformBadges/combatBadges/<n>.png
-    // awardPriority values 1-5 (EIB thru CIB4) are universal and are matched by default and fall through
-
-    if (this.isAviation) {
-      switch (awardPriority) {
-        case 6:
-          return BadgeImages.aircrew;
-        case 7:
-          return BadgeImages.seniorAircrew;
-        case 8:
-          return BadgeImages.masterAircrew;
-        case 9:
-          return BadgeImages.aviator;
-        case 10:
-          return BadgeImages.seniorAviator;
-        case 11:
-          return BadgeImages.masterAviator;
-      }
-    }
-
-    // awardPriority 6 is used for both aviation and medical trees.
-    // isMedical will claim the value for the medical tree.
-    if (this.isMedical && awardPriority == 6) {
-      return BadgeImages.flightMedicBadge;
-    }
-
-    return awardPriority;
+    this.imageNum = registryDetails.badgeImage;
   }
 
   updateBadgeCombat(newAwardData, AwardRegistry) {
     const registryDetails = AwardRegistry.getAwardDetails(
       newAwardData.awardName,
     );
-    const newAwardPriority = registryDetails.awardPriority;
 
-    if (
-      newAwardPriority > this.awardPriority &&
-      newAwardPriority <= this.maxAllowed
-    ) {
-      if (
-        newAwardData.awardName == AwardNameFragment.FLIGHT_MEDIC_BADGE &&
-        !this.isMedical
-      ) {
-        return;
-      }
-
-      if (
-        newAwardData.awardName.includes(AwardNameFragment.AVIATOR) &&
-        !this.isAviation
-      ) {
-        return;
-      }
-
+    if (registryDetails.awardPriority > this.awardPriority) {
       this.awardTitle = newAwardData.awardName;
-      this.awardPriority = newAwardPriority;
-      this.imageNum = this.getImageNum(newAwardPriority);
+      this.awardPriority = registryDetails.awardPriority;
+      this.imageNum = registryDetails.badgeImage;
     }
   }
 }

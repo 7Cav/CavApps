@@ -5,8 +5,11 @@
     "format:check": "prettier --check \"{**/*,*}.{js,jsx,json,html,css}\"",
     "format": "prettier --write \"{**/*,*}.{js,jsx,json,html,css}\"",
     "sprites:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.js",
-    "test": "npm run test:sprites && npm run test:server",
+    "test": "npm run test:sprites && npm run test:client && npm run test:server",
     "test:sprites": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.test.js",
+    "test:client": "npm run test:client:catalog && npm run test:client:canvas",
+    "test:client:catalog": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./client/test-loader.mjs client/app/uniformbuilder/modules/constants/awardCatalog.test.js",
+    "test:client:canvas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./client/test-loader.mjs client/app/uniformbuilder/modules/getCanvasObject.test.js",
     "test:server": "npm --prefix server test"
   },
   "devDependencies": {
@@ -14,6 +17,6 @@
     "sharp": "^0.35.0"
   },
   "engines": {
-    "node": ">=22.7"
+    "node": ">=22.15"
   }
 }

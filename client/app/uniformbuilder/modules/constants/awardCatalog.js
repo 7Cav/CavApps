@@ -3,6 +3,8 @@
 // placement, and Node's ESM resolver does not guess extensions.
 import { AwardType } from "./awardTypes.js";
 import { AwardAttachmentType } from "./awardAttachmentTypes.js";
+import { BadgeFamily } from "./badgeFamilies.js";
+import { BadgeImages } from "./badgeImages.js";
 
 // The full award catalog: name + per-award metadata. AwardRegistry loops this
 // in order to populate its Map, so KEEP THE ORDER STABLE — Map iteration order
@@ -429,61 +431,85 @@ export const AWARD_CATALOG = [
     name: "Flight Medic Badge",
     awardPriority: 6,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.flightMedicBadge,
+    badgeFamily: BadgeFamily.FLIGHT_MEDIC,
   }, // (3/1/b/1-7) (4/1/b/1-7)
   {
     name: "Master Army Aviator Badge",
     awardPriority: 11,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.masterAviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   }, // (A/1-7) (A/ACD)
   {
     name: "Senior Army Aviator Badge",
     awardPriority: 10,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.seniorAviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   },
   {
     name: "Army Aviator Badge",
     awardPriority: 9,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.aviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   },
   {
     name: "Aircraft Master Crewman Badge",
     awardPriority: 8,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.masterAircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   }, // (A/1-7) (A/ACD)
   {
     name: "Aircraft Senior Crewman Badge",
     awardPriority: 7,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.seniorAircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   },
   {
     name: "Aircraft Crewman Badge",
     awardPriority: 6,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.aircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   },
   {
     name: "Combat Infantry Badge 4th Award",
     awardPriority: 5,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantryFourth,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge 3rd Award",
     awardPriority: 4,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantryThird,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge 2nd Award",
     awardPriority: 3,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantrySecond,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge",
     awardPriority: 2,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantry,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Expert Infantry Badge",
     awardPriority: 1,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.expertInfantry,
+    badgeFamily: BadgeFamily.INFANTRY,
   }, // et. al.
 
   //____ WEAPON QUALS ____

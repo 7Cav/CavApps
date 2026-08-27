@@ -78,9 +78,10 @@ export const Mos = Object.freeze({
   DEVCOM_SUPPORT_COORDINATOR: "51S",
 });
 
-// Semantic groupings used by BadgeCombat badge logic in AwardClasses.jsx.
-// Membership matches the post-#129 aviation behavior (155F counts as aviation,
-// only 15T is aircrew). Do not change membership without checking that logic.
+// Semantic groupings used by the badge-eligibility logic in
+// constants/badgeFamilies.js. Membership matches the post-#129 aviation
+// behavior (155F counts as aviation, only 15T crews rather than pilots). Do not
+// change membership without checking that logic.
 export const MosGroup = Object.freeze({
   AVIATION: [
     Mos.ROTARY_WING_AVIATOR_WARRANT_OFFICER,
@@ -90,5 +91,6 @@ export const MosGroup = Object.freeze({
     Mos.JET_AIRCRAFT_PILOT,
   ],
   MEDICAL: [Mos.COMBAT_MEDIC, Mos.MEDICAL_OFFICER],
-  AIRCREW: [Mos.ENLISTED_ROTARY_CREWMAN],
+  // Aviation MOSs that crew aircraft rather than pilot them.
+  ROTARY_CREW: [Mos.ENLISTED_ROTARY_CREWMAN],
 });
