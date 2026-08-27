@@ -7,4 +7,5 @@ export {
   stripValorDevice,
 } from "./awardNames";
 export { AWARD_CATALOG } from "./awardCatalog";
-export { BadgeImages } from "./badgeImages";
+export { BadgeFamily, displayableBadgeFamilies } from "./badgeFamilies";
+export { BadgeImages, combatBadgeImagePath } from "./badgeImages";
