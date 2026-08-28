@@ -336,7 +336,7 @@ export const OPERATION_MEDALS = [
       actionCharacter: false,
       scope: false,
       combatElementLabel: "Airframe",
-      combatElementPlaceholder: "F/A-18, A-10, etc.",
+      combatElementPlaceholder: "an F/A-18, a Rotary-Wing, etc.",
     },
 
     actionCharacterOptions: [],
@@ -352,7 +352,7 @@ export const OPERATION_MEDALS = [
     buildOpening({ combatElement, operationTitle, location, date }) {
       return (
         "For a single act demonstrating extraordinary heroism and skill under enemy fire " +
-        `while serving as a ${combatElement} pilot in the 7th Cavalry Regiment during combat in ` +
+        `while serving as ${combatElement} pilot in the 7th Cavalry Regiment during combat in ` +
         `Operation ${operationTitle} near ${location} on ${date}.`
       );
     },

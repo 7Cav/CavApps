@@ -292,12 +292,24 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     ["Purple Heart", false, true, "Combat Element"],
     ["Bronze Star Medal", true, false, "Combat Element"],
     ["Bronze Star Medal With Valor", false, false, "Combat Element"],
-    ["Distinguished Flying Cross", false, false, "Airframe"],
+    [
+      "Distinguished Flying Cross",
+      false,
+      false,
+      "Airframe",
+      "an F/A-18, a Rotary-Wing, etc.",
+    ],
     ["Silver Star", false, false, "Leadership Element"],
     ["Distinguished Service Cross", false, false, "Combat Element"],
   ])(
     "shows the correct medal-specific controls for %s",
-    async (awardName, showsActionCharacter, showsScope, elementLabel) => {
+    async (
+      awardName,
+      showsActionCharacter,
+      showsScope,
+      elementLabel,
+      elementPlaceholder,
+    ) => {
       const user = userEvent.setup();
 
       await renderMedalRecommendationAid();
@@ -328,6 +340,12 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
           name: elementLabel,
         }),
       ).toBeVisible();
+
+      if (elementPlaceholder) {
+        expect(
+          screen.getByRole("textbox", { name: elementLabel }),
+        ).toHaveAttribute("placeholder", elementPlaceholder);
+      }
     },
   );
 

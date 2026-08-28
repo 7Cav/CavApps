@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   completeRecommendation,
@@ -497,7 +497,7 @@ describe("Medal Recommendation Aid - citations", () => {
       screen.getByRole("textbox", {
         name: "Airframe",
       }),
-      "rotary-wing",
+      "an F/A-18",
     );
 
     await user.type(
@@ -537,7 +537,7 @@ describe("Medal Recommendation Aid - citations", () => {
     const citation = screen.getByLabelText("Citation Narrative");
 
     expect(citation.textContent).toBe(
-      "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as a rotary-wing pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
+      "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as an F/A-18 pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's skills and heroic actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
     );
@@ -764,96 +764,109 @@ describe("Medal Recommendation Aid - citations", () => {
     ["Distinguished Flying Cross", "https://wiki.7cav.us/images/7/74/DFC.jpg"],
     ["Silver Star", "https://wiki.7cav.us/images/8/8f/SS.jpg"],
     ["Distinguished Service Cross", "https://wiki.7cav.us/images/d/d3/DSC.jpg"],
-  ])("shows the correct ribbon for %s", async (awardName, ribbonUrl) => {
-    const user = userEvent.setup();
+  ])(
+    "shows the correct preview title and ribbon for %s",
+    async (awardName, ribbonUrl) => {
+      const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
-    await selectAward(user, awardName);
-    await selectRecipient(user);
+      await renderMedalRecommendationAid();
+      await selectAward(user, awardName);
+      await selectRecipient(user);
 
-    const actionCharacter = screen.queryByRole("combobox", {
-      name: "Action Character",
-    });
-
-    if (actionCharacter) {
-      await user.click(actionCharacter);
-
-      await user.click(
-        screen.getByRole("option", {
-          name: "Skillful",
-        }),
-      );
-    }
-
-    const scope = screen.queryByRole("combobox", {
-      name: "Scope",
-    });
-
-    if (scope) {
-      await user.click(scope);
-
-      await user.click(
-        screen.getByRole("option", {
-          name: "Single",
-        }),
-      );
-    }
-
-    const elementField =
-      screen.queryByRole("textbox", {
-        name: "Aircrew Combat Element",
-      }) ??
-      screen.queryByRole("textbox", {
-        name: "Leadership Element",
-      }) ??
-      screen.queryByRole("textbox", {
-        name: "Airframe",
-      }) ??
-      screen.getByRole("textbox", {
-        name: "Combat Element",
+      const actionCharacter = screen.queryByRole("combobox", {
+        name: "Action Character",
       });
 
-    await user.type(elementField, "rifleman");
+      if (actionCharacter) {
+        await user.click(actionCharacter);
 
-    await user.type(
-      screen.getByRole("textbox", {
-        name: "Operation Title",
-      }),
-      "Exfor",
-    );
+        await user.click(
+          screen.getByRole("option", {
+            name: "Skillful",
+          }),
+        );
+      }
 
-    await user.type(
-      screen.getByRole("textbox", {
-        name: "Location",
-      }),
-      "Remagen",
-    );
+      const scope = screen.queryByRole("combobox", {
+        name: "Scope",
+      });
 
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
+      if (scope) {
+        await user.click(scope);
 
-    const narrativeField = screen.getByRole("textbox", {
-      name: "Narrative",
-    });
+        await user.click(
+          screen.getByRole("option", {
+            name: "Single",
+          }),
+        );
+      }
 
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith performed exceptionally during the operation. " +
-        "Specialist Smith supported the element throughout the engagement. " +
-        "Specialist Smith's actions contributed to mission success. " +
-        "Specialist Smith continued leading the element under fire. " +
-        "Specialist Smith's actions secured the objective.",
-    );
+      const elementField =
+        screen.queryByRole("textbox", {
+          name: "Aircrew Combat Element",
+        }) ??
+        screen.queryByRole("textbox", {
+          name: "Leadership Element",
+        }) ??
+        screen.queryByRole("textbox", {
+          name: "Airframe",
+        }) ??
+        screen.getByRole("textbox", {
+          name: "Combat Element",
+        });
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+      await user.type(elementField, "rifleman");
 
-    expect(
-      screen.getByRole("img", {
-        name: `${awardName} ribbon`,
-      }),
-    ).toHaveAttribute("src", ribbonUrl);
-  });
+      await user.type(
+        screen.getByRole("textbox", {
+          name: "Operation Title",
+        }),
+        "Exfor",
+      );
+
+      await user.type(
+        screen.getByRole("textbox", {
+          name: "Location",
+        }),
+        "Remagen",
+      );
+
+      await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
+
+      const narrativeField = screen.getByRole("textbox", {
+        name: "Narrative",
+      });
+
+      await user.click(narrativeField);
+      await user.paste(
+        "Specialist John Smith performed exceptionally during the operation. " +
+          "Specialist Smith supported the element throughout the engagement. " +
+          "Specialist Smith's actions contributed to mission success. " +
+          "Specialist Smith continued leading the element under fire. " +
+          "Specialist Smith's actions secured the objective.",
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Generate Recommendation",
+        }),
+      );
+
+      const preview = screen.getByRole("region", {
+        name: "Recommendation Preview",
+      });
+
+      expect(
+        within(preview).getByRole("heading", {
+          name: awardName,
+        }),
+      ).toBeVisible();
+
+      expect(
+        screen.getByRole("img", {
+          name: `${awardName} ribbon`,
+        }),
+      ).toHaveAttribute("src", ribbonUrl);
+    },
+  );
 });

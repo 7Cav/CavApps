@@ -803,6 +803,18 @@ describe("Medal Recommendation Aid - validation", () => {
       }),
     ).toHaveTextContent("Select action scope");
 
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Scope",
+      }),
+    );
+
+    await user.click(
+      screen.getByRole("option", {
+        name: "Single",
+      }),
+    );
+
     await selectAward(user, "Army Commendation Medal");
 
     expect(
@@ -810,6 +822,14 @@ describe("Medal Recommendation Aid - validation", () => {
         name: "Action Character",
       }),
     ).toHaveTextContent("Select action character");
+
+    await selectAward(user, "Purple Heart");
+
+    expect(
+      screen.getByRole("combobox", {
+        name: "Scope",
+      }),
+    ).toHaveTextContent("Select action scope");
   });
 
   test("clears required-field validation state when the selected award changes", async () => {
