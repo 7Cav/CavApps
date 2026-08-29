@@ -33,6 +33,16 @@ function addHighlightRange(highlightRanges, start, end) {
   });
 }
 
+function formatSentenceMinimum(value) {
+  const numberWords = {
+    3: "three",
+    4: "four",
+    5: "five",
+  };
+
+  return numberWords[value] ?? String(value);
+}
+
 function findSentenceRanges(text) {
   const sentenceRanges = [];
   const sentencePattern = /[^.!?]+[.!?]+/g;
@@ -91,7 +101,12 @@ export function getRankEntries(rosterMembers) {
 
 export function analyzeNarrative(
   narrative,
-  { recipientRank, recipientCitationName, rankEntries },
+  {
+    recipientRank,
+    recipientCitationName,
+    rankEntries,
+    minimumNarrativeSentences = 3,
+  },
 ) {
   const text = narrative.trim();
   const warnings = [];
@@ -116,11 +131,13 @@ export function analyzeNarrative(
 
   const sentenceRanges = findSentenceRanges(text);
 
-  if (sentenceRanges.length < 3) {
+  if (sentenceRanges.length < minimumNarrativeSentences) {
     addWarning(
       warnings,
       "sentence-count",
-      "Sentence count: This medal requires a minimum of three sentences. The narrative may not meet that requirement. Please verify before submitting.",
+      `Sentence count: This medal requires a minimum of ${formatSentenceMinimum(
+        minimumNarrativeSentences,
+      )} sentences. The narrative may not meet that requirement. Please verify before submitting.`,
     );
   }
 
@@ -133,7 +150,6 @@ export function analyzeNarrative(
       `(^|[^A-Za-z0-9])((?:${rankPattern})\\.?)` + `(?=$|[^A-Za-z0-9])`,
       "gi",
     );
-    const warnedRankTokens = new Set();
 
     for (const match of text.matchAll(possibleRankPattern)) {
       const prefix = match[1] ?? "";
@@ -143,15 +159,11 @@ export function analyzeNarrative(
 
       addHighlightRange(highlightRanges, start, start + token.length);
 
-      if (!warnedRankTokens.has(warningKey)) {
-        warnedRankTokens.add(warningKey);
-
-        addWarning(
-          warnings,
-          `rank-${warningKey}`,
-          `Possible rank usage: "${token}" was detected in the narrative. Verify that this usage and any rank formatting comply with the Medal SOP.`,
-        );
-      }
+      addWarning(
+        warnings,
+        `rank-${warningKey}`,
+        `Possible rank usage: "${token}" was detected in the narrative. Verify that this usage and any rank formatting comply with the Medal SOP.`,
+      );
     }
   }
 
