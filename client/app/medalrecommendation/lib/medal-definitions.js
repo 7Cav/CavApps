@@ -1,8 +1,23 @@
+import {
+  buildActionCharacterCreditClosing,
+  buildEntireOperationActionOpening,
+  buildExtraordinaryHeroismOpening,
+  buildExtraordinaryHeroismPilotOpening,
+  buildGallantryOpening,
+  buildHeroismAndSacrificeClosing,
+  buildHeroismAndSkillClosing,
+  buildHeroismSkillDevotionClosing,
+  buildPurpleHeartOpening,
+  buildSingleHeroismAndSkillOpening,
+  buildSkillsAndHeroicActionsClosing,
+} from "./citation-builders.js";
+
 export const OPERATION_MEDALS = [
   {
     id: "army-commendation-medal",
     name: "Army Commendation Medal",
     abbreviation: "ARCOM",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/d/dc/ARCOM.jpg",
 
     criteria:
@@ -14,53 +29,36 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: true,
-      scope: false,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
+      actionCharacter: {
+        type: "citationChoice",
+        required: true,
+        options: [
+          {
+            id: "skillful",
+            label: "Skillful",
+            citationText: "skillful",
+          },
+          {
+            id: "heroic",
+            label: "Heroic",
+            citationText: "heroic",
+          },
+        ],
+      },
     },
-
-    actionCharacterOptions: [
-      {
-        value: "skillful",
-        label: "Skillful",
-      },
-      {
-        value: "heroic",
-        label: "Heroic",
-      },
-    ],
-
-    scopeOptions: [],
 
     eligibilityNotes: [],
 
-    buildOpening({
-      actionCharacter,
-      combatElement,
-      operationTitle,
-      location,
-      date,
-    }) {
-      return (
-        `For ${actionCharacter} actions over an entire operation while serving as ` +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildEntireOperationActionOpening,
 
-    buildClosing({ recipientRank, recipientCitationName, actionCharacter }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildActionCharacterCreditClosing,
   },
 
   {
     id: "army-commendation-medal-with-valor",
     name: "Army Commendation Medal With Valor",
     abbreviation: "ARCOMV",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/0/0f/ARCOMV.jpg",
 
     criteria: "Awarded for a single act of heroism or skill under fire.",
@@ -70,37 +68,18 @@ export const OPERATION_MEDALS = [
 
     minimumNarrativeSentences: 3,
 
-    fields: {
-      actionCharacter: false,
-      scope: false,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
-    },
-
-    actionCharacterOptions: [],
-    scopeOptions: [],
     eligibilityNotes: [],
 
-    buildOpening({ combatElement, operationTitle, location, date }) {
-      return (
-        "For a single act of heroism and skill under enemy fire while serving as " +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildSingleHeroismAndSkillOpening,
 
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s heroism and skill ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildHeroismAndSkillClosing,
   },
 
   {
     id: "air-medal",
     name: "Air Medal",
     abbreviation: "AM",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/3/3f/AM.jpg",
 
     criteria:
@@ -112,55 +91,41 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: true,
-      scope: false,
+      actionCharacter: {
+        type: "citationChoice",
+        required: true,
+        options: [
+          {
+            id: "skillful",
+            label: "Skillful",
+            citationText: "skillful",
+          },
+          {
+            id: "heroic",
+            label: "Heroic",
+            citationText: "heroic",
+          },
+        ],
+      },
+      combatElementVariant: "aircrew",
       combatElementLabel: "Aircrew Combat Element",
       combatElementPlaceholder: "a door gunner, an F-16 pilot, etc.",
     },
-
-    actionCharacterOptions: [
-      {
-        value: "skillful",
-        label: "Skillful",
-      },
-      {
-        value: "heroic",
-        label: "Heroic",
-      },
-    ],
-
-    scopeOptions: [],
 
     eligibilityNotes: [
       "The recipient must be a member of an aircrew. Pilots are eligible.",
     ],
 
-    buildOpening({
-      actionCharacter,
-      combatElement,
-      operationTitle,
-      location,
-      date,
-    }) {
-      return (
-        `For ${actionCharacter} actions over an entire operation while serving as ` +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildEntireOperationActionOpening,
 
-    buildClosing({ recipientRank, recipientCitationName, actionCharacter }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildActionCharacterCreditClosing,
   },
 
   {
     id: "purple-heart",
     name: "Purple Heart",
     abbreviation: "PH",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/b/b5/PH.jpg",
 
     criteria:
@@ -172,55 +137,36 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: false,
-      scope: true,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
+      scope: {
+        type: "scopeChoice",
+        required: true,
+        options: [
+          {
+            id: "single",
+            label: "Single",
+          },
+          {
+            id: "multiple",
+            label: "Multiple",
+          },
+        ],
+      },
     },
-
-    actionCharacterOptions: [],
-
-    scopeOptions: [
-      {
-        value: "single",
-        label: "Single",
-      },
-      {
-        value: "multiple",
-        label: "Multiple",
-      },
-    ],
 
     eligibilityNotes: [
       "The recipient must have been killed while undertaking the combat actions being cited.",
     ],
 
-    buildOpening({ scope, combatElement, operationTitle, location, date }) {
-      const actionText =
-        scope === "single"
-          ? "a single heroic action"
-          : "multiple heroic actions";
+    buildOpening: buildPurpleHeartOpening,
 
-      return (
-        `For ${actionText} and skill under enemy fire resulting in their ` +
-        `sacrifice and death while serving as ${combatElement} in the 7th Cavalry ` +
-        `Regiment during combat in Operation ${operationTitle} near ${location} ` +
-        `on ${date}.`
-      );
-    },
-
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s heroism and sacrifice ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildHeroismAndSacrificeClosing,
   },
 
   {
     id: "bronze-star-medal",
     name: "Bronze Star Medal",
     abbreviation: "BS",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/5/5e/BS.jpg",
 
     criteria:
@@ -232,52 +178,36 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: true,
-      scope: false,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
+      actionCharacter: {
+        type: "citationChoice",
+        required: true,
+        options: [
+          {
+            id: "skillful",
+            label: "Skillful",
+            citationText: "skillful",
+          },
+          {
+            id: "heroic",
+            label: "Heroic",
+            citationText: "heroic",
+          },
+        ],
+      },
     },
 
-    actionCharacterOptions: [
-      {
-        value: "skillful",
-        label: "Skillful",
-      },
-      {
-        value: "heroic",
-        label: "Heroic",
-      },
-    ],
-
-    scopeOptions: [],
     eligibilityNotes: [],
 
-    buildOpening({
-      actionCharacter,
-      combatElement,
-      operationTitle,
-      location,
-      date,
-    }) {
-      return (
-        `For ${actionCharacter} actions over an entire operation while serving as ` +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildEntireOperationActionOpening,
 
-    buildClosing({ recipientRank, recipientCitationName, actionCharacter }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s ${actionCharacter} actions ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildActionCharacterCreditClosing,
   },
 
   {
     id: "bronze-star-medal-with-valor",
     name: "Bronze Star Medal With Valor",
     abbreviation: "BSV",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/8/88/BSV.jpg",
 
     criteria:
@@ -288,40 +218,20 @@ export const OPERATION_MEDALS = [
 
     minimumNarrativeSentences: 3,
 
-    fields: {
-      actionCharacter: false,
-      scope: false,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
-    },
-
-    actionCharacterOptions: [],
-    scopeOptions: [],
-
     eligibilityNotes: [
       "The recipient must have survived the cited action to be eligible for this award.",
     ],
 
-    buildOpening({ combatElement, operationTitle, location, date }) {
-      return (
-        "For a single act demonstrating extraordinary heroism and skill under enemy fire " +
-        `while serving as ${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildExtraordinaryHeroismOpening,
 
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s skills and heroic actions ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildSkillsAndHeroicActionsClosing,
   },
 
   {
     id: "distinguished-flying-cross",
     name: "Distinguished Flying Cross",
     abbreviation: "DFC",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/7/74/DFC.jpg",
 
     criteria:
@@ -333,14 +243,10 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: false,
-      scope: false,
+      combatElementVariant: "airframe",
       combatElementLabel: "Airframe",
       combatElementPlaceholder: "an F/A-18, a Rotary-Wing, etc.",
     },
-
-    actionCharacterOptions: [],
-    scopeOptions: [],
 
     eligibilityNotes: [
       "The recipient must be a pilot.",
@@ -349,26 +255,16 @@ export const OPERATION_MEDALS = [
       "The recipient must have survived the cited action.",
     ],
 
-    buildOpening({ combatElement, operationTitle, location, date }) {
-      return (
-        "For a single act demonstrating extraordinary heroism and skill under enemy fire " +
-        `while serving as ${combatElement} pilot in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildExtraordinaryHeroismPilotOpening,
 
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s skills and heroic actions ` +
-        "reflect great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildSkillsAndHeroicActionsClosing,
   },
 
   {
     id: "silver-star",
     name: "Silver Star",
     abbreviation: "SS",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/8/8f/SS.jpg",
 
     criteria:
@@ -380,40 +276,26 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 4,
 
     fields: {
-      actionCharacter: false,
-      scope: false,
+      combatElementVariant: "leadership",
       combatElementLabel: "Leadership Element",
       combatElementPlaceholder: "a platoon leader, commander, etc.",
     },
-
-    actionCharacterOptions: [],
-    scopeOptions: [],
 
     eligibilityNotes: [
       "The recipient must have been serving in an official leadership position.",
       "The recipient must have survived the cited action.",
     ],
 
-    buildOpening({ combatElement, operationTitle, location, date }) {
-      return (
-        "For conspicuous gallantry and intrepidity under direct enemy fire while serving as " +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildGallantryOpening,
 
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s heroism, skill and devotion to duty ` +
-        "reflects great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildHeroismSkillDevotionClosing,
   },
 
   {
     id: "distinguished-service-cross",
     name: "Distinguished Service Cross",
     abbreviation: "DSC",
+    worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/d/d3/DSC.jpg",
 
     criteria:
@@ -424,36 +306,15 @@ export const OPERATION_MEDALS = [
 
     minimumNarrativeSentences: 5,
 
-    fields: {
-      actionCharacter: false,
-      scope: false,
-      combatElementLabel: "Combat Element",
-      combatElementPlaceholder: "a rifleman, the Allied commander, etc.",
-    },
-
-    actionCharacterOptions: [],
-    scopeOptions: [],
-
     eligibilityNotes: [
       "The recipient must have survived the cited action.",
       "Against a live enemy (non-Cav) force or in an internal player-versus-player match, the cited actions must have been unquestionably responsible for the successful outcome of the mission.",
       "Against a computer opponent, the recipient must have been serving as Officer-In-Command (OIC) of the official operation and their actions must have been unquestionably responsible for the successful outcome of the mission.",
     ],
 
-    buildOpening({ combatElement, operationTitle, location, date }) {
-      return (
-        "For conspicuous gallantry and intrepidity under direct enemy fire while serving as " +
-        `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-        `Operation ${operationTitle} near ${location} on ${date}.`
-      );
-    },
+    buildOpening: buildGallantryOpening,
 
-    buildClosing({ recipientRank, recipientCitationName }) {
-      return (
-        `${recipientRank} ${recipientCitationName}'s heroism, skill and devotion to duty ` +
-        "reflects great credit upon themselves and the 7th Cavalry Gaming Regiment."
-      );
-    },
+    buildClosing: buildHeroismSkillDevotionClosing,
   },
 ];
 
