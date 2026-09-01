@@ -17,6 +17,12 @@ import {
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
 import { OPERATION_MEDALS } from "./lib/medal-definitions";
+import {
+  applyAwardChange,
+  getCitationChoiceText,
+  resolveMedalWorksheet,
+} from "./lib/worksheet-profiles";
+import { validateWorksheet } from "./lib/worksheet-validation";
 
 function formatOperationDate(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -39,32 +45,6 @@ function getCitationName(fullName) {
   }
 
   return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
-}
-
-function isOperationDateValid(value) {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return false;
-  }
-
-  const [year, month, day] = value.split("-").map(Number);
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  if (
-    date.getUTCFullYear() !== year ||
-    date.getUTCMonth() !== month - 1 ||
-    date.getUTCDate() !== day
-  ) {
-    return false;
-  }
-
-  const now = new Date();
-  const localToday = [
-    String(now.getFullYear()).padStart(4, "0"),
-    String(now.getMonth() + 1).padStart(2, "0"),
-    String(now.getDate()).padStart(2, "0"),
-  ].join("-");
-
-  return value <= localToday;
 }
 
 function renderNarrativeWithHighlights(text, highlightRanges) {
@@ -118,6 +98,139 @@ function renderCitationNarrative(recommendation) {
   );
 }
 
+function getFieldControlId(fieldName) {
+  return fieldName.replace(
+    /[A-Z]/g,
+    (character) => `-${character.toLowerCase()}`,
+  );
+}
+
+function WorksheetField({
+  fieldName,
+  field,
+  value,
+  isInvalid,
+  warnings = [],
+  onChange,
+}) {
+  const controlId = getFieldControlId(fieldName);
+  const errorId = `${controlId}-required`;
+  const warningsId = `${controlId}-warnings`;
+  const hasWarnings = warnings.length > 0;
+  const describedBy = isInvalid
+    ? errorId
+    : hasWarnings
+      ? warningsId
+      : undefined;
+  const errorMessage =
+    value && field.invalidMessage ? field.invalidMessage : "Required";
+
+  let control;
+
+  switch (field.type) {
+    case "citationChoice":
+    case "scopeChoice":
+      control = (
+        <Select value={value} onValueChange={onChange}>
+          <SelectTrigger
+            id={controlId}
+            aria-invalid={isInvalid ? "true" : undefined}
+            aria-describedby={describedBy}
+            className={
+              isInvalid
+                ? "border-destructive focus:ring-destructive"
+                : undefined
+            }
+          >
+            <SelectValue placeholder={field.placeholder} />
+          </SelectTrigger>
+
+          <SelectContent>
+            {field.options.map((option) => (
+              <SelectItem key={option.id} value={option.id}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+      break;
+
+    case "text":
+    case "date":
+      control = (
+        <Input
+          id={controlId}
+          type={field.type}
+          value={value}
+          placeholder={field.placeholder}
+          aria-invalid={isInvalid ? "true" : undefined}
+          aria-describedby={describedBy}
+          className={
+            isInvalid
+              ? "border-destructive focus-visible:ring-destructive"
+              : undefined
+          }
+          onChange={(event) => onChange(event.target.value)}
+        />
+      );
+      break;
+
+    case "textarea":
+      control = (
+        <textarea
+          id={controlId}
+          value={value}
+          placeholder={field.placeholder}
+          aria-invalid={isInvalid ? "true" : undefined}
+          aria-describedby={describedBy}
+          onChange={(event) => onChange(event.target.value)}
+          rows={field.rows}
+          className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
+            isInvalid
+              ? "border-destructive focus-visible:ring-destructive"
+              : hasWarnings
+                ? "border-amber-500/50 focus-visible:ring-amber-500/30"
+                : "border-input"
+          }`}
+        />
+      );
+      break;
+
+    default:
+      return null;
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label htmlFor={controlId} className="pb-1 text-sm font-medium">
+        {field.label}
+      </label>
+
+      {control}
+
+      {isInvalid && (
+        <p id={errorId} className="text-sm font-medium text-destructive">
+          {errorMessage}
+        </p>
+      )}
+
+      {hasWarnings && (
+        <div
+          id={warningsId}
+          role="status"
+          aria-label="Narrative Warnings"
+          className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
+        >
+          {warnings.map((warning) => (
+            <p key={warning.key}>{warning.message}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MedalRecommendationClient({ recipientRoster = [] }) {
   const [selectedMedalId, setSelectedMedalId] = useState("");
 
@@ -125,19 +238,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
   const [selectedRecipient, setSelectedRecipient] = useState(null);
 
-  const [actionCharacter, setActionCharacter] = useState("");
-
-  const [scope, setScope] = useState("");
-
-  const [combatElement, setCombatElement] = useState("");
-
-  const [operationTitle, setOperationTitle] = useState("");
-
-  const [location, setLocation] = useState("");
-
-  const [operationDate, setOperationDate] = useState("");
-
-  const [narrative, setNarrative] = useState("");
+  const [worksheetValues, setWorksheetValues] = useState({});
 
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
@@ -147,6 +248,8 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
 
   const selectedMedal =
     OPERATION_MEDALS.find((medal) => medal.id === selectedMedalId) ?? null;
+
+  const selectedWorksheet = resolveMedalWorksheet(selectedMedal);
 
   const rankEntries = useMemo(
     () => getRankEntries(rosterMembers),
@@ -176,61 +279,24 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
     selectedRecipient && recipientRank && recipientRosterName,
   );
 
-  const actionCharacterIsValid =
-    !selectedMedal?.fields.actionCharacter || Boolean(actionCharacter);
+  const worksheetValidation = validateWorksheet(
+    selectedWorksheet,
+    worksheetValues,
+  );
 
-  const scopeIsValid = !selectedMedal?.fields.scope || Boolean(scope);
-
-  const combatElementIsValid = Boolean(combatElement.trim());
-
-  const operationTitleIsValid = Boolean(operationTitle.trim());
-
-  const locationIsValid = Boolean(location.trim());
-
-  const operationDateIsValid = isOperationDateValid(operationDate);
-
-  const narrativeIsValid = Boolean(narrative.trim());
-
-  const isComplete =
-    recipientIsValid &&
-    actionCharacterIsValid &&
-    scopeIsValid &&
-    combatElementIsValid &&
-    operationTitleIsValid &&
-    locationIsValid &&
-    operationDateIsValid &&
-    narrativeIsValid;
+  const isComplete = recipientIsValid && worksheetValidation.isComplete;
 
   const recipientIsInvalid = hasAttemptedGenerate && !recipientIsValid;
 
-  const actionCharacterIsInvalid =
-    hasAttemptedGenerate &&
-    Boolean(selectedMedal?.fields.actionCharacter) &&
-    !actionCharacterIsValid;
-
-  const scopeIsInvalid =
-    hasAttemptedGenerate &&
-    Boolean(selectedMedal?.fields.scope) &&
-    !scopeIsValid;
-
-  const combatElementIsInvalid = hasAttemptedGenerate && !combatElementIsValid;
-
-  const operationTitleIsInvalid =
-    hasAttemptedGenerate && !operationTitleIsValid;
-
-  const locationIsInvalid = hasAttemptedGenerate && !locationIsValid;
-
-  const operationDateIsInvalid = hasAttemptedGenerate && !operationDateIsValid;
-
-  const narrativeIsInvalid = hasAttemptedGenerate && !narrativeIsValid;
-
-  const hasNarrativeWarnings = Boolean(
-    recommendation?.narrativeWarnings?.length,
-  );
-
-  const operationDateErrorMessage = operationDate
-    ? "Date must be today or earlier"
-    : "Required";
+  const {
+    actionCharacter = "",
+    scope = "",
+    combatElement = "",
+    operationTitle = "",
+    location = "",
+    operationDate = "",
+    narrative = "",
+  } = worksheetValues;
 
   function selectRecipient(member) {
     setSelectedRecipient(member);
@@ -241,6 +307,14 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
   function handleRecipientQueryChange(event) {
     setRecipientQuery(event.target.value);
     setSelectedRecipient(null);
+    setRecommendation(null);
+  }
+
+  function handleWorksheetValueChange(fieldName, value) {
+    setWorksheetValues((currentValues) => ({
+      ...currentValues,
+      [fieldName]: value,
+    }));
     setRecommendation(null);
   }
 
@@ -262,6 +336,13 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
       .trim()
       .replace(/^operation\s+/i, "");
 
+    const citationActionCharacter = selectedWorksheet?.fields.actionCharacter
+      ? getCitationChoiceText(
+          selectedWorksheet.fields.actionCharacter,
+          actionCharacter,
+        )
+      : "";
+
     const narrativeAnalysis = analyzeNarrative(narrative, {
       recipientRank,
       recipientCitationName,
@@ -275,7 +356,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
     }
 
     const citationContext = {
-      actionCharacter,
+      actionCharacter: citationActionCharacter,
       scope,
       combatElement: combatElement.trim(),
       operationTitle: normalizedOperationTitle,
@@ -288,6 +369,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
     const openingSentence = selectedMedal.buildOpening(citationContext);
 
     const closingSentence = selectedMedal.buildClosing(citationContext);
+
     setRecommendation({
       recipient: `${recipientRank} ${recipientCitationName}`,
       openingSentence,
@@ -318,16 +400,16 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
             const nextMedal =
               OPERATION_MEDALS.find((medal) => medal.id === value) ?? null;
 
-            if (
-              selectedMedal?.fields.combatElementLabel !==
-              nextMedal?.fields.combatElementLabel
-            ) {
-              setCombatElement("");
-            }
+            const nextWorksheet = resolveMedalWorksheet(nextMedal);
+
+            const nextValues = applyAwardChange(
+              selectedWorksheet,
+              nextWorksheet,
+              worksheetValues,
+            );
 
             setSelectedMedalId(value);
-            setActionCharacter("");
-            setScope("");
+            setWorksheetValues(nextValues);
             setHasAttemptedGenerate(false);
             setRecommendation(null);
           }}
@@ -365,6 +447,7 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
             {selectedMedal.eligibilityNotes.length > 0 && (
               <div className="space-y-2">
                 <h3 className="font-semibold text-primary">Eligibility</h3>
+
                 <ul className="list-disc space-y-1 pl-5">
                   {selectedMedal.eligibilityNotes.map((note) => (
                     <li key={note}>{note}</li>
@@ -461,308 +544,29 @@ export default function MedalRecommendationClient({ recipientRoster = [] }) {
               )}
             </div>
 
-            {selectedMedal.fields.actionCharacter && (
-              <div className="flex flex-col gap-2">
-                <label
-                  htmlFor="action-character"
-                  className="pb-1 text-sm font-medium"
-                >
-                  Action Character
-                </label>
+            {selectedWorksheet?.fieldOrder.map((fieldName) => {
+              const field = selectedWorksheet.fields[fieldName];
+              const isInvalid =
+                hasAttemptedGenerate && !worksheetValidation.fields[fieldName];
+              const warnings =
+                field.feedback === "narrativeWarnings"
+                  ? (recommendation?.narrativeWarnings ?? [])
+                  : [];
 
-                <Select
-                  value={actionCharacter}
-                  onValueChange={(value) => {
-                    setActionCharacter(value);
-                    setRecommendation(null);
-                  }}
-                >
-                  <SelectTrigger
-                    id="action-character"
-                    aria-invalid={actionCharacterIsInvalid ? "true" : undefined}
-                    aria-describedby={
-                      actionCharacterIsInvalid
-                        ? "action-character-required"
-                        : undefined
-                    }
-                    className={
-                      actionCharacterIsInvalid
-                        ? "border-destructive focus:ring-destructive"
-                        : undefined
-                    }
-                  >
-                    <SelectValue placeholder="Select action character" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {selectedMedal.actionCharacterOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                {actionCharacterIsInvalid && (
-                  <p
-                    id="action-character-required"
-                    className="text-sm font-medium text-destructive"
-                  >
-                    Required
-                  </p>
-                )}
-              </div>
-            )}
-            {selectedMedal.fields.scope && (
-              <div className="flex flex-col gap-2">
-                <label htmlFor="scope" className="pb-1 text-sm font-medium">
-                  Scope
-                </label>
-
-                <Select
-                  value={scope}
-                  onValueChange={(value) => {
-                    setScope(value);
-                    setRecommendation(null);
-                  }}
-                >
-                  <SelectTrigger
-                    id="scope"
-                    aria-invalid={scopeIsInvalid ? "true" : undefined}
-                    aria-describedby={
-                      scopeIsInvalid ? "scope-required" : undefined
-                    }
-                    className={
-                      scopeIsInvalid
-                        ? "border-destructive focus:ring-destructive"
-                        : undefined
-                    }
-                  >
-                    <SelectValue placeholder="Select action scope" />
-                  </SelectTrigger>
-
-                  <SelectContent>
-                    {selectedMedal.scopeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {scopeIsInvalid && (
-                  <p
-                    id="scope-required"
-                    className="text-sm font-medium text-destructive"
-                  >
-                    Required
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="combat-element"
-                className="pb-1 text-sm font-medium"
-              >
-                {selectedMedal.fields.combatElementLabel}
-              </label>
-
-              <Input
-                id="combat-element"
-                type="text"
-                value={combatElement}
-                placeholder={selectedMedal.fields.combatElementPlaceholder}
-                aria-invalid={combatElementIsInvalid ? "true" : undefined}
-                aria-describedby={
-                  combatElementIsInvalid ? "combat-element-required" : undefined
-                }
-                className={
-                  combatElementIsInvalid
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : undefined
-                }
-                onChange={(event) => {
-                  setCombatElement(event.target.value);
-                  setRecommendation(null);
-                }}
-              />
-
-              {combatElementIsInvalid && (
-                <p
-                  id="combat-element-required"
-                  className="text-sm font-medium text-destructive"
-                >
-                  Required
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="operation-title"
-                className="pb-1 text-sm font-medium"
-              >
-                Operation Title
-              </label>
-
-              <Input
-                id="operation-title"
-                type="text"
-                value={operationTitle}
-                placeholder="Overlord"
-                aria-invalid={operationTitleIsInvalid ? "true" : undefined}
-                aria-describedby={
-                  operationTitleIsInvalid
-                    ? "operation-title-required"
-                    : undefined
-                }
-                className={
-                  operationTitleIsInvalid
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : undefined
-                }
-                onChange={(event) => {
-                  setOperationTitle(event.target.value);
-                  setRecommendation(null);
-                }}
-              />
-
-              {operationTitleIsInvalid && (
-                <p
-                  id="operation-title-required"
-                  className="text-sm font-medium text-destructive"
-                >
-                  Required
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="location" className="pb-1 text-sm font-medium">
-                Location
-              </label>
-
-              <Input
-                id="location"
-                type="text"
-                value={location}
-                placeholder="Omaha Beach"
-                aria-invalid={locationIsInvalid ? "true" : undefined}
-                aria-describedby={
-                  locationIsInvalid ? "location-required" : undefined
-                }
-                className={
-                  locationIsInvalid
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : undefined
-                }
-                onChange={(event) => {
-                  setLocation(event.target.value);
-                  setRecommendation(null);
-                }}
-              />
-
-              {locationIsInvalid && (
-                <p
-                  id="location-required"
-                  className="text-sm font-medium text-destructive"
-                >
-                  Required
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor="operation-date"
-                className="pb-1 text-sm font-medium"
-              >
-                Operation Date
-              </label>
-
-              <Input
-                id="operation-date"
-                type="date"
-                value={operationDate}
-                aria-invalid={operationDateIsInvalid ? "true" : undefined}
-                aria-describedby={
-                  operationDateIsInvalid ? "operation-date-required" : undefined
-                }
-                className={
-                  operationDateIsInvalid
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : undefined
-                }
-                onChange={(event) => {
-                  setOperationDate(event.target.value);
-                  setRecommendation(null);
-                }}
-              />
-
-              {operationDateIsInvalid && (
-                <p
-                  id="operation-date-required"
-                  className="text-sm font-medium text-destructive"
-                >
-                  {operationDateErrorMessage}
-                </p>
-              )}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="narrative" className="pb-1 text-sm font-medium">
-                Narrative
-              </label>
-
-              <textarea
-                id="narrative"
-                value={narrative}
-                placeholder="Explain the lead-up, actions, and outcome..."
-                aria-invalid={narrativeIsInvalid ? "true" : undefined}
-                aria-describedby={
-                  narrativeIsInvalid
-                    ? "narrative-required"
-                    : hasNarrativeWarnings
-                      ? "narrative-warnings"
-                      : undefined
-                }
-                onChange={(event) => {
-                  setNarrative(event.target.value);
-                  setRecommendation(null);
-                }}
-                rows={8}
-                className={`flex w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
-                  narrativeIsInvalid
-                    ? "border-destructive focus-visible:ring-destructive"
-                    : hasNarrativeWarnings
-                      ? "border-amber-500/50 focus-visible:ring-amber-500/30"
-                      : "border-input"
-                }`}
-              />
-
-              {narrativeIsInvalid && (
-                <p
-                  id="narrative-required"
-                  className="text-sm font-medium text-destructive"
-                >
-                  Required
-                </p>
-              )}
-
-              {hasNarrativeWarnings && (
-                <div
-                  id="narrative-warnings"
-                  role="status"
-                  aria-label="Narrative Warnings"
-                  className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
-                >
-                  {recommendation.narrativeWarnings.map((warning) => (
-                    <p key={warning.key}>{warning.message}</p>
-                  ))}
-                </div>
-              )}
-            </div>
+              return (
+                <WorksheetField
+                  key={fieldName}
+                  fieldName={fieldName}
+                  field={field}
+                  value={worksheetValues[fieldName] ?? field.defaultValue ?? ""}
+                  isInvalid={isInvalid}
+                  warnings={warnings}
+                  onChange={(value) =>
+                    handleWorksheetValueChange(fieldName, value)
+                  }
+                />
+              );
+            })}
 
             <Button type="button" onClick={handleGenerate}>
               Generate Recommendation
