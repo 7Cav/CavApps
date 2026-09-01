@@ -1,9 +1,4 @@
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
-import { resolveMedalWorksheet } from "../lib/worksheet-profiles.js";
-import {
-  applyAwardChange,
-  resolveMedalWorksheet,
-} from "../lib/worksheet-profiles.js";
 import {
   applyAwardChange,
   getCitationChoiceText,
@@ -226,12 +221,238 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
     expect(worksheet.fields.operationDate).toMatchObject({
       label: "Operation Date",
+      defaultValue: "",
+      invalidMessage: "Date must be today or earlier",
     });
 
     expect(worksheet.fields.narrative).toMatchObject({
       label: "Narrative",
+      defaultValue: "",
       placeholder: "Explain the lead-up, actions, and outcome...",
+      rows: 8,
+      feedback: "narrativeWarnings",
     });
+
+    expect(worksheet.fields.operationTitle.defaultValue).toBe("");
+    expect(worksheet.fields.location.defaultValue).toBe("");
+  });
+
+  test("declares worksheet-controlled field order", () => {
+    const arcomWorksheet = resolveMedalWorksheet(
+      getMedal("Army Commendation Medal"),
+    );
+    const purpleHeartWorksheet = resolveMedalWorksheet(
+      getMedal("Purple Heart"),
+    );
+
+    expect(arcomWorksheet.fieldOrder).toEqual([
+      "actionCharacter",
+      "combatElement",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ]);
+    expect(purpleHeartWorksheet.fieldOrder).toEqual([
+      "scope",
+      "combatElement",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ]);
+  });
+
+  test("resolves a new medal field without field-specific profile plumbing", () => {
+    const worksheet = resolveMedalWorksheet({
+      worksheetProfile: "operationIndividual",
+      fields: {
+        missionCode: {
+          type: "text",
+          required: true,
+          defaultValue: "",
+          label: "Mission Code",
+          placeholder: "EXFOR-01",
+        },
+      },
+    });
+
+    expect(worksheet.fields.missionCode).toMatchObject({
+      type: "text",
+      required: true,
+      defaultValue: "",
+      label: "Mission Code",
+      placeholder: "EXFOR-01",
+      awardChange: "reset",
+    });
+    expect(worksheet.fieldOrder.at(-1)).toBe("missionCode");
+  });
+
+  test("clones choice options into the resolved worksheet", () => {
+    const medal = getMedal("Army Commendation Medal");
+    const worksheet = resolveMedalWorksheet(medal);
+
+    expect(worksheet.fields.actionCharacter.options).toEqual(
+      medal.fields.actionCharacter.options,
+    );
+    expect(worksheet.fields.actionCharacter.options).not.toBe(
+      medal.fields.actionCharacter.options,
+    );
+    expect(worksheet.fields.actionCharacter.options[0]).not.toBe(
+      medal.fields.actionCharacter.options[0],
+    );
+  });
+
+  test("ignores malformed or incomplete medal field overrides", () => {
+    const worksheet = resolveMedalWorksheet({
+      worksheetProfile: "operationIndividual",
+      fields: {
+        combatElement: "unsupported",
+        ignoredNull: null,
+        incompleteField: {
+          label: "Incomplete Field",
+        },
+      },
+    });
+
+    expect(worksheet.fields.combatElement).toMatchObject({
+      type: "text",
+      variant: "combat",
+      label: "Combat Element",
+    });
+    expect(worksheet.fields.combatElement).not.toHaveProperty("0");
+    expect(worksheet.fields.ignoredNull).toBeUndefined();
+    expect(worksheet.fields.incompleteField).toBeUndefined();
+  });
+
+  test("preserves the profile award-change policy for field overrides", () => {
+    const worksheet = resolveMedalWorksheet(getMedal("Air Medal"));
+
+    expect(worksheet.fields.combatElement.awardChange).toBe("sameVariant");
+  });
+
+  test("initializes a new field from its worksheet default", () => {
+    const worksheet = resolveMedalWorksheet({
+      worksheetProfile: "operationIndividual",
+      fields: {
+        missionCode: {
+          type: "text",
+          required: true,
+          defaultValue: "EXFOR-01",
+          label: "Mission Code",
+        },
+      },
+    });
+
+    expect(applyAwardChange(null, worksheet, {})).toMatchObject({
+      missionCode: "EXFOR-01",
+    });
+  });
+
+  test("initializes a preserved field from its worksheet default", () => {
+    const worksheet = {
+      fields: {
+        missionCode: {
+          awardChange: "preserve",
+          defaultValue: "EXFOR-01",
+        },
+      },
+    };
+
+    expect(applyAwardChange(null, worksheet, {})).toEqual({
+      missionCode: "EXFOR-01",
+    });
+  });
+
+  test.each([
+    ["the next field default", "NEXT-01", "PREVIOUS-01", "NEXT-01"],
+    ["the previous field default", undefined, "PREVIOUS-01", "PREVIOUS-01"],
+    ["an empty-string fallback", undefined, undefined, ""],
+  ])(
+    "uses %s when a same-variant field changes semantics",
+    (_defaultSource, nextDefault, previousDefault, expectedValue) => {
+      const previousWorksheet = {
+        fields: {
+          missionCode: {
+            variant: "previous",
+            awardChange: "sameVariant",
+            ...(previousDefault === undefined
+              ? {}
+              : { defaultValue: previousDefault }),
+          },
+        },
+      };
+      const nextWorksheet = {
+        fields: {
+          missionCode: {
+            variant: "next",
+            awardChange: "sameVariant",
+            ...(nextDefault === undefined ? {} : { defaultValue: nextDefault }),
+          },
+        },
+      };
+
+      expect(
+        applyAwardChange(previousWorksheet, nextWorksheet, {
+          missionCode: "CURRENT-01",
+        }),
+      ).toEqual({
+        missionCode: expectedValue,
+      });
+    },
+  );
+
+  test("resets to an empty string when neither field declares a default", () => {
+    const previousWorksheet = {
+      fields: {
+        missionCode: {
+          awardChange: "reset",
+        },
+      },
+    };
+    const nextWorksheet = {
+      fields: {
+        missionCode: {
+          awardChange: "reset",
+        },
+      },
+    };
+
+    expect(
+      applyAwardChange(previousWorksheet, nextWorksheet, {
+        missionCode: "CURRENT-01",
+      }),
+    ).toEqual({
+      missionCode: "",
+    });
+  });
+
+  test("initializes a preserved field without a default to an empty string", () => {
+    const worksheet = {
+      fields: {
+        missionCode: {
+          awardChange: "preserve",
+        },
+      },
+    };
+
+    expect(applyAwardChange(null, worksheet, {})).toEqual({
+      missionCode: "",
+    });
+  });
+
+  test("rejects an unsupported award-change policy", () => {
+    const worksheet = {
+      fields: {
+        missionCode: {
+          awardChange: "unsupported",
+        },
+      },
+    };
+
+    expect(() => applyAwardChange(null, worksheet, {})).toThrow(
+      'Unsupported award-change policy for field "missionCode"',
+    );
   });
 
   test("declares Action Character options as citation-ready choices", () => {
@@ -240,6 +461,9 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     expect(medal.fields.actionCharacter).toEqual({
       type: "citationChoice",
       required: true,
+      defaultValue: "",
+      label: "Action Character",
+      placeholder: "Select action character",
       options: [
         {
           id: "skillful",
@@ -261,6 +485,9 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     expect(medal.fields.scope).toEqual({
       type: "scopeChoice",
       required: true,
+      defaultValue: "",
+      label: "Scope",
+      placeholder: "Select action scope",
       options: [
         {
           id: "single",
@@ -326,6 +553,10 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     });
 
     expect(worksheet).toBeNull();
+  });
+
+  test("fails closed when no medal is provided", () => {
+    expect(resolveMedalWorksheet()).toBeNull();
   });
 
   test.each([

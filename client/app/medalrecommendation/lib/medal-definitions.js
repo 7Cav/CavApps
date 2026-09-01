@@ -12,6 +12,26 @@ import {
   buildSkillsAndHeroicActionsClosing,
 } from "./citation-builders.js";
 
+const ACTION_CHARACTER_FIELD = {
+  type: "citationChoice",
+  required: true,
+  defaultValue: "",
+  label: "Action Character",
+  placeholder: "Select action character",
+  options: [
+    {
+      id: "skillful",
+      label: "Skillful",
+      citationText: "skillful",
+    },
+    {
+      id: "heroic",
+      label: "Heroic",
+      citationText: "heroic",
+    },
+  ],
+};
+
 export const OPERATION_MEDALS = [
   {
     id: "army-commendation-medal",
@@ -29,22 +49,7 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: {
-        type: "citationChoice",
-        required: true,
-        options: [
-          {
-            id: "skillful",
-            label: "Skillful",
-            citationText: "skillful",
-          },
-          {
-            id: "heroic",
-            label: "Heroic",
-            citationText: "heroic",
-          },
-        ],
-      },
+      actionCharacter: ACTION_CHARACTER_FIELD,
     },
 
     eligibilityNotes: [],
@@ -91,25 +96,12 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: {
-        type: "citationChoice",
-        required: true,
-        options: [
-          {
-            id: "skillful",
-            label: "Skillful",
-            citationText: "skillful",
-          },
-          {
-            id: "heroic",
-            label: "Heroic",
-            citationText: "heroic",
-          },
-        ],
+      actionCharacter: ACTION_CHARACTER_FIELD,
+      combatElement: {
+        variant: "aircrew",
+        label: "Aircrew Combat Element",
+        placeholder: "a door gunner, an F-16 pilot, etc.",
       },
-      combatElementVariant: "aircrew",
-      combatElementLabel: "Aircrew Combat Element",
-      combatElementPlaceholder: "a door gunner, an F-16 pilot, etc.",
     },
 
     eligibilityNotes: [
@@ -140,6 +132,9 @@ export const OPERATION_MEDALS = [
       scope: {
         type: "scopeChoice",
         required: true,
+        defaultValue: "",
+        label: "Scope",
+        placeholder: "Select action scope",
         options: [
           {
             id: "single",
@@ -178,22 +173,7 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      actionCharacter: {
-        type: "citationChoice",
-        required: true,
-        options: [
-          {
-            id: "skillful",
-            label: "Skillful",
-            citationText: "skillful",
-          },
-          {
-            id: "heroic",
-            label: "Heroic",
-            citationText: "heroic",
-          },
-        ],
-      },
+      actionCharacter: ACTION_CHARACTER_FIELD,
     },
 
     eligibilityNotes: [],
@@ -243,9 +223,11 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 3,
 
     fields: {
-      combatElementVariant: "airframe",
-      combatElementLabel: "Airframe",
-      combatElementPlaceholder: "an F/A-18, a Rotary-Wing, etc.",
+      combatElement: {
+        variant: "airframe",
+        label: "Airframe",
+        placeholder: "an F/A-18, a Rotary-Wing, etc.",
+      },
     },
 
     eligibilityNotes: [
@@ -276,9 +258,11 @@ export const OPERATION_MEDALS = [
     minimumNarrativeSentences: 4,
 
     fields: {
-      combatElementVariant: "leadership",
-      combatElementLabel: "Leadership Element",
-      combatElementPlaceholder: "a platoon leader, commander, etc.",
+      combatElement: {
+        variant: "leadership",
+        label: "Leadership Element",
+        placeholder: "a platoon leader, commander, etc.",
+      },
     },
 
     eligibilityNotes: [

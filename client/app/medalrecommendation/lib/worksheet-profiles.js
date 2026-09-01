@@ -2,11 +2,22 @@ export const WORKSHEET_PROFILES = {
   operationIndividual: {
     recipientType: "individual",
 
+    fieldOrder: [
+      "actionCharacter",
+      "scope",
+      "combatElement",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ],
+
     fields: {
       combatElement: {
         type: "text",
         variant: "combat",
         required: true,
+        defaultValue: "",
         label: "Combat Element",
         placeholder: "a rifleman, the Allied commander, etc.",
         awardChange: "sameVariant",
@@ -15,6 +26,7 @@ export const WORKSHEET_PROFILES = {
       operationTitle: {
         type: "text",
         required: true,
+        defaultValue: "",
         label: "Operation Title",
         placeholder: "Overlord",
         awardChange: "preserve",
@@ -23,6 +35,7 @@ export const WORKSHEET_PROFILES = {
       location: {
         type: "text",
         required: true,
+        defaultValue: "",
         label: "Location",
         placeholder: "Omaha Beach",
         awardChange: "preserve",
@@ -31,26 +44,42 @@ export const WORKSHEET_PROFILES = {
       operationDate: {
         type: "date",
         required: true,
+        defaultValue: "",
         label: "Operation Date",
+        invalidMessage: "Date must be today or earlier",
         awardChange: "preserve",
       },
 
       narrative: {
         type: "textarea",
         required: true,
+        defaultValue: "",
         label: "Narrative",
         placeholder: "Explain the lead-up, actions, and outcome...",
+        rows: 8,
+        feedback: "narrativeWarnings",
         awardChange: "preserve",
       },
     },
   },
 };
 
+function copyField(field) {
+  return {
+    ...field,
+    ...(field.options
+      ? {
+          options: field.options.map((option) => ({ ...option })),
+        }
+      : {}),
+  };
+}
+
 function copyFields(fields) {
   return Object.fromEntries(
     Object.entries(fields).map(([fieldName, field]) => [
       fieldName,
-      { ...field },
+      copyField(field),
     ]),
   );
 }
@@ -68,37 +97,33 @@ export function resolveMedalWorksheet(medal) {
 
   const fields = copyFields(profile.fields);
 
-  fields.combatElement = {
-    ...fields.combatElement,
-    variant: medal.fields?.combatElementVariant ?? fields.combatElement.variant,
-    label: medal.fields?.combatElementLabel ?? fields.combatElement.label,
-    placeholder:
-      medal.fields?.combatElementPlaceholder ??
-      fields.combatElement.placeholder,
-  };
+  for (const [fieldName, medalField] of Object.entries(medal.fields ?? {})) {
+    if (!medalField || typeof medalField !== "object") {
+      continue;
+    }
 
-  if (medal.fields?.actionCharacter) {
-    fields.actionCharacter = {
-      ...medal.fields.actionCharacter,
-      awardChange: "reset",
-      options: medal.fields.actionCharacter.options.map((option) => ({
-        ...option,
-      })),
+    if (!fields[fieldName] && !medalField.type) {
+      continue;
+    }
+
+    fields[fieldName] = {
+      ...fields[fieldName],
+      ...copyField(medalField),
+      awardChange:
+        medalField.awardChange ?? fields[fieldName]?.awardChange ?? "reset",
     };
   }
 
-  if (medal.fields?.scope) {
-    fields.scope = {
-      ...medal.fields.scope,
-      awardChange: "reset",
-      options: medal.fields.scope.options.map((option) => ({
-        ...option,
-      })),
-    };
-  }
+  const fieldOrder = [
+    ...profile.fieldOrder.filter((fieldName) => fields[fieldName]),
+    ...Object.keys(fields).filter(
+      (fieldName) => !profile.fieldOrder.includes(fieldName),
+    ),
+  ];
 
   return {
     recipientType: profile.recipientType,
+    fieldOrder,
     fields,
   };
 }
@@ -141,7 +166,8 @@ export function applyAwardChange(
         break;
 
       case "reset":
-        nextValues[fieldName] = "";
+        nextValues[fieldName] =
+          nextField?.defaultValue ?? previousField?.defaultValue ?? "";
         break;
 
       case "sameVariant":
@@ -150,7 +176,8 @@ export function applyAwardChange(
           !nextField ||
           previousField.variant !== nextField.variant
         ) {
-          nextValues[fieldName] = "";
+          nextValues[fieldName] =
+            nextField?.defaultValue ?? previousField?.defaultValue ?? "";
         }
         break;
 
@@ -158,6 +185,10 @@ export function applyAwardChange(
         throw new Error(
           `Unsupported award-change policy for field "${fieldName}"`,
         );
+    }
+
+    if (nextField && nextValues[fieldName] === undefined) {
+      nextValues[fieldName] = nextField.defaultValue ?? "";
     }
   }
 
