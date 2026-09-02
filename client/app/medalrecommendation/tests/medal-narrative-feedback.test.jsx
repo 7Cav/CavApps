@@ -1,10 +1,13 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  completeRecommendation,
-  renderMedalRecommendationAid,
+  fillOperationWorksheet,
+  getCitationText,
+  getHighlightTexts,
+  renderClient,
   selectAward,
   selectRecipient,
+  submitRecommendation,
 } from "./test-helpers.js";
 
 describe("Medal Recommendation Aid - narrative feedback", () => {
@@ -16,21 +19,26 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     "highlights the full abbreviated rank including the period for %s",
     async (rankToken) => {
       const user = userEvent.setup();
-      await renderMedalRecommendationAid();
+      renderClient();
 
       const narrative =
         "Specialist John Smith maintained the defensive position during the opening engagement. " +
         `The ${rankToken} Kenton moved forward to reinforce the squad. ` +
         "The unit maintained control of the objective through the final contact.";
 
-      await completeRecommendation(user, narrative);
-      await user.click(
-        screen.getByRole("button", { name: "Generate Recommendation" }),
-      );
+      await selectAward(user);
+      await selectRecipient(user);
+      await fillOperationWorksheet(user, {
+        actionCharacter: "Skillful",
+        combatElement: "rifleman",
+        operationTitle: "Exfor",
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative,
+      });
+      await submitRecommendation(user);
 
-      const highlights = Array.from(
-        screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
-      ).map((highlight) => highlight.textContent);
+      const highlights = getHighlightTexts();
 
       expect(highlights).toContain(rankToken);
     },
@@ -38,46 +46,56 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("preserves citation text exactly when highlight ranges overlap", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "The MG jammed. " +
       "The MG jammed. " +
       "Specialist John Smith cleared it.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const expectedCitation =
       "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
       narrative +
       " Specialist John Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
 
-    expect(screen.getByLabelText("Citation Narrative").textContent).toBe(
-      expectedCitation,
-    );
-    const highlights = Array.from(
-      screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
-    ).map((highlight) => highlight.textContent);
+    expect(getCitationText()).toBe(expectedCitation);
+    const highlights = getHighlightTexts();
 
     expect(highlights).toEqual(["The MG jammed.", "The MG jammed."]);
   });
 
   test("shows one rank warning when the same abbreviation appears with and without a period", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the defensive position during the opening engagement. " +
       "MG Kenton coordinated the supporting element during the assault. " +
       "MG. Kenton continued directing the element through the final contact.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const warnings = screen.getByRole("status", { name: "Narrative Warnings" });
     const rankWarnings = Array.from(warnings.querySelectorAll("p")).filter(
@@ -85,28 +103,33 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     );
     expect(rankWarnings).toHaveLength(1);
 
-    const rankHighlights = Array.from(
-      screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
-    )
-      .map((highlight) => highlight.textContent)
-      .filter((text) => text === "MG" || text === "MG.");
+    const rankHighlights = getHighlightTexts().filter(
+      (text) => text === "MG" || text === "MG.",
+    );
 
     expect(rankHighlights).toEqual(["MG", "MG."]);
   });
 
   test("warns about a possible rank abbreviation without rewriting the narrative", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith dodged MG Fire while advancing toward the objective. " +
       "He maintained the defensive position throughout the engagement. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
@@ -129,17 +152,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("warns when the selected recipient Full Rank Full Name is not detected without highlighting the whole citation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist Smith maintained the defensive position throughout the operation. " +
       "He repeatedly engaged enemy forces during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.getByRole("region", { name: "Recommendation Preview" }),
@@ -156,17 +186,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("does not show a recipient-mention warning when Full Rank Full Name is present", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the defensive position throughout the operation. " +
       "He repeatedly engaged enemy forces during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.queryByText(
@@ -177,20 +214,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("accepts the citation name format when a roster name contains a middle name or initial", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist Taylor Smith maintained the defensive position throughout the operation. " +
       "He repeatedly engaged enemy forces during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative, {
-      recipientQuery: "Smith.TJ",
-      recipientUsername: "Smith.TJ",
+    await selectAward(user);
+    await selectRecipient(user, "Smith.TJ", "Smith.TJ");
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
     });
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
@@ -206,14 +247,19 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("shows a soft sentence-count warning without blocking generation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
-    await completeRecommendation(
-      user,
-      "Specialist John Smith maintained the defensive position throughout the operation.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith maintained the defensive position throughout the operation.",
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.getByRole("region", { name: "Recommendation Preview" }),
@@ -227,32 +273,19 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("uses the Silver Star four-sentence minimum for narrative warnings", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Silver Star");
     await selectRecipient(user);
 
-    await user.type(
-      screen.getByRole("textbox", { name: "Leadership Element" }),
-      "platoon leader",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith led the element under heavy enemy fire. Specialist Smith reorganized the defensive position. Specialist Smith's leadership allowed the mission to continue.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await fillOperationWorksheet(user, {
+      leadershipElement: "platoon leader",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith led the element under heavy enemy fire. Specialist Smith reorganized the defensive position. Specialist Smith's leadership allowed the mission to continue.",
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.getByRole("region", { name: "Recommendation Preview" }),
@@ -266,32 +299,19 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("uses the Distinguished Service Cross five-sentence minimum for narrative warnings", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Distinguished Service Cross");
     await selectRecipient(user);
 
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith advanced under direct enemy fire. Specialist Smith reorganized the element. Specialist Smith led the assault through the enemy position. Specialist Smith's actions secured the objective.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await fillOperationWorksheet(user, {
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith advanced under direct enemy fire. Specialist Smith reorganized the element. Specialist Smith led the assault through the enemy position. Specialist Smith's actions secured the objective.",
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.getByRole("region", { name: "Recommendation Preview" }),
@@ -305,17 +325,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("warns about a consecutive duplicate word and highlights only the duplicated words", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the the defensive position throughout the operation. " +
       "He repeatedly engaged enemy forces during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
     expect(
@@ -332,7 +359,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("warns about an exact duplicate sentence and highlights both copies", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const duplicatedSentence =
       "Specialist John Smith secured the defensive position.";
@@ -340,10 +367,17 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
       `${duplicatedSentence} ${duplicatedSentence} ` +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
     expect(
@@ -361,17 +395,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("warns about repeated punctuation and highlights only the punctuation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the defensive position,, while the squad advanced. " +
       "He repeatedly engaged enemy forces during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
     expect(
@@ -388,17 +429,24 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("does not warn about a standard three-dot ellipsis", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the defensive position... despite sustained enemy fire. " +
       "He repeatedly supported his squad during each major contact. " +
       "His actions contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
     expect(
@@ -410,16 +458,21 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("clears narrative warnings when the user corrects the narrative and regenerates", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
-    await completeRecommendation(
-      user,
-      "Specialist John Smith maintained the the defensive position throughout the operation. " +
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith maintained the the defensive position throughout the operation. " +
         "He repeatedly engaged enemy forces during each major contact. " +
         "His actions contributed directly to the successful completion of the operation.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.getByRole("status", { name: "Narrative Warnings" }),
@@ -434,9 +487,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     await user.clear(narrativeField);
     await user.click(narrativeField);
     await user.paste(correctedNarrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     expect(
       screen.queryByRole("status", { name: "Narrative Warnings" }),
@@ -448,16 +499,21 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("shows no narrative warnings for compliant narrative text", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
-    await completeRecommendation(
-      user,
-      "Specialist John Smith maintained the defensive position throughout the operation. " +
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith maintained the defensive position throughout the operation. " +
         "He repeatedly engaged enemy forces during each major contact. " +
         "His actions contributed directly to the successful completion of the operation.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    });
+    await submitRecommendation(user);
 
     expect(
       screen.queryByRole("status", { name: "Narrative Warnings" }),
@@ -469,18 +525,25 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("shows multiple different warning types without duplicating the same warning", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist Smith maintained the the defensive position. " +
       "The MG Kenton supported the element,, during the assault. " +
       "The MG Smith continued the advance.";
 
-    await completeRecommendation(user, narrative);
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
 
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     const warnings = screen.getByRole("status", {
       name: "Narrative Warnings",
@@ -511,18 +574,25 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("shows separate warnings for different rank abbreviations", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained the defensive position. " +
       "MG Kenton coordinated the supporting element. " +
       "CPL Adams reinforced the objective.";
 
-    await completeRecommendation(user, narrative);
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
 
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     const warnings = screen.getByRole("status", {
       name: "Narrative Warnings",
@@ -543,24 +613,29 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
 
   test("renders multiple warning highlights in narrative order", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith held the the defensive position. " +
       "The element maintained control through the engagement. " +
       "MG Kenton reinforced the final objective.";
 
-    await completeRecommendation(user, narrative);
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
 
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    const highlights = Array.from(citation.querySelectorAll("mark")).map(
-      (highlight) => highlight.textContent,
-    );
+    const highlights = getHighlightTexts();
 
     expect(highlights).toEqual(["the the", "MG"]);
     expect(citation).toHaveTextContent(narrative);

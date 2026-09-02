@@ -1,10 +1,12 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  completeRecommendation,
-  renderMedalRecommendationAid,
+  fillOperationWorksheet,
+  getCitationText,
+  renderClient,
   selectAward,
   selectRecipient,
+  submitRecommendation,
 } from "./test-helpers.js";
 
 describe("Medal Recommendation Aid - citations", () => {
@@ -14,33 +16,20 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("generates singular Purple Heart opening language for Single scope", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Purple Heart");
 
-    await user.click(screen.getByRole("combobox", { name: "Scope" }));
-    await user.click(screen.getByRole("option", { name: "Single" }));
     await selectRecipient(user);
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await fillOperationWorksheet(user, {
+      scope: "Single",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
+    });
+    await submitRecommendation(user);
 
     expect(screen.getByLabelText("Citation Narrative")).toHaveTextContent(
       "For a single heroic action and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
@@ -52,40 +41,21 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("generates plural Purple Heart opening language for Multiple scope", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Purple Heart");
 
-    await user.click(screen.getByRole("combobox", { name: "Scope" }));
-    await user.click(screen.getByRole("option", { name: "Multiple" }));
     await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      scope: "Multiple",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
+    });
 
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     expect(screen.getByLabelText("Citation Narrative")).toHaveTextContent(
       "For multiple heroic actions and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
@@ -94,33 +64,20 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("shows the selected medal ribbon in the generated recommendation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Purple Heart");
 
-    await user.click(screen.getByRole("combobox", { name: "Scope" }));
-    await user.click(screen.getByRole("option", { name: "Single" }));
     await selectRecipient(user);
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await fillOperationWorksheet(user, {
+      scope: "Single",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
+    });
+    await submitRecommendation(user);
 
     const ribbon = screen.getByRole("img", { name: "Purple Heart ribbon" });
     expect(ribbon).toHaveAttribute(
@@ -131,17 +88,24 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("generates a complete Army Commendation Medal recommendation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
@@ -160,23 +124,30 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("generates Army Commendation Medal heroic citation language", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
 
     await user.click(
       screen.getByRole("combobox", { name: "Action Character" }),
     );
     await user.click(screen.getByRole("option", { name: "Heroic" }));
 
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     expect(screen.getByLabelText("Citation Narrative")).toHaveTextContent(
       "For heroic actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
@@ -190,7 +161,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Army Commendation Medal With Valor citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Army Commendation Medal With Valor");
     await selectRecipient(user);
 
@@ -229,15 +200,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For a single act of heroism and skill under enemy fire while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's heroism and skill reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -247,7 +214,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Air Medal citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Air Medal");
     await selectRecipient(user);
 
@@ -298,15 +265,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For skillful actions over an entire operation while serving as rotary-wing pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's skillful actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -315,7 +278,7 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("generates Air Medal heroic citation language", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Air Medal");
 
     await selectRecipient(user);
@@ -347,9 +310,7 @@ describe("Medal Recommendation Aid - citations", () => {
         "Specialist Smith's actions contributed directly to mission success.",
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     expect(screen.getByLabelText("Citation Narrative")).toHaveTextContent(
       "For heroic actions over an entire operation while serving as rotary-wing pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
@@ -363,7 +324,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Bronze Star Medal citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Bronze Star Medal");
     await selectRecipient(user);
 
@@ -414,15 +375,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For heroic actions over an entire operation while serving as squad leader in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's heroic actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -432,7 +389,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Bronze Star Medal With Valor citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Bronze Star Medal With Valor");
     await selectRecipient(user);
 
@@ -471,15 +428,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as squad leader in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's skills and heroic actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -489,7 +442,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Distinguished Flying Cross citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Distinguished Flying Cross");
     await selectRecipient(user);
 
@@ -528,15 +481,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as an F/A-18 pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's skills and heroic actions reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -546,7 +495,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Silver Star citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Silver Star");
     await selectRecipient(user);
 
@@ -586,15 +535,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For conspicuous gallantry and intrepidity under direct enemy fire while serving as platoon leader in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's heroism, skill and devotion to duty reflects great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -604,7 +549,7 @@ describe("Medal Recommendation Aid - citations", () => {
   test("generates the Distinguished Service Cross citation language", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Distinguished Service Cross");
     await selectRecipient(user);
 
@@ -645,15 +590,11 @@ describe("Medal Recommendation Aid - citations", () => {
     await user.click(narrativeField);
     await user.paste(narrative);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: "Generate Recommendation",
-      }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
 
-    expect(citation.textContent).toBe(
+    expect(getCitationText()).toBe(
       "For conspicuous gallantry and intrepidity under direct enemy fire while serving as company commander in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
         narrative +
         " Specialist John Smith's heroism, skill and devotion to duty reflects great credit upon themselves and the 7th Cavalry Gaming Regiment.",
@@ -662,22 +603,29 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("does not duplicate Operation when the Operation Title already includes it", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "SPC Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
     const operationTitle = screen.getByRole("textbox", {
       name: "Operation Title",
     });
     await user.clear(operationTitle);
     await user.type(operationTitle, "Operation Exfor");
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await submitRecommendation(user);
 
     const citation = screen.getByLabelText("Citation Narrative");
     expect(citation).toHaveTextContent(
@@ -688,14 +636,19 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("shows the generated recipient identity independently from the citation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
-    await completeRecommendation(
-      user,
-      "Specialist John Smith maintained the position throughout the operation.",
-    );
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith maintained the position throughout the operation.",
+    });
+    await submitRecommendation(user);
 
     const paragraphs = screen
       .getByRole("region", { name: "Recommendation Preview" })
@@ -705,17 +658,24 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("renders the citation as one continuous narrative block", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
@@ -726,17 +686,24 @@ describe("Medal Recommendation Aid - citations", () => {
 
   test("shows the Army Commendation Medal ribbon in the generated recommendation", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     const narrative =
       "Specialist John Smith maintained an effective fighting position throughout the operation. " +
       "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
       "His performance contributed directly to the successful completion of the operation.";
 
-    await completeRecommendation(user, narrative);
-    await user.click(
-      screen.getByRole("button", { name: "Generate Recommendation" }),
-    );
+    await selectAward(user);
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    await submitRecommendation(user);
 
     const ribbon = screen.getByRole("img", {
       name: "Army Commendation Medal ribbon",
@@ -769,7 +736,7 @@ describe("Medal Recommendation Aid - citations", () => {
     async (awardName, ribbonUrl) => {
       const user = userEvent.setup();
 
-      await renderMedalRecommendationAid();
+      renderClient();
       await selectAward(user, awardName);
       await selectRecipient(user);
 
@@ -846,11 +813,7 @@ describe("Medal Recommendation Aid - citations", () => {
           "Specialist Smith's actions secured the objective.",
       );
 
-      await user.click(
-        screen.getByRole("button", {
-          name: "Generate Recommendation",
-        }),
-      );
+      await submitRecommendation(user);
 
       const preview = screen.getByRole("region", {
         name: "Recommendation Preview",

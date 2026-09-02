@@ -1,11 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
-import {
-  renderMedalRecommendationAid,
-  selectAward,
-  selectRecipient,
-} from "./test-helpers.js";
+import { renderClient, selectAward, selectRecipient } from "./test-helpers.js";
 
 describe("Medal Recommendation Aid - selection and guidance", () => {
   afterEach(() => {
@@ -14,7 +10,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows all supported Operation Medals in the Award selector", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
 
     expect(
       screen.getByRole("heading", { name: "Medal Recommendation Aid" }),
@@ -41,7 +37,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows the selected medal criteria after a user chooses an award", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Purple Heart");
 
     expect(
@@ -52,7 +48,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   });
 
   test("does not show the recommendation worksheet until an award is selected", async () => {
-    await renderMedalRecommendationAid();
+    renderClient();
 
     expect(
       screen.queryByRole("textbox", { name: "Recipient" }),
@@ -64,7 +60,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows the recommendation worksheet after an award is selected", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
 
     expect(screen.getByRole("textbox", { name: "Recipient" })).toBeVisible();
@@ -75,7 +71,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows Purple Heart scope instead of Action Character", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Purple Heart");
 
     expect(
@@ -86,7 +82,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows Leadership Element for the Silver Star", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Silver Star");
 
     expect(
@@ -99,7 +95,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows the selected medal name in the recommendation worksheet", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Bronze Star Medal With Valor");
 
     expect(
@@ -109,7 +105,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows narrative guidance for the selected medal", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Distinguished Flying Cross");
 
     expect(
@@ -124,7 +120,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("shows eligibility guidance for medals with eligibility requirements", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Distinguished Flying Cross");
 
     expect(screen.getByRole("heading", { name: "Eligibility" })).toBeVisible();
@@ -142,7 +138,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("does not show eligibility guidance when the selected medal has no eligibility requirements", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Army Commendation Medal");
 
     expect(
@@ -172,7 +168,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("lets a user search for and select a medal recipient", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
     await selectRecipient(user);
 
@@ -182,7 +178,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("filters recipient suggestions to usernames matching the search", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
 
     await user.type(screen.getByRole("textbox", { name: "Recipient" }), "Smi");
@@ -197,7 +193,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("uses the selected roster member identity without asking the user to re-enter it", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
     await selectRecipient(user);
 
@@ -212,7 +208,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("replaces a partial recipient search with the selected username", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
 
     const recipientField = screen.getByRole("textbox", {
@@ -232,7 +228,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
   test("matches recipient searches regardless of case or surrounding whitespace", async () => {
     const user = userEvent.setup();
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user);
 
     await user.type(
@@ -248,7 +244,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   test("shows the selected medal name in the worksheet description", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Silver Star");
 
     expect(
@@ -263,7 +259,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   test("shows Action Character options from the selected medal definition", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Air Medal");
 
     await user.click(
@@ -312,7 +308,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     ) => {
       const user = userEvent.setup();
 
-      await renderMedalRecommendationAid();
+      renderClient();
       await selectAward(user, awardName);
 
       const actionCharacter = screen.queryByRole("combobox", {
@@ -395,7 +391,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     async (awardName, eligibilityNotes) => {
       const user = userEvent.setup();
 
-      await renderMedalRecommendationAid();
+      renderClient();
       await selectAward(user, awardName);
 
       expect(
@@ -461,7 +457,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     async (awardName, criteriaPattern, guidancePattern) => {
       const user = userEvent.setup();
 
-      await renderMedalRecommendationAid();
+      renderClient();
       await selectAward(user, awardName);
 
       expect(screen.getByText(criteriaPattern)).toBeVisible();
@@ -472,7 +468,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   test("clears the element field when changing from Air Medal to Distinguished Flying Cross", async () => {
     const user = userEvent.setup();
 
-    await renderMedalRecommendationAid();
+    renderClient();
     await selectAward(user, "Air Medal");
 
     await user.type(
