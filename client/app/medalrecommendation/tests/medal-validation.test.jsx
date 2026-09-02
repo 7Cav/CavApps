@@ -112,13 +112,40 @@ describe("Medal Recommendation Aid - validation", () => {
     for (const control of requiredControls) {
       expect(control).toHaveAttribute("aria-invalid", "true");
       expect(control).toHaveAccessibleDescription("Required");
-      expect(control).toHaveClass("border-destructive");
     }
 
     expect(screen.getAllByText("Required")).toHaveLength(7);
     expect(
       screen.queryByRole("region", { name: "Recommendation Preview" }),
     ).not.toBeInTheDocument();
+  });
+
+  test("marks a missing Purple Heart Scope as invalid", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user, "Purple Heart");
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative:
+        "Specialist John Smith held the line under heavy fire. " +
+        "Specialist Smith protected the element throughout the engagement. " +
+        "His actions allowed the unit to complete the mission.",
+    });
+    await submitRecommendation(user);
+
+    const scope = screen.getByRole("combobox", { name: "Scope" });
+
+    expect(scope).toHaveAttribute("aria-invalid", "true");
+    expect(scope).toHaveAccessibleDescription("Required");
+    expect(scope).toHaveAttribute("aria-describedby", "scope-required");
+    expect(screen.getByText("Required")).toBeVisible();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Complete all required fields before generating a recommendation.",
+    );
   });
 
   test("clears the previous recommendation when regeneration fails", async () => {

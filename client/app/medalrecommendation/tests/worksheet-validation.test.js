@@ -1,10 +1,6 @@
-import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import { resolveMedalWorksheet } from "../lib/worksheet-profiles.js";
 import { validateWorksheet } from "../lib/worksheet-validation.js";
-
-function getMedal(name) {
-  return OPERATION_MEDALS.find((medal) => medal.name === name);
-}
+import { getOperationMedal } from "./operation-medal-cases.js";
 
 function completeOperationValues(overrides = {}) {
   return {
@@ -33,7 +29,7 @@ function validateSingleField(field, value, { omitValue = false } = {}) {
 describe("Medal Recommendation Aid - worksheet validation", () => {
   test("accepts a complete Operation worksheet", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     const result = validateWorksheet(worksheet, completeOperationValues());
@@ -141,7 +137,7 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
 
   test("only validates medal-specific fields present in the resolved worksheet", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal With Valor"),
+      getOperationMedal("Army Commendation Medal With Valor"),
     );
 
     const result = validateWorksheet(
@@ -158,7 +154,7 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
   });
 
   test("requires Purple Heart Scope because the resolved worksheet declares it", () => {
-    const worksheet = resolveMedalWorksheet(getMedal("Purple Heart"));
+    const worksheet = resolveMedalWorksheet(getOperationMedal("Purple Heart"));
 
     const result = validateWorksheet(
       worksheet,

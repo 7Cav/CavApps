@@ -1,6 +1,5 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import {
   fillOperationWorksheet,
   getCitationText,
@@ -9,54 +8,10 @@ import {
   selectRecipient,
   submitRecommendation,
 } from "./test-helpers.js";
-
-const MEDAL_METADATA = [
-  {
-    id: "army-commendation-medal",
-    name: "Army Commendation Medal",
-    ribbonUrl: "https://wiki.7cav.us/images/d/dc/ARCOM.jpg",
-  },
-  {
-    id: "army-commendation-medal-with-valor",
-    name: "Army Commendation Medal With Valor",
-    ribbonUrl: "https://wiki.7cav.us/images/0/0f/ARCOMV.jpg",
-  },
-  {
-    id: "air-medal",
-    name: "Air Medal",
-    ribbonUrl: "https://wiki.7cav.us/images/3/3f/AM.jpg",
-  },
-  {
-    id: "purple-heart",
-    name: "Purple Heart",
-    ribbonUrl: "https://wiki.7cav.us/images/b/b5/PH.jpg",
-  },
-  {
-    id: "bronze-star-medal",
-    name: "Bronze Star Medal",
-    ribbonUrl: "https://wiki.7cav.us/images/5/5e/BS.jpg",
-  },
-  {
-    id: "bronze-star-medal-with-valor",
-    name: "Bronze Star Medal With Valor",
-    ribbonUrl: "https://wiki.7cav.us/images/8/88/BSV.jpg",
-  },
-  {
-    id: "distinguished-flying-cross",
-    name: "Distinguished Flying Cross",
-    ribbonUrl: "https://wiki.7cav.us/images/7/74/DFC.jpg",
-  },
-  {
-    id: "silver-star",
-    name: "Silver Star",
-    ribbonUrl: "https://wiki.7cav.us/images/8/8f/SS.jpg",
-  },
-  {
-    id: "distinguished-service-cross",
-    name: "Distinguished Service Cross",
-    ribbonUrl: "https://wiki.7cav.us/images/d/d3/DSC.jpg",
-  },
-];
+import {
+  getOperationMedal,
+  OPERATION_MEDAL_CASES,
+} from "./operation-medal-cases.js";
 
 const BASE_OPENING_VALUES = {
   actionCharacter: "skillful",
@@ -267,38 +222,22 @@ const PURPLE_HEART_NARRATIVE =
   "Specialist Smith continued fighting despite overwhelming opposition. " +
   "Specialist Smith's actions allowed the remainder of the element to complete the mission.";
 
-function getMedal(name) {
-  const medal = OPERATION_MEDALS.find((candidate) => candidate.name === name);
-
-  expect(medal, `Missing medal definition for ${name}`).toBeDefined();
-  return medal;
-}
+const ALL_MEDALS_NARRATIVE =
+  "Specialist John Smith established a secure position before enemy contact. " +
+  "Specialist Smith coordinated the element as opposition intensified. " +
+  "Specialist Smith directed accurate fires while protecting the team. " +
+  "His actions enabled the unit to complete every assigned objective. " +
+  "The element secured the area and completed the operation successfully.";
 
 describe("Operation Medal citation contracts", () => {
-  test.each(MEDAL_METADATA)(
-    "$name exposes its exact name and ribbon URL",
-    ({ id, name, ribbonUrl }) => {
-      const medal = OPERATION_MEDALS.find((candidate) => candidate.id === id);
-
-      expect(medal, `Missing medal definition for ${id}`).toBeDefined();
-      expect({ name: medal.name, ribbonUrl: medal.ribbonUrl }).toEqual({
-        name,
-        ribbonUrl,
-      });
-    },
-  );
-
-  test("the metadata table covers every Operation Medal exactly once", () => {
-    expect(MEDAL_METADATA.map(({ id }) => id)).toEqual(
-      OPERATION_MEDALS.map(({ id }) => id),
-    );
-  });
-
   test.each(OPENING_CASES)(
     "$label builds the exact opening through its medal definition",
     ({ medalName, values, expected }) => {
+      const medal = getOperationMedal(medalName);
+
+      expect(medal, `Missing medal definition for ${medalName}`).toBeDefined();
       expect(
-        getMedal(medalName).buildOpening({
+        medal.buildOpening({
           ...BASE_OPENING_VALUES,
           ...values,
         }),
@@ -309,8 +248,11 @@ describe("Operation Medal citation contracts", () => {
   test.each(CLOSING_CASES)(
     "$label builds the exact closing through its medal definition",
     ({ medalName, values, expected }) => {
+      const medal = getOperationMedal(medalName);
+
+      expect(medal, `Missing medal definition for ${medalName}`).toBeDefined();
       expect(
-        getMedal(medalName).buildClosing({
+        medal.buildClosing({
           ...BASE_CLOSING_VALUES,
           ...values,
         }),
@@ -323,6 +265,34 @@ describe("Medal Recommendation Aid - citation integrations", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
+
+  test.each(OPERATION_MEDAL_CASES)(
+    "$name generates a preview with its heading and ribbon",
+    async ({ name, ribbonUrl, worksheetValues }) => {
+      const user = userEvent.setup();
+      renderClient();
+
+      await selectAward(user, name);
+      await selectRecipient(user);
+      await fillOperationWorksheet(user, {
+        ...worksheetValues,
+        operationTitle: "Exfor",
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative: ALL_MEDALS_NARRATIVE,
+      });
+      await submitRecommendation(user);
+
+      const preview = screen.getByRole("region", {
+        name: "Recommendation Preview",
+      });
+
+      expect(within(preview).getByRole("heading", { name })).toBeVisible();
+      expect(
+        within(preview).getByRole("img", { name: `${name} ribbon` }),
+      ).toHaveAttribute("src", ribbonUrl);
+    },
+  );
 
   test("generates a complete Army Commendation Medal preview", async () => {
     const user = userEvent.setup();
@@ -346,16 +316,6 @@ describe("Medal Recommendation Aid - citation integrations", () => {
     const citation = screen.getByLabelText("Citation Narrative");
     const paragraphs = preview.querySelectorAll("p");
 
-    expect(
-      within(preview).getByRole("heading", {
-        name: "Army Commendation Medal",
-      }),
-    ).toBeVisible();
-    expect(
-      within(preview).getByRole("img", {
-        name: "Army Commendation Medal ribbon",
-      }),
-    ).toHaveAttribute("src", "https://wiki.7cav.us/images/d/dc/ARCOM.jpg");
     expect(paragraphs).toHaveLength(2);
     expect(paragraphs[0]).toHaveTextContent(/^Specialist John Smith$/);
     expect(paragraphs[1]).toBe(citation);

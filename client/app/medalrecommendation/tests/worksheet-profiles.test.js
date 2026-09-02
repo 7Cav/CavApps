@@ -1,18 +1,14 @@
-import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import {
   applyAwardChange,
   getCitationChoiceText,
   resolveMedalWorksheet,
 } from "../lib/worksheet-profiles.js";
-
-function getMedal(name) {
-  return OPERATION_MEDALS.find((medal) => medal.name === name);
-}
+import { getOperationMedal } from "./operation-medal-cases.js";
 
 describe("Medal Recommendation Aid - worksheet profiles", () => {
   test("resolves the shared Operation worksheet for ARCOM", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     expect(worksheet.recipientType).toBe("individual");
@@ -55,7 +51,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("overrides only the element configuration needed by DFC", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Distinguished Flying Cross"),
+      getOperationMedal("Distinguished Flying Cross"),
     );
 
     expect(worksheet.fields.combatElement).toMatchObject({
@@ -88,7 +84,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   ])(
     "%s resolves the correct worksheet profile and combat element semantics",
     (medalName, combatElementVariant) => {
-      const medal = getMedal(medalName);
+      const medal = getOperationMedal(medalName);
       const worksheet = resolveMedalWorksheet(medal);
 
       expect(medal.worksheetProfile).toBe("operationIndividual");
@@ -97,9 +93,11 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   );
 
   test("resolves medal-specific field overrides that shape the worksheet", () => {
-    const airMedalWorksheet = resolveMedalWorksheet(getMedal("Air Medal"));
+    const airMedalWorksheet = resolveMedalWorksheet(
+      getOperationMedal("Air Medal"),
+    );
     const bronzeStarWorksheet = resolveMedalWorksheet(
-      getMedal("Bronze Star Medal"),
+      getOperationMedal("Bronze Star Medal"),
     );
 
     expect(airMedalWorksheet.fields.combatElement.label).toBe(
@@ -110,7 +108,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("declares award-change behavior for shared Operation fields", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     expect(worksheet.fields.combatElement.awardChange).toBe("sameVariant");
@@ -122,11 +120,11 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("declares medal-specific choices to reset when the award changes", () => {
     const arcomWorksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     const purpleHeartWorksheet = resolveMedalWorksheet(
-      getMedal("Purple Heart"),
+      getOperationMedal("Purple Heart"),
     );
 
     expect(arcomWorksheet.fields.actionCharacter.awardChange).toBe("reset");
@@ -135,10 +133,12 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("preserves shared Operation values when changing between compatible medals", () => {
     const previousWorksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
-    const nextWorksheet = resolveMedalWorksheet(getMedal("Bronze Star Medal"));
+    const nextWorksheet = resolveMedalWorksheet(
+      getOperationMedal("Bronze Star Medal"),
+    );
 
     const values = {
       actionCharacter: "skillful",
@@ -163,11 +163,11 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("clears the combat element when its semantic variant changes", () => {
     const previousWorksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     const nextWorksheet = resolveMedalWorksheet(
-      getMedal("Distinguished Flying Cross"),
+      getOperationMedal("Distinguished Flying Cross"),
     );
 
     const values = {
@@ -192,10 +192,12 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("clears Scope when leaving Purple Heart", () => {
-    const previousWorksheet = resolveMedalWorksheet(getMedal("Purple Heart"));
+    const previousWorksheet = resolveMedalWorksheet(
+      getOperationMedal("Purple Heart"),
+    );
 
     const nextWorksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     const values = {
@@ -218,7 +220,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("declares presentation metadata for shared Operation fields", () => {
     const worksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
 
     expect(worksheet.fields.operationTitle).toMatchObject({
@@ -251,10 +253,10 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
   test("declares worksheet-controlled field order", () => {
     const arcomWorksheet = resolveMedalWorksheet(
-      getMedal("Army Commendation Medal"),
+      getOperationMedal("Army Commendation Medal"),
     );
     const purpleHeartWorksheet = resolveMedalWorksheet(
-      getMedal("Purple Heart"),
+      getOperationMedal("Purple Heart"),
     );
 
     expect(arcomWorksheet.fieldOrder).toEqual([
@@ -301,7 +303,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("clones choice options into the resolved worksheet", () => {
-    const medal = getMedal("Army Commendation Medal");
+    const medal = getOperationMedal("Army Commendation Medal");
     const worksheet = resolveMedalWorksheet(medal);
 
     expect(worksheet.fields.actionCharacter.options).toEqual(
@@ -338,7 +340,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("preserves the profile award-change policy for field overrides", () => {
-    const worksheet = resolveMedalWorksheet(getMedal("Air Medal"));
+    const worksheet = resolveMedalWorksheet(getOperationMedal("Air Medal"));
 
     expect(worksheet.fields.combatElement.awardChange).toBe("sameVariant");
   });
@@ -468,7 +470,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("declares Action Character options as citation-ready choices", () => {
-    const medal = getMedal("Army Commendation Medal");
+    const medal = getOperationMedal("Army Commendation Medal");
 
     expect(medal.fields.actionCharacter).toEqual({
       type: "citationChoice",
@@ -492,7 +494,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("declares Purple Heart Scope as semantic choices", () => {
-    const medal = getMedal("Purple Heart");
+    const medal = getOperationMedal("Purple Heart");
 
     expect(medal.fields.scope).toEqual({
       type: "scopeChoice",
@@ -514,7 +516,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
   });
 
   test("Purple Heart rejects an unsupported Scope value", () => {
-    const medal = getMedal("Purple Heart");
+    const medal = getOperationMedal("Purple Heart");
 
     expect(() =>
       medal.buildOpening({
