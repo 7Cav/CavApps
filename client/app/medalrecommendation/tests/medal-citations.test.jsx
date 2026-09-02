@@ -378,29 +378,32 @@ describe("Medal Recommendation Aid - citation integrations", () => {
       opening:
         "For multiple heroic actions and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
     },
-  ])("flows Purple Heart $scope scope into the citation", async ({ scope, opening }) => {
-    const user = userEvent.setup();
-    renderClient();
+  ])(
+    "flows Purple Heart $scope scope into the citation",
+    async ({ scope, opening }) => {
+      const user = userEvent.setup();
+      renderClient();
 
-    await selectAward(user, "Purple Heart");
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      scope,
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative: PURPLE_HEART_NARRATIVE,
-    });
-    await submitRecommendation(user);
+      await selectAward(user, "Purple Heart");
+      await selectRecipient(user);
+      await fillOperationWorksheet(user, {
+        scope,
+        combatElement: "rifleman",
+        operationTitle: "Exfor",
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative: PURPLE_HEART_NARRATIVE,
+      });
+      await submitRecommendation(user);
 
-    expect(getCitationText()).toBe(
-      opening +
-        " " +
-        PURPLE_HEART_NARRATIVE +
-        " Specialist John Smith's heroism and sacrifice reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
-    );
-  });
+      expect(getCitationText()).toBe(
+        opening +
+          " " +
+          PURPLE_HEART_NARRATIVE +
+          " Specialist John Smith's heroism and sacrifice reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
+      );
+    },
+  );
 
   test("flows the Distinguished Flying Cross Airframe override into the citation", async () => {
     const user = userEvent.setup();

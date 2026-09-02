@@ -96,6 +96,18 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     },
   );
 
+  test("resolves medal-specific field overrides that shape the worksheet", () => {
+    const airMedalWorksheet = resolveMedalWorksheet(getMedal("Air Medal"));
+    const bronzeStarWorksheet = resolveMedalWorksheet(
+      getMedal("Bronze Star Medal"),
+    );
+
+    expect(airMedalWorksheet.fields.combatElement.label).toBe(
+      "Aircrew Combat Element",
+    );
+    expect(bronzeStarWorksheet.fields.actionCharacter).toBeDefined();
+  });
+
   test("declares award-change behavior for shared Operation fields", () => {
     const worksheet = resolveMedalWorksheet(
       getMedal("Army Commendation Medal"),
