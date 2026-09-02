@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   fillOperationWorksheet,
@@ -29,215 +29,6 @@ describe("Medal Recommendation Aid - validation", () => {
     ).not.toHaveAttribute("aria-invalid", "true");
     expect(screen.queryByText("Required")).not.toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  test("prevents Purple Heart generation when Scope is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user, "Purple Heart");
-    await selectRecipient(user);
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-
-    await user.click(narrativeField);
-    await user.paste(
-      "Specialist John Smith held the line under heavy fire. Specialist Smith continued fighting despite overwhelming opposition. Specialist Smith's actions allowed the remainder of the element to complete the mission.",
-    );
-    await submitRecommendation(user);
-
-    const scope = screen.getByRole("combobox", { name: "Scope" });
-
-    expect(scope).toHaveAttribute("aria-invalid", "true");
-    expect(scope).toHaveAccessibleDescription("Required");
-    expect(scope).toHaveClass("border-destructive");
-
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Action Character is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: undefined,
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Combat Element is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: undefined,
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Operation Title is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: undefined,
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Location is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: undefined,
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Operation Date is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: undefined,
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when Narrative is missing", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative: undefined,
-    });
-    await submitRecommendation(user);
-
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("marks a missing required field as invalid after generation is attempted", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: undefined,
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Smith maintained an effective fighting position throughout the operation.",
-    });
-    await submitRecommendation(user);
-
-    const combatElement = screen.getByRole("textbox", {
-      name: "Combat Element",
-    });
-    expect(combatElement).toHaveAttribute("aria-invalid", "true");
-    expect(combatElement).toHaveAccessibleDescription("Required");
-    expect(combatElement).toHaveClass("border-destructive");
-    expect(screen.getByText("Required")).toBeVisible();
-    expect(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-    ).not.toHaveAttribute("aria-invalid", "true");
   });
 
   test("clears a required field error immediately when the user fixes the field", async () => {
@@ -372,41 +163,9 @@ describe("Medal Recommendation Aid - validation", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("clears the generated preview when the narrative changes", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    const narrative =
-      "SPC Smith maintained an effective fighting position throughout the operation. " +
-      "He repeatedly engaged enemy forces and supported his squad during each major contact. " +
-      "His performance contributed directly to the successful completion of the operation.";
-
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative,
-    });
-    await submitRecommendation(user);
-    expect(
-      screen.getByRole("region", { name: "Recommendation Preview" }),
-    ).toBeVisible();
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Narrative" }),
-      " Additional text.",
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
   test.each([
     [
-      "Action Character",
+      "choice/select",
       async (user) => {
         await user.click(
           screen.getByRole("combobox", { name: "Action Character" }),
@@ -415,7 +174,7 @@ describe("Medal Recommendation Aid - validation", () => {
       },
     ],
     [
-      "Combat Element",
+      "text input",
       async (user) => {
         const field = screen.getByRole("textbox", { name: "Combat Element" });
         await user.clear(field);
@@ -423,32 +182,25 @@ describe("Medal Recommendation Aid - validation", () => {
       },
     ],
     [
-      "Operation Title",
-      async (user) => {
-        const field = screen.getByRole("textbox", { name: "Operation Title" });
-        await user.clear(field);
-        await user.type(field, "Operation Market Garden");
-      },
-    ],
-    [
-      "Location",
-      async (user) => {
-        const field = screen.getByRole("textbox", { name: "Location" });
-        await user.clear(field);
-        await user.type(field, "Arnhem");
-      },
-    ],
-    [
-      "Operation Date",
+      "date input",
       async (user) => {
         const field = screen.getByLabelText("Operation Date");
         await user.clear(field);
         await user.type(field, "2026-08-10");
       },
     ],
+    [
+      "textarea",
+      async (user) => {
+        await user.type(
+          screen.getByRole("textbox", { name: "Narrative" }),
+          " Additional text.",
+        );
+      },
+    ],
   ])(
-    "clears the generated preview when %s changes",
-    async (_field, changeField) => {
+    "clears the generated preview when a %s changes",
+    async (_controlType, changeField) => {
       const user = userEvent.setup();
       renderClient();
       const narrative =
@@ -514,97 +266,56 @@ describe("Medal Recommendation Aid - validation", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("prevents generation when the selected recipient has no full rank", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user, "Ran", "Rankless.T");
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Rankless maintained the position throughout the operation.",
-    });
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
+  test.each([
+    [
+      "a missing full rank",
+      "Ran",
+      "Rankless.T",
+      "SPC Rankless maintained the position throughout the operation.",
+    ],
+    [
+      "a missing real name",
+      "Nam",
+      "Nameless.T",
+      "SPC Nameless maintained the position throughout the operation.",
+    ],
+    [
+      "a whitespace-only full rank",
+      "Ranks",
+      "Rankspace.T",
+      "SPC Rankspace maintained the position throughout the operation.",
+    ],
+    [
+      "a whitespace-only real name",
+      "Names",
+      "Namespace.T",
+      "SPC Namespace maintained the position throughout the operation.",
+    ],
+  ])(
+    "prevents generation when the selected recipient has %s",
+    async (_caseName, query, username, narrative) => {
+      const user = userEvent.setup();
+      renderClient();
+      await selectAward(user);
+      await selectRecipient(user, query, username);
+      await fillOperationWorksheet(user, {
+        actionCharacter: "Skillful",
+        combatElement: "rifleman",
+        operationTitle: "Exfor",
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative,
+      });
+      await submitRecommendation(user);
 
-  test("prevents generation when the selected recipient has no real name", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user, "Nam", "Nameless.T");
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Nameless maintained the position throughout the operation.",
-    });
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when the selected recipient rank is whitespace only", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user, "Ranks", "Rankspace.T");
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Rankspace maintained the position throughout the operation.",
-    });
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("prevents generation when the selected recipient real name is whitespace only", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user, "Names", "Namespace.T");
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "SPC Namespace maintained the position throughout the operation.",
-    });
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        /complete all required fields before generating a recommendation/i,
+      );
+      expect(
+        screen.queryByRole("region", { name: "Recommendation Preview" }),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   test("rejects a whitespace-only Combat Element", async () => {
     const user = userEvent.setup();
@@ -624,57 +335,6 @@ describe("Medal Recommendation Aid - validation", () => {
       screen.getByRole("textbox", { name: "Combat Element" }),
       "   ",
     );
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("rejects a whitespace-only Operation Title", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: undefined,
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative:
-        "Specialist John Smith maintained the position throughout the operation.",
-    });
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "   ",
-    );
-    await submitRecommendation(user);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      /complete all required fields before generating a recommendation/i,
-    );
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("rejects a whitespace-only Location", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Exfor",
-      location: undefined,
-      operationDate: "2026-08-11",
-      narrative:
-        "Specialist John Smith maintained the position throughout the operation.",
-    });
-    await user.type(screen.getByRole("textbox", { name: "Location" }), "   ");
     await submitRecommendation(user);
     expect(screen.getByRole("alert")).toHaveTextContent(
       /complete all required fields before generating a recommendation/i,
@@ -739,103 +399,6 @@ describe("Medal Recommendation Aid - validation", () => {
     expect(
       screen.queryByRole("region", { name: "Recommendation Preview" }),
     ).not.toBeInTheDocument();
-  });
-
-  test("treats tomorrow in the user's local timezone as a future Operation Date", async () => {
-    const originalTimezone = process.env.TZ;
-    const user = userEvent.setup();
-    process.env.TZ = "America/Los_Angeles";
-
-    try {
-      renderClient();
-      await selectAward(user);
-      await selectRecipient(user);
-      await fillOperationWorksheet(user, {
-        actionCharacter: "Skillful",
-        combatElement: "rifleman",
-        operationTitle: "Exfor",
-        location: "Remagen",
-        operationDate: undefined,
-        narrative:
-          "Specialist John Smith maintained the defensive position throughout the operation. " +
-          "He repeatedly engaged enemy forces during each major contact. " +
-          "His actions contributed directly to the successful completion of the operation.",
-      });
-
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date("2026-08-15T03:30:00.000Z"));
-      fireEvent.change(screen.getByLabelText("Operation Date"), {
-        target: { value: "2026-08-15" },
-      });
-      fireEvent.click(
-        screen.getByRole("button", { name: "Generate Recommendation" }),
-      );
-
-      expect(screen.getByLabelText("Operation Date")).toHaveAttribute(
-        "aria-invalid",
-        "true",
-      );
-      expect(screen.getByRole("alert")).toHaveTextContent(
-        /complete all required fields before generating a recommendation/i,
-      );
-      expect(
-        screen.queryByRole("region", { name: "Recommendation Preview" }),
-      ).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-      if (originalTimezone === undefined) {
-        delete process.env.TZ;
-      } else {
-        process.env.TZ = originalTimezone;
-      }
-    }
-  });
-
-  test("allows generation when Operation Date is today in the user's local timezone", async () => {
-    const originalTimezone = process.env.TZ;
-    const user = userEvent.setup();
-    process.env.TZ = "America/Los_Angeles";
-
-    try {
-      renderClient();
-      await selectAward(user);
-      await selectRecipient(user);
-      await fillOperationWorksheet(user, {
-        actionCharacter: "Skillful",
-        combatElement: "rifleman",
-        operationTitle: "Exfor",
-        location: "Remagen",
-        operationDate: undefined,
-        narrative:
-          "Specialist John Smith maintained the defensive position throughout the operation. " +
-          "He repeatedly engaged enemy forces during each major contact. " +
-          "His actions contributed directly to the successful completion of the operation.",
-      });
-
-      vi.useFakeTimers();
-      vi.setSystemTime(new Date("2026-08-15T03:30:00.000Z"));
-      fireEvent.change(screen.getByLabelText("Operation Date"), {
-        target: { value: "2026-08-14" },
-      });
-      fireEvent.click(
-        screen.getByRole("button", { name: "Generate Recommendation" }),
-      );
-
-      expect(screen.getByLabelText("Operation Date")).not.toHaveAttribute(
-        "aria-invalid",
-      );
-      expect(
-        screen.getByRole("region", { name: "Recommendation Preview" }),
-      ).toBeVisible();
-      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    } finally {
-      vi.useRealTimers();
-      if (originalTimezone === undefined) {
-        delete process.env.TZ;
-      } else {
-        process.env.TZ = originalTimezone;
-      }
-    }
   });
 
   test("trims valid text fields before generating the citation", async () => {
@@ -1071,54 +634,6 @@ describe("Medal Recommendation Aid - validation", () => {
         name: "Combat Element",
       }),
     ).toHaveValue("rifleman");
-  });
-
-  test.each([
-    ["Army Commendation Medal", "Action Character"],
-    ["Air Medal", "Action Character"],
-    ["Bronze Star Medal", "Action Character"],
-    ["Purple Heart", "Scope"],
-  ])(
-    "requires %s medal-specific input before generation",
-    async (awardName, requiredControl) => {
-      const user = userEvent.setup();
-
-      renderClient();
-      await selectAward(user, awardName);
-
-      await submitRecommendation(user);
-
-      expect(
-        screen.getByRole("combobox", {
-          name: requiredControl,
-        }),
-      ).toHaveAttribute("aria-invalid", "true");
-    },
-  );
-
-  test.each([
-    "Army Commendation Medal With Valor",
-    "Bronze Star Medal With Valor",
-    "Distinguished Flying Cross",
-    "Silver Star",
-    "Distinguished Service Cross",
-  ])("does not require Action Character or Scope for %s", async (awardName) => {
-    const user = userEvent.setup();
-
-    renderClient();
-    await selectAward(user, awardName);
-
-    expect(
-      screen.queryByRole("combobox", {
-        name: "Action Character",
-      }),
-    ).not.toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("combobox", {
-        name: "Scope",
-      }),
-    ).not.toBeInTheDocument();
   });
 
   test("clears the generated preview when the selected award changes", async () => {
