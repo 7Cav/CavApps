@@ -2,7 +2,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
-import { renderClient, selectAward, selectRecipient } from "./test-helpers.js";
+import {
+  makeRecipient,
+  renderClient,
+  selectAward,
+  selectRecipient,
+} from "./test-helpers.js";
 
 const MEDAL_GUIDANCE_CASES = [
   [
@@ -142,6 +147,22 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     ).toBeVisible();
   });
 
+  test("renders worksheet metadata with the correct semantic controls", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user);
+
+    const combatElement = screen.getByLabelText("Combat Element");
+    const operationDate = screen.getByLabelText("Operation Date");
+    const narrative = screen.getByLabelText("Narrative");
+
+    expect(combatElement.tagName).toBe("INPUT");
+    expect(combatElement).toHaveAttribute("type", "text");
+    expect(operationDate.tagName).toBe("INPUT");
+    expect(operationDate).toHaveAttribute("type", "date");
+    expect(narrative.tagName).toBe("TEXTAREA");
+  });
+
   test("shows the selected medal content in the recommendation worksheet", async () => {
     const user = userEvent.setup();
     renderClient();
@@ -268,6 +289,53 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     expect(
       await screen.findByRole("button", { name: "Smith.J" }),
     ).toBeVisible();
+  });
+
+  test("does not show recipient suggestions before three normalized characters", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user);
+
+    await user.type(screen.getByRole("textbox", { name: "Recipient" }), "Sm");
+
+    expect(
+      screen.queryByRole("button", { name: "Smith.J" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("does not re-offer the selected recipient", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+
+    expect(screen.getByRole("textbox", { name: "Recipient" })).toHaveValue(
+      "Smith.J",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Smith.J" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("limits recipient suggestions to ten results", async () => {
+    const user = userEvent.setup();
+    const roster = Array.from({ length: 12 }, (_, index) => {
+      const suffix = String(index + 1).padStart(2, "0");
+
+      return makeRecipient({
+        user: { userId: `30${suffix}`, username: `Smith.${suffix}` },
+        realName: `Recipient ${suffix}`,
+        primary: { positionId: `40${suffix}` },
+      });
+    });
+
+    renderClient({ roster });
+    await selectAward(user);
+    await user.type(screen.getByRole("textbox", { name: "Recipient" }), "Smi");
+
+    expect(
+      await screen.findAllByRole("button", { name: /^Smith\.\d+$/ }),
+    ).toHaveLength(10);
   });
 
   test("shows Action Character options from the selected medal definition", async () => {

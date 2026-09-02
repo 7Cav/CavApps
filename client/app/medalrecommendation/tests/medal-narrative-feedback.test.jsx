@@ -163,6 +163,34 @@ describe("narrative validation utilities", () => {
       );
     });
 
+    test("does not detect a rank abbreviation inside a larger alphanumeric token", () => {
+      const result = analyze(
+        `${compliantNarrative} The team captured an MG42 emplacement.`,
+      );
+
+      expect(result.warnings).not.toContainEqual(
+        expect.objectContaining({ key: "rank-mg" }),
+      );
+      expect(
+        result.highlightRanges.map(({ start, end }) =>
+          result.text.slice(start, end),
+        ),
+      ).not.toContain("MG");
+    });
+
+    test("detects the full recipient identity case-insensitively", () => {
+      const result = analyze(
+        compliantNarrative.replace(
+          "Specialist John Smith",
+          "specialist john smith",
+        ),
+      );
+
+      expect(result.warnings).not.toContainEqual(
+        expect.objectContaining({ key: "recipient-mention" }),
+      );
+    });
+
     test("deduplicates repeated duplicate-word warnings while highlighting every occurrence", () => {
       const narrative =
         "Specialist John Smith held the the line. He crossed THE THE field. He secured the objective.";
@@ -184,6 +212,21 @@ describe("narrative validation utilities", () => {
       ).toEqual(["the the", "THE THE"]);
     });
 
+    test("detects duplicate words separated by multiple spaces", () => {
+      const narrative =
+        "Specialist John Smith held the   the position. He secured the objective. He completed the mission.";
+      const result = analyze(narrative);
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({ key: "duplicate-word-the   the" }),
+      );
+      expect(
+        result.highlightRanges.map(({ start, end }) =>
+          result.text.slice(start, end),
+        ),
+      ).toContain("the   the");
+    });
+
     test("normalizes duplicate sentences and highlights every copy", () => {
       const narrative =
         "Specialist John Smith secured the position.  SPECIALIST JOHN SMITH secured the position. He completed the mission.";
@@ -200,6 +243,37 @@ describe("narrative validation utilities", () => {
           "Possible duplicate sentence: This sentence appears more than once in the narrative. Verify that it was not duplicated accidentally.",
       });
       expect(duplicateRanges).toHaveLength(2);
+    });
+
+    test("treats sentences with different internal whitespace as duplicates", () => {
+      const result = analyze("Alpha beta. Alpha   beta.", {
+        minimumNarrativeSentences: 2,
+        rankEntries: [],
+        recipientRank: "",
+        recipientCitationName: "",
+      });
+
+      expect(result.warnings).toContainEqual(
+        expect.objectContaining({ key: "duplicate-sentence" }),
+      );
+      expect(
+        result.highlightRanges.map(({ start, end }) =>
+          result.text.slice(start, end),
+        ),
+      ).toEqual(["Alpha beta.", "Alpha   beta."]);
+    });
+
+    test("preserves word boundaries when comparing sentences", () => {
+      const result = analyze("Alpha beta. Alphabeta.", {
+        minimumNarrativeSentences: 2,
+        rankEntries: [],
+        recipientRank: "",
+        recipientCitationName: "",
+      });
+
+      expect(result.warnings).not.toContainEqual(
+        expect.objectContaining({ key: "duplicate-sentence" }),
+      );
     });
 
     test("warns once for repeated punctuation while highlighting each non-ellipsis run", () => {
