@@ -5,6 +5,7 @@ import {
   eloaRecipient,
   fillOperationWorksheet,
   renderClient,
+  renderPageWithRoster,
   reserveRecipient,
   retiredRecipient,
   selectAward,
@@ -26,10 +27,10 @@ describe("Medal Recommendation recipient roster", () => {
     vi.restoreAllMocks();
   });
 
-  test("lets a user search for and select a Reserve medal recipient", async () => {
+  test("maps loaded roster profiles into searchable recipients", async () => {
     const user = userEvent.setup();
 
-    renderClient({ roster: medalRecipientRoster });
+    await renderPageWithRoster(medalRecipientRoster);
     await selectAward(user);
 
     await selectRecipient(user, "Res", "Reserve.R");
