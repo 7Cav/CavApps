@@ -1,101 +1,151 @@
+import { createElement } from "react";
 import { render, screen } from "@testing-library/react";
+import MedalRecommendationClient from "../MedalRecommendationClient";
 import MedalRecommendationPage from "../page";
 
-export const combatRoster = {
-  1001: {
+export function makeRecipient(overrides = {}) {
+  const recipient = {
     user: { userId: "1001", username: "Smith.J" },
     rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
     realName: "John Smith",
     roster: "ROSTER_TYPE_COMBAT",
     primary: { positionTitle: "Trooper", positionId: "100" },
     secondaries: [],
-  },
-  1002: {
+  };
+
+  return {
+    ...recipient,
+    ...overrides,
+    user: { ...recipient.user, ...overrides.user },
+    rank: { ...recipient.rank, ...overrides.rank },
+    primary: { ...recipient.primary, ...overrides.primary },
+    secondaries: overrides.secondaries ?? recipient.secondaries,
+  };
+}
+
+export const activeRecipient = makeRecipient({
+  user: { userId: "2000", username: "Combat.C" },
+  realName: "Casey Combat",
+  primary: { positionId: "199" },
+});
+
+export const reserveRecipient = makeRecipient({
+  user: { userId: "2001", username: "Reserve.R" },
+  rank: { rankShort: "SGT", rankFull: "Sergeant", rankId: "6" },
+  realName: "Riley Reserve",
+  roster: "ROSTER_TYPE_RESERVE",
+  primary: { positionTitle: "Reservist", positionId: "200" },
+});
+
+export const eloaRecipient = makeRecipient({
+  user: { userId: "2002", username: "Eloa.E" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "4" },
+  realName: "Elliot Eloa",
+  roster: "ROSTER_TYPE_ELOA",
+  primary: { positionTitle: "ELOA", positionId: "201" },
+});
+
+export const wallOfHonorRecipient = makeRecipient({
+  user: { userId: "2003", username: "Honor.H" },
+  rank: { rankShort: "1SG", rankFull: "First Sergeant", rankId: "8" },
+  realName: "Harper Honor",
+  roster: "ROSTER_TYPE_WALL_OF_HONOR",
+  primary: { positionTitle: "Wall of Honor", positionId: "202" },
+});
+
+export const retiredRecipient = makeRecipient({
+  user: { userId: "2004", username: "Retired.R" },
+  rank: { rankShort: "MAJ", rankFull: "Major", rankId: "10" },
+  realName: "Robin Retired",
+  roster: "ROSTER_TYPE_PAST_MEMBERS",
+  primary: { positionTitle: "Retired", positionId: "203" },
+});
+
+export const ranklessRecipient = makeRecipient({
+  user: { userId: "1004", username: "Rankless.T" },
+  rank: { rankFull: "" },
+  realName: "Test Rankless",
+  primary: { positionId: "103" },
+});
+
+export const namelessRecipient = makeRecipient({
+  user: { userId: "1005", username: "Nameless.T" },
+  realName: "",
+  primary: { positionId: "104" },
+});
+
+export const combatRoster = {
+  1001: makeRecipient(),
+  1002: makeRecipient({
     user: { userId: "1002", username: "Long.A" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
     realName: "Adam Long",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "101" },
-    secondaries: [],
-  },
-  1003: {
+    primary: { positionId: "101" },
+  }),
+  1003: makeRecipient({
     user: { userId: "1003", username: "Smith.TM" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
     realName: "Taylor Morgan Smith",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "102" },
-    secondaries: [],
-  },
-  1004: {
-    user: { userId: "1004", username: "Rankless.T" },
-    rank: { rankShort: "SPC", rankFull: "", rankId: "5" },
-    realName: "Test Rankless",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "103" },
-    secondaries: [],
-  },
-  1005: {
-    user: { userId: "1005", username: "Nameless.T" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
-    realName: "",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "104" },
-    secondaries: [],
-  },
-  1006: {
+    primary: { positionId: "102" },
+  }),
+  1004: ranklessRecipient,
+  1005: namelessRecipient,
+  1006: makeRecipient({
     user: { userId: "1006", username: "Rankspace.T" },
-    rank: { rankShort: "SPC", rankFull: "   ", rankId: "5" },
+    rank: { rankFull: "   " },
     realName: "Test Rankspace",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "105" },
-    secondaries: [],
-  },
-  1007: {
+    primary: { positionId: "105" },
+  }),
+  1007: makeRecipient({
     user: { userId: "1007", username: "Namespace.T" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
     realName: "   ",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "106" },
-    secondaries: [],
-  },
-  1008: {
+    primary: { positionId: "106" },
+  }),
+  1008: makeRecipient({
     user: { userId: "1008", username: "Smith.TJ" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
     realName: "Taylor J. Smith",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "107" },
-    secondaries: [],
-  },
-  1009: {
+    primary: { positionId: "107" },
+  }),
+  1009: makeRecipient({
     user: { userId: "1009", username: "Kenton.W" },
     rank: { rankShort: "Cpl", rankFull: "Corporal", rankId: "6" },
     realName: "Wade Kenton",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "108" },
-    secondaries: [],
-  },
-  1010: {
+    primary: { positionId: "108" },
+  }),
+  1010: makeRecipient({
     user: { userId: "1010", username: "General.M" },
     rank: { rankShort: "MG", rankFull: "Major General", rankId: "12" },
     realName: "Morgan General",
-    roster: "ROSTER_TYPE_COMBAT",
-    primary: { positionTitle: "Trooper", positionId: "109" },
-    secondaries: [],
-  },
+    primary: { positionId: "109" },
+  }),
 };
 
-export async function renderMedalRecommendationAid() {
+export function renderClient({ roster = Object.values(combatRoster) } = {}) {
+  return render(
+    createElement(MedalRecommendationClient, { recipientRoster: roster }),
+  );
+}
+
+export async function renderPageWithRoster(roster = combatRoster) {
+  const profiles = Array.isArray(roster)
+    ? Object.fromEntries(
+        roster.map((recipient) => [recipient.user.userId, recipient]),
+      )
+    : roster;
+
   vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
     ok: true,
-    json: async () => ({ profiles: combatRoster }),
+    json: async () => ({ profiles }),
   });
 
-  render(await MedalRecommendationPage());
+  return render(await MedalRecommendationPage());
+}
+
+export async function selectComboboxOption(user, label, option) {
+  await user.click(screen.getByRole("combobox", { name: label }));
+  await user.click(screen.getByRole("option", { name: option }));
 }
 
 export async function selectAward(user, awardName = "Army Commendation Medal") {
-  await user.click(screen.getByRole("combobox", { name: "Award" }));
-  await user.click(screen.getByRole("option", { name: awardName }));
+  await selectComboboxOption(user, "Award", awardName);
 }
 
 export async function selectRecipient(
@@ -107,49 +157,63 @@ export async function selectRecipient(
   await user.click(await screen.findByRole("button", { name: username }));
 }
 
-export async function completeRecommendation(
-  user,
-  narrative,
-  { omit, recipientQuery = "Smi", recipientUsername = "Smith.J" } = {},
-) {
-  await selectAward(user);
-  await selectRecipient(user, recipientQuery, recipientUsername);
-
-  if (omit !== "actionCharacter") {
-    await user.click(
-      screen.getByRole("combobox", { name: "Action Character" }),
-    );
-    await user.click(screen.getByRole("option", { name: "Skillful" }));
+async function pasteIntoField(user, label, value) {
+  if (value === undefined) {
+    return;
   }
 
-  if (omit !== "combatElement") {
+  const field = screen.getByRole("textbox", { name: label });
+  await user.click(field);
+  await user.paste(value);
+}
+
+export async function fillOperationWorksheet(user, values) {
+  if (values.scope !== undefined) {
+    await selectComboboxOption(user, "Scope", values.scope);
+  }
+
+  if (values.actionCharacter !== undefined) {
+    await selectComboboxOption(
+      user,
+      "Action Character",
+      values.actionCharacter,
+    );
+  }
+
+  await pasteIntoField(user, "Combat Element", values.combatElement);
+  await pasteIntoField(
+    user,
+    "Aircrew Combat Element",
+    values.aircrewCombatElement,
+  );
+  await pasteIntoField(user, "Leadership Element", values.leadershipElement);
+  await pasteIntoField(user, "Airframe", values.airframe);
+  await pasteIntoField(user, "Operation Title", values.operationTitle);
+  await pasteIntoField(user, "Location", values.location);
+
+  if (values.operationDate !== undefined) {
     await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
+      screen.getByLabelText("Operation Date"),
+      values.operationDate,
     );
   }
 
-  if (omit !== "operationTitle") {
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-  }
+  await pasteIntoField(user, "Narrative", values.narrative);
+}
 
-  if (omit !== "location") {
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-  }
+export async function submitRecommendation(user) {
+  await user.click(
+    screen.getByRole("button", { name: "Generate Recommendation" }),
+  );
+}
 
-  if (omit !== "operationDate") {
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-  }
+export function getCitationText() {
+  return screen.getByLabelText("Citation Narrative").textContent;
+}
 
-  if (omit !== "narrative") {
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-    await user.click(narrativeField);
-    await user.paste(narrative);
-  }
+export function getHighlightTexts() {
+  return Array.from(
+    screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
+    (highlight) => highlight.textContent,
+  );
 }
