@@ -1,66 +1,64 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import GetMedalRecipientRoster from "../reusableModules/getMedalRecipientRoster";
-import MedalRecommendationClient from "./MedalRecommendationClient";
-
-export const dynamic = "force-dynamic";
+import Link from "next/link";
 
 export const metadata = {
   title: "Medal Recommendation Aid",
 };
 
-export default async function MedalRecommendationPage() {
-  let rosterResponse;
+const WORKSHEET_FAMILIES = [
+  {
+    href: "/medalrecommendation/operation",
+    title: "Operation Medals",
+    description:
+      "Create recommendations recognizing actions performed during operations.",
+  },
+  {
+    href: "/medalrecommendation/service",
+    title: "Service Medals",
+    description:
+      "Create recommendations recognizing service and contributions to the Regiment.",
+  },
+];
 
-  try {
-    rosterResponse = await GetMedalRecipientRoster();
-  } catch (error) {
-    console.error("Medal recipient roster fetch failed:", error.message);
-    return (
-      <main className="mx-auto max-w-4xl px-4 py-6">
-        <Card>
-          <CardHeader>
-            <h2 className="text-2xl font-semibold">
-              Unable to load Medal Recommendation Aid
-            </h2>
-          </CardHeader>
+export default function MedalRecommendationPage() {
+  return (
+    <main className="mx-auto min-h-[70vh] max-w-[64rem] px-4 py-12 sm:px-6 sm:py-16">
+      <header className="max-w-2xl">
+        <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+          Medal Recommendation Aid
+        </h1>
 
-          <CardContent className="space-y-4">
-            <p>
-              The medal recipient roster could not be loaded. Please try again.
-            </p>
+        <p className="mt-3 text-base text-muted-foreground sm:text-lg">
+          Create and review a medal recommendation.
+        </p>
+      </header>
 
-            <Button asChild>
-              <a
-                href="/medalrecommendation"
-                className="!text-primary-foreground hover:!text-primary-foreground"
+      <nav
+        aria-label="Medal worksheet families"
+        className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6"
+      >
+        {WORKSHEET_FAMILIES.map(({ href, title, description }) => (
+          <Link
+            key={href}
+            href={href}
+            className="group flex min-h-40 flex-col rounded-xl border border-border/70 border-l-[3px] border-l-primary/70 bg-card/70 p-6 !text-foreground transition-[background-color,border-color,transform] duration-150 ease-out hover:border-primary/50 hover:border-l-primary hover:bg-card hover:!no-underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-4 focus-visible:ring-offset-background active:scale-[0.99] motion-reduce:transform-none motion-reduce:transition-none sm:p-7"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <h2 className="text-2xl font-semibold tracking-tight">{title}</h2>
+
+              <span
+                aria-hidden="true"
+                className="text-lg text-primary/70 transition-[color,transform] group-hover:translate-x-0.5 group-hover:text-primary motion-reduce:transform-none motion-reduce:transition-none"
               >
-                Try Again
-              </a>
-            </Button>
-          </CardContent>
-        </Card>
-      </main>
-    );
-  }
+                →
+              </span>
+            </div>
 
-  const profiles = Object.values(rosterResponse?.profiles ?? {});
-
-  const medalRecipientRoster = profiles.map((profile) => ({
-    user: {
-      userId: profile.user?.userId ?? "",
-      username: profile.user?.username ?? "",
-    },
-    rank: {
-      rankShort: profile.rank?.rankShort ?? "",
-      rankFull: profile.rank?.rankFull ?? "",
-    },
-    realName: profile.realName ?? "",
-    roster: profile.roster ?? "",
-    primary: {
-      positionTitle: profile.primary?.positionTitle ?? "",
-    },
-  }));
-
-  return <MedalRecommendationClient recipientRoster={medalRecipientRoster} />;
+            <p className="mt-4 max-w-md leading-7 text-muted-foreground">
+              {description}
+            </p>
+          </Link>
+        ))}
+      </nav>
+    </main>
+  );
 }

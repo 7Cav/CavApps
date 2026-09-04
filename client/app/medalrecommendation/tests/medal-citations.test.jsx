@@ -414,25 +414,38 @@ describe("Medal Recommendation Aid - citation integrations", () => {
     );
   });
 
-  test("does not duplicate Operation when the title already includes it", async () => {
-    const user = userEvent.setup();
-    renderClient();
+  test.each([
+    ["Overlord", "Operation Overlord", 1],
+    ["Operation Overlord", "Operation Overlord", 1],
+    [
+      "Defense of Operation Market Garden",
+      "Operation Defense of Operation Market Garden",
+      2,
+    ],
+  ])(
+    "normalizes the Operation title %s at the leading boundary only",
+    async (operationTitle, normalizedTitle, operationWordCount) => {
+      const user = userEvent.setup();
+      renderClient();
 
-    await selectAward(user);
-    await selectRecipient(user);
-    await fillOperationWorksheet(user, {
-      actionCharacter: "Skillful",
-      combatElement: "rifleman",
-      operationTitle: "Operation Exfor",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative: ARCOM_NARRATIVE,
-    });
-    await submitRecommendation(user);
+      await selectAward(user);
+      await selectRecipient(user);
+      await fillOperationWorksheet(user, {
+        actionCharacter: "Skillful",
+        combatElement: "rifleman",
+        operationTitle,
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative: ARCOM_NARRATIVE,
+      });
+      await submitRecommendation(user);
 
-    expect(getCitationText()).toContain(
-      "during combat in Operation Exfor near Remagen",
-    );
-    expect(getCitationText()).not.toContain("Operation Operation Exfor");
-  });
+      const citation = getCitationText();
+
+      expect(citation).toContain(
+        `during combat in ${normalizedTitle} near Remagen`,
+      );
+      expect(citation.match(/Operation/g)).toHaveLength(operationWordCount);
+    },
+  );
 });
