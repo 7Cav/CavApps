@@ -154,3 +154,25 @@ export function buildExtraordinaryHeroismPilotOpening({
     buildOperationLocationDateTail({ operationTitle, location, date })
   );
 }
+
+export function buildServiceContributionOpening({ affectedArea }) {
+  return `For contributions in ${affectedArea}.`;
+}
+
+export function buildServiceDedicationClosing({
+  recipientRank,
+  recipientCitationName,
+  affectedArea,
+}) {
+  return (
+    `${recipientRank} ${recipientCitationName}'s dedication to duty and commitment ` +
+    `is in great credit to themselves, ${affectedArea} and the 7th Cavalry Gaming Regiment.`
+  );
+}
+
+export function buildServiceNarrativeOpening({
+  recipientRank,
+  recipientCitationName,
+}) {
+  return `${recipientRank} ${recipientCitationName} distinguished themselves by`;
+}

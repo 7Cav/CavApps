@@ -62,6 +62,37 @@ export const WORKSHEET_PROFILES = {
       },
     },
   },
+
+  serviceIndividual: {
+    recipientType: "individual",
+
+    fieldOrder: ["affectedArea", "narrative"],
+
+    fields: {
+      affectedArea: {
+        type: "text",
+        required: true,
+        defaultValue: "",
+        label: "Affected Area of the Cav",
+        placeholder: "S7 HLL SOI, 2/B/2-7, etc.",
+        awardChange: "preserve",
+      },
+
+      narrative: {
+        type: "textarea",
+        required: true,
+        defaultValue: "",
+        label: "Narrative",
+        placeholder: "Continue the recipient's recommendation narrative...",
+        systemOwnedNarrativeOpening: true,
+        helperText:
+          "The SOP requires the narrative to begin with the displayed recipient opening. Continue from the sentence starter below.",
+        rows: 8,
+        feedback: "narrativeWarnings",
+        awardChange: "preserve",
+      },
+    },
+  },
 };
 
 function copyField(field) {
