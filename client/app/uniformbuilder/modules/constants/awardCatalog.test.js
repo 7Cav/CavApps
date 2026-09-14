@@ -9,6 +9,10 @@
  * generateAwardSprites.test.js records: a fixture cannot catch the award data
  * moving or changing shape.
  *
+ * The weapon qual plate check at the end is the same kind of guard. It was
+ * added with the Recoilless Rifle sort fix (#229) as an acceptance criterion,
+ * not as evidence for that fix: it was green before and after the fix.
+ *
  * Run with `npm run test:client`.
  */
 
@@ -21,6 +25,7 @@ import { AWARD_CATALOG } from "./awardCatalog.js";
 import { AwardType } from "./awardTypes.js";
 import { BadgeFamily } from "./badgeFamilies.js";
 import { BadgeImages, combatBadgeImagePath } from "./badgeImages.js";
+import { weaponQualPlatePath } from "./weaponQualPlates.js";
 
 // combatBadgeImagePath returns the path the browser requests, relative to the
 // public directory the app is served from.
@@ -63,6 +68,27 @@ for (const badge of combatBadges) {
     // artwork was never committed fails here rather than 404ing on a uniform.
     const path = join(PUBLIC_DIR, combatBadgeImagePath(badge.badgeImage));
     assert.ok(existsSync(path), `no image file at ${path}`);
+  });
+}
+
+// The canvas loads one plate per weapon qual tag, so a tag with no plate file
+// draws nothing for that weapon and logs a 404.
+const weaponQualTags = [
+  ...new Set(
+    AWARD_CATALOG.filter(
+      (award) => award.awardType === AwardType.WeaponQual,
+    ).map((award) => award.awardTag),
+  ),
+];
+
+await test("the catalog still contains weapon quals to check", () => {
+  assert.ok(weaponQualTags.length > 0);
+});
+
+for (const tag of weaponQualTags) {
+  await test(`weapon qual tag ${tag} has a plate file`, () => {
+    const path = join(PUBLIC_DIR, weaponQualPlatePath(tag));
+    assert.ok(existsSync(path), `no plate file at ${path}`);
   });
 }
 

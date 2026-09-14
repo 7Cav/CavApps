@@ -9,3 +9,4 @@ export {
 export { AWARD_CATALOG } from "./awardCatalog";
 export { BadgeFamily, displayableBadgeFamilies } from "./badgeFamilies";
 export { BadgeImages, combatBadgeImagePath } from "./badgeImages";
+export { weaponQualPlatePath } from "./weaponQualPlates";

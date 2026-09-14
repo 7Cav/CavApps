@@ -262,7 +262,7 @@ export class WeaponQual extends Award {
     "tankWeapons",
     "m203",
     "machineGun",
-    "recoillessRifle",
+    "recoilless",
     "pistol",
     "aeroweapons",
     //"carbine",
