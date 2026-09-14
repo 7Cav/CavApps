@@ -35,25 +35,30 @@ export class Ribbon extends Award {
     Ribbon.totalRibbonCount++;
   }
 
+  // Called once per further MILPAC row of this award. A subclass that reads
+  // the row takes it as an argument; the base count ignores it.
   incrementAwardCount() {
     this.ribbonTrueAttachmentCount++;
     this.calculateNewDisplayCount();
   }
 
   calculateNewDisplayCount() {
-    // A numeral is the award count itself: one award draws plain, two draw
-    // "2". Clusters and stars mark the awards past the first, so their count
-    // runs one lower. For a numeral, maxAwardcount is the highest numeral
-    // image that exists.
+    // Clusters and stars mark the awards past the first, so their count runs
+    // one lower than the award count. A numeral shows the award count itself.
     if (this.ribbonAttachmentType === AwardAttachmentType.NCO_NUMS) {
-      const awardCount = this.ribbonTrueAttachmentCount + 1;
-      this.ribbonDisplayedAttachmentCount =
-        awardCount > 1 ? Math.min(awardCount, this.maxAwardcount) : 0;
+      this.displayNumeral(this.ribbonTrueAttachmentCount + 1);
       return;
     }
     if (this.ribbonTrueAttachmentCount <= this.maxAwardcount) {
       this.ribbonDisplayedAttachmentCount++;
     }
+  }
+
+  // One award draws a plain ribbon, two draw "2". For a numeral, maxAwardcount
+  // is the highest numeral image that exists.
+  displayNumeral(awardCount) {
+    this.ribbonDisplayedAttachmentCount =
+      awardCount > 1 ? Math.min(awardCount, this.maxAwardcount) : 0;
   }
 }
 
@@ -142,20 +147,25 @@ export class RibbonPerRank extends Ribbon {
 
   constructor(data, AwardRegistry) {
     super(data, AwardRegistry);
-    this.incrementAwardCount(data);
+    this.tallyRank(data);
   }
 
   incrementAwardCount(row) {
+    this.tallyRank(row);
+    super.incrementAwardCount();
+  }
+
+  tallyRank(row) {
     const rank = parseNcoRank(row.awardDetails);
     if (rank === null) {
       this.unknownRankRows++;
     } else {
       this.ranksHeld.add(rank);
     }
-    // Ribbon counts the awards past the first.
-    this.ribbonTrueAttachmentCount =
-      this.ranksHeld.size + this.unknownRankRows - 1;
-    this.calculateNewDisplayCount();
+  }
+
+  calculateNewDisplayCount() {
+    this.displayNumeral(this.ranksHeld.size + this.unknownRankRows);
   }
 }
 

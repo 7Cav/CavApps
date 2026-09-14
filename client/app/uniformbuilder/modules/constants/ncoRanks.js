@@ -1,6 +1,6 @@
 // The NCO ranks the NCO Professional Development Ribbon is awarded for, one
 // MILPAC row per promotion. Rank title is the key: MSG and 1SG are two ranks.
-export const NcoRank = Object.freeze({
+const NcoRank = Object.freeze({
   SGT: "SGT",
   SSG: "SSG",
   SFC: "SFC",

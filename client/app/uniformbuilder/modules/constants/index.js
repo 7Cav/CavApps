@@ -7,6 +7,6 @@ export {
   stripValorDevice,
 } from "./awardNames";
 export { AWARD_CATALOG } from "./awardCatalog";
-export { NcoRank, parseNcoRank } from "./ncoRanks";
+export { parseNcoRank } from "./ncoRanks";
 export { BadgeFamily, displayableBadgeFamilies } from "./badgeFamilies";
 export { BadgeImages, combatBadgeImagePath } from "./badgeImages";

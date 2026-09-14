@@ -5,7 +5,8 @@
  * canvas.jsx draws a ribbon's device from two fields on the award object:
  * ribbonAttachmentType picks the image folder and
  * ribbonDisplayedAttachmentCount picks the image in it, drawn only when it is
- * not 0. Those are the only things asserted here.
+ * not 0. Those are the only things asserted here. Ribbons and medals have no
+ * fixed slot in the returned arrays, so each award is found by its title.
  *
  * The Air Medal and the NCO Professional Development Ribbon (NCOPDR) carry a
  * numeral device. Per the award SOP (issue #226) the numeral is the award
