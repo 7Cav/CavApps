@@ -42,8 +42,6 @@ export default function GetCoordArray(numAwards) {
   },
   */
 
-  console.log(numAwards);
-
   switch (numAwards) {
     case 34:
       return [

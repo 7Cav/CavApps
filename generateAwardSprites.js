@@ -78,6 +78,7 @@ const RIBBON_SHEET_TYPES = new Set([
   "MedalWithValor",
   "Ribbon",
   "RibbonDonationLogic",
+  "RibbonByHighestRank",
 ]);
 const MEDAL_SHEET_TYPES = new Set(["Medal", "MedalTiered", "MedalWithValor"]);
 // The medal sheet's first row is medalPriority 2 (y = (medalPriority - 2)*120);

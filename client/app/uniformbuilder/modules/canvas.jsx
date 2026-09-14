@@ -8,7 +8,7 @@ import {
   MedalTiered,
   RibbonDonationLogic,
 } from "./AwardClasses";
-import { combatBadgeImagePath } from "./constants";
+import { combatBadgeImagePath, weaponQualPlatePath } from "./constants";
 
 function Canvas(props) {
   const canvasRef = useRef(null);
@@ -444,11 +444,11 @@ function Canvas(props) {
             };
             img2.onerror = () => {
               console.error(
-                `Error loading weapon qual plate: skunkworks/uniformWeaponQuals/plates/${data[i]}.png`,
+                `Error loading weapon qual plate: ${weaponQualPlatePath(data[i])}`,
               );
               resolvePlate();
             };
-            img2.src = `skunkworks/uniformWeaponQuals/plates/${data[i]}.png`;
+            img2.src = weaponQualPlatePath(data[i]);
           });
           platePromises.push(platePromise);
         }
