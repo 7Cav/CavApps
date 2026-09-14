@@ -67,12 +67,17 @@ const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
+/** Everything the builder hands the renderer for one member. */
+const canvasObjectFor = async (mos, awardNames, rank = ENLISTED) => {
+  const payload = rosterResponse(mos, awardNames, rank);
+  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
+  return GetCanvasObject(payload.user.username);
+};
+
 /** The collar decorations the builder hands the renderer for one member. */
 const collarFor = async (mos, rank) => {
-  const payload = rosterResponse(mos, [], rank);
-  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
   const { mosCheck, shoulderCord, neckPins } = (
-    await GetCanvasObject(payload.user.username)
+    await canvasObjectFor(mos, [], rank)
   )[0];
   // The fixture's rank must match the MOS class, or the canvas discards the
   // cord and pins whatever their values. Loose equality on purpose. The canvas
@@ -82,11 +87,8 @@ const collarFor = async (mos, rank) => {
 };
 
 /** The combat badge the builder hands the renderer, or null for none. */
-const combatBadgeFor = async (mos, awardNames) => {
-  const payload = rosterResponse(mos, awardNames);
-  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
-  return (await GetCanvasObject(payload.user.username))[4];
-};
+const combatBadgeFor = async (mos, awardNames) =>
+  (await canvasObjectFor(mos, awardNames))[4];
 
 const assertDraws = (badge, expectedImageNum) => {
   assert.notStrictEqual(badge, null, "expected a combat badge, got none");
@@ -185,6 +187,44 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   const held = ["Combat Infantry Badge", "Flight Medic Badge"];
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
+});
+
+// ── Service ribbons: the medal display, in precedence order ──────────────────
+// canvas.jsx lays out data[3] in list order and reads each entry's
+// medalPriority for its sprite-sheet row. An award the registry does not know
+// never reaches data[3], so a missing catalog entry shows up as a missing
+// medal. awardTitle is the award name as the API sent it; it is read here only
+// to tell the medals apart, since the row number is the sole other identity a
+// medal carries and it shifts with every award added above it.
+
+/** The medal display for a member holding these awards. MOS plays no part in it. */
+const medalsFor = async (awardNames) =>
+  (await canvasObjectFor("11B", awardNames))[3];
+
+await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+  // Expected order is MILPAC's, not the catalog's: display_order 205
+  // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
+  // the API's ordering cannot satisfy this by accident.
+  const medals = await medalsFor([
+    "Ready or Not Service Ribbon",
+    "Vietnam Service Ribbon",
+    "Overseas Service Ribbon",
+  ]);
+  assert.deepStrictEqual(
+    medals.map((medal) => medal.awardTitle),
+    [
+      "Overseas Service Ribbon",
+      "Vietnam Service Ribbon",
+      "Ready or Not Service Ribbon",
+    ],
+  );
+  // The sprite rows must climb with the display order, or Vietnam's slot
+  // would draw a neighbour's medal art.
+  const rows = medals.map((medal) => medal.medalPriority);
+  assert.ok(
+    rows[0] < rows[1] && rows[1] < rows[2],
+    `medal sheet rows ${rows} do not follow the display order`,
+  );
 });
 
 // ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
