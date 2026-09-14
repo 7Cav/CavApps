@@ -8,6 +8,14 @@
  * the badge object are internal and are deliberately left alone, so this suite
  * survives a rewrite of how the badge is chosen.
  *
+ * For the collar it reads three things off data[0]: mosCheck (non-null means
+ * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
+ * (asset names, or false for none). The collar cases assert those three.
+ *
+ * For weapon quals, canvas.jsx reads data[5].expertQuals (and the sharpshooter
+ * and marksman arrays) and draws one plate per entry, top to bottom, in array
+ * order. The order of that array is what the weapon qual tests assert.
+ *
  * The only stub is globalThis.fetch, the outermost network adapter. No
  * internal collaborator is mocked.
  *
@@ -16,7 +24,9 @@
  * caduceus, 10/11/12.png are aircrew wings plain / with a star / with a star in
  * a wreath, and so on. They are deliberately NOT read back from the catalog:
  * sourcing them from the data under test would move both sides of the
- * assertion together and no row could ever fail.
+ * assertion together and no row could ever fail. The one exception is the
+ * weapon list at the end, which reads the catalog to find out which weapons
+ * exist. The expected position in each of those rows is still a literal.
  *
  * Run with `npm run test:client` — not a bare `node`; the script carries the
  * loader hook that lets Node import the client's .jsx modules.
@@ -30,6 +40,8 @@ process.env.NEXT_PUBLIC_CLIENT_TOKEN ??= "test-client-token";
 
 import assert from "node:assert";
 import { createHarness } from "../../../test-harness.mjs";
+import { AWARD_CATALOG } from "./constants/awardCatalog.js";
+import { AwardType } from "./constants/awardTypes.js";
 
 // getIndividual.js reads the two variables above at module scope, so this one
 // import has to happen after they are set — hence dynamic rather than static.
@@ -42,19 +54,41 @@ const { test, report } = createHarness();
  * consume it. `awardName` is the field that links a fetched award to its
  * catalog entry, and the API returns the catalog's own award names.
  */
-const rosterResponse = (mos, awardNames) => ({
+// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
+// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
+// each collar case pairs its MOS with the matching rank.
+const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
+const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
+
+const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
-  rank: { rankShort: "SPC", rankId: "19" }, // E4, Specialist
+  rank,
   mos,
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
-/** The combat badge the builder hands the renderer, or null for none. */
-const combatBadgeFor = async (mos, awardNames) => {
-  const payload = rosterResponse(mos, awardNames);
+/** Everything the builder hands the renderer for one member. */
+const canvasObjectFor = async (mos, awardNames, rank = ENLISTED) => {
+  const payload = rosterResponse(mos, awardNames, rank);
   globalThis.fetch = async () => ({ status: 200, json: async () => payload });
-  return (await GetCanvasObject(payload.user.username))[4];
+  return GetCanvasObject(payload.user.username);
 };
+
+/** The collar decorations the builder hands the renderer for one member. */
+const collarFor = async (mos, rank) => {
+  const { mosCheck, shoulderCord, neckPins } = (
+    await canvasObjectFor(mos, [], rank)
+  )[0];
+  // The fixture's rank must match the MOS class, or the canvas discards the
+  // cord and pins whatever their values. Loose equality on purpose. The canvas
+  // tests `mosCheck != null`, so undefined draws the collar too.
+  assert.equal(mosCheck, null, "fixture rank does not match MOS");
+  return { shoulderCord, neckPins };
+};
+
+/** The combat badge the builder hands the renderer, or null for none. */
+const combatBadgeFor = async (mos, awardNames) =>
+  (await canvasObjectFor(mos, awardNames))[4];
 
 const assertDraws = (badge, expectedImageNum) => {
   assert.notStrictEqual(badge, null, "expected a combat badge, got none");
@@ -154,5 +188,158 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
 });
+
+// ── Service ribbons: the medal display, in precedence order ──────────────────
+// canvas.jsx lays out data[3] in list order and reads each entry's
+// medalPriority for its sprite-sheet row. An award the registry does not know
+// never reaches data[3], so a missing catalog entry shows up as a missing
+// medal. awardTitle is the award name as the API sent it; it is read here only
+// to tell the medals apart, since the row number is the sole other identity a
+// medal carries and it shifts with every award added above it.
+
+/** The medal display for a member holding these awards. MOS plays no part in it. */
+const medalsFor = async (awardNames) =>
+  (await canvasObjectFor("11B", awardNames))[3];
+
+await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+  // Expected order is MILPAC's, not the catalog's: display_order 205
+  // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
+  // the API's ordering cannot satisfy this by accident.
+  const medals = await medalsFor([
+    "Ready or Not Service Ribbon",
+    "Vietnam Service Ribbon",
+    "Overseas Service Ribbon",
+  ]);
+  assert.deepStrictEqual(
+    medals.map((medal) => medal.awardTitle),
+    [
+      "Overseas Service Ribbon",
+      "Vietnam Service Ribbon",
+      "Ready or Not Service Ribbon",
+    ],
+  );
+  // The sprite rows must climb with the display order, or Vietnam's slot
+  // would draw a neighbour's medal art.
+  const rows = medals.map((medal) => medal.medalPriority);
+  assert.ok(
+    rows[0] < rows[1] && rows[1] < rows[2],
+    `medal sheet rows ${rows} do not follow the display order`,
+  );
+});
+
+// ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
+// Expected asset names are literals. They are the filenames the canvas loads
+// from uniformCords/ and uniformLapelPins/.
+
+await test("90A officer wears the Logistics cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("90A", OFFICER), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsOfficer",
+  });
+});
+
+await test("92Y enlisted wears the Logistics cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("92Y", ENLISTED), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsNCO",
+  });
+});
+
+// Regression guards. Both were green before #225. A new case block lands at
+// the end of a switch, so each guard covers the block that was last before
+// this change: 19A's cord block in the cord lookup, 11B's pin block in the pin
+// lookup. A misplaced insertion shows up here rather than in the cases above.
+
+await test("19A officer still wears the Armor cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("19A", OFFICER), {
+    shoulderCord: "Armor",
+    neckPins: "ArmorOfficer",
+  });
+});
+
+await test("11B enlisted still wears the Infantry cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("11B", ENLISTED), {
+    shoulderCord: "Infantry",
+    neckPins: "InfantryNCO",
+  });
+});
+
+// ── Weapon quals: plates stack in SOP order ──────────────────────────────────
+// The S1 Uniforms SOP fixes the order plates stack in a column. The expected
+// arrays below are transcribed from it, not read from the slot list in
+// WeaponQual, so a slot that drifts from its catalog tag fails here.
+
+/** The weapon qual object the builder hands the renderer, or 0 for none. */
+const weaponQualsFor = async (awardNames) => {
+  const payload = rosterResponse("11B", awardNames);
+  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
+  return (await GetCanvasObject(payload.user.username))[5];
+};
+
+await test("expert quals listed in reverse SOP order stack in SOP order", async () => {
+  // Reverse of the SOP order, so insertion order alone cannot pass. Before the
+  // fix Recoilless Rifle sorted after Hydra-70 because its slot was spelled
+  // "recoillessRifle" while the catalog tags it "recoilless".
+  const held = [
+    "Hydra-70 Expert",
+    "Pistol Expert",
+    "Recoilless Rifle Expert",
+    "Machine Gun Expert",
+    "Rifle Expert",
+  ];
+  assert.deepStrictEqual((await weaponQualsFor(held)).expertQuals, [
+    "rifle",
+    "machineGun",
+    "recoilless",
+    "pistol",
+    "hydra70",
+  ]);
+});
+
+// ── Every weapon has a slot ──────────────────────────────────────────────────
+// A tag with no slot sorts after every known tag, so the Recoilless Rifle
+// defect is one instance of a class. Hydra-70 is last in the SOP, so every
+// other weapon must stack above it. Weapons come from the catalog, not a list
+// here, so a new weapon is covered the day its catalog entry lands. Hydra-70's
+// own slot is the blind spot: a slotless hydra70 sorts last, which is where
+// the SOP puts it, so no row can see that mistake until a weapon lands below
+// Hydra-70.
+//
+// The catalog has no level field: the builder files a qual under expert,
+// sharpshooter or marksman by the word in its name, so the Expert entry is
+// picked the same way. The count guard turns a rename that drops the word into
+// a failure here rather than a silently missing row.
+
+const weaponQualTags = [
+  ...new Set(
+    AWARD_CATALOG.filter(
+      (award) => award.awardType === AwardType.WeaponQual,
+    ).map((award) => award.awardTag),
+  ),
+];
+
+const expertQualNamed = (tag) =>
+  AWARD_CATALOG.find(
+    (award) => award.awardTag === tag && award.name.includes("Expert"),
+  )?.name;
+
+const weaponsAboveHydra70 = weaponQualTags
+  .filter((tag) => tag !== "hydra70")
+  .map((tag) => [tag, expertQualNamed(tag)])
+  .filter(([, name]) => name !== undefined);
+
+await test("every weapon qual tag in the catalog has an Expert entry to check", () => {
+  // Guards the rows below: a tag whose Expert entry was renamed would vanish
+  // from the list instead of failing.
+  assert.strictEqual(weaponsAboveHydra70.length, weaponQualTags.length - 1);
+  assert.ok(weaponsAboveHydra70.length > 0);
+});
+
+for (const [tag, expertName] of weaponsAboveHydra70) {
+  await test(`${expertName} stacks above Hydra-70 Expert`, async () => {
+    const quals = await weaponQualsFor(["Hydra-70 Expert", expertName]);
+    assert.deepStrictEqual(quals.expertQuals, [tag, "hydra70"]);
+  });
+}
 
 report();
