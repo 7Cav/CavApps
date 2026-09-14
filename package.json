@@ -7,9 +7,10 @@
     "sprites:generate": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.js",
     "test": "npm run test:sprites && npm run test:client && npm run test:server",
     "test:sprites": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON generateAwardSprites.test.js",
-    "test:client": "npm run test:client:catalog && npm run test:client:canvas",
+    "test:client": "npm run test:client:catalog && npm run test:client:canvas && npm run test:client:numerals",
     "test:client:catalog": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./client/test-loader.mjs client/app/uniformbuilder/modules/constants/awardCatalog.test.js",
     "test:client:canvas": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./client/test-loader.mjs client/app/uniformbuilder/modules/getCanvasObject.test.js",
+    "test:client:numerals": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./client/test-loader.mjs client/app/uniformbuilder/modules/awardNumerals.test.js",
     "test:server": "npm --prefix server test"
   },
   "devDependencies": {

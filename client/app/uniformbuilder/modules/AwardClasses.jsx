@@ -1,6 +1,7 @@
 import {
   AwardAttachmentType,
   hasValorDevice,
+  parseNcoRankNumeral,
   stripValorDevice,
 } from "./constants";
 
@@ -34,15 +35,32 @@ export class Ribbon extends Award {
     Ribbon.totalRibbonCount++;
   }
 
+  // Called once per further MILPAC row of this award. A subclass that reads
+  // the row takes it as an argument; the base count ignores it.
   incrementAwardCount() {
     this.ribbonTrueAttachmentCount++;
     this.calculateNewDisplayCount();
   }
 
   calculateNewDisplayCount() {
+    // Clusters and stars mark the awards past the first, so their count runs
+    // one lower than the award count. A numeral shows the award count itself
+    // (7CAV-DR-021, section 5.2.3.6: Air Medal, 2nd award = "2"). A subclass
+    // that reads the numeral off the rows overrides this method.
+    if (this.ribbonAttachmentType === AwardAttachmentType.NCO_NUMS) {
+      this.displayNumeral(this.ribbonTrueAttachmentCount + 1);
+      return;
+    }
     if (this.ribbonTrueAttachmentCount <= this.maxAwardcount) {
       this.ribbonDisplayedAttachmentCount++;
     }
+  }
+
+  // A numeral of 1 is never drawn; the ribbon stays plain. For a numeral,
+  // maxAwardcount is the highest numeral image that exists.
+  displayNumeral(numeral) {
+    this.ribbonDisplayedAttachmentCount =
+      numeral > 1 ? Math.min(numeral, this.maxAwardcount) : 0;
   }
 }
 
@@ -117,6 +135,41 @@ export class RibbonDonationLogic extends Ribbon {
     if (this.ribbonTrueAttachmentCount >= 101) {
       this.ribbonDisplayedAttachmentCount = 12;
     }
+  }
+}
+
+// The NCO Professional Development Ribbon's numeral marks the highest NCO
+// rank held above Sergeant (7CAV-DR-021, section 5.2.3.6): Sergeant plain,
+// Staff Sergeant "2", up to Command Sergeant Major "7". S1 names the rank in
+// each MILPAC row's details. The numeral is the highest rank named across the
+// rows, however many there are, and a demotion never lowers it.
+//
+// The SOP has no rule for a row that names no rank. Such a row cannot prove a
+// rank above Sergeant, so it never raises the numeral. A trooper whose only
+// rows are blank draws a plain ribbon.
+export class RibbonByHighestRank extends Ribbon {
+  highestRankNumeral = 0;
+
+  constructor(data, AwardRegistry) {
+    super(data, AwardRegistry);
+    this.noteRank(data);
+    this.calculateNewDisplayCount();
+  }
+
+  incrementAwardCount(row) {
+    this.noteRank(row);
+    super.incrementAwardCount();
+  }
+
+  noteRank(row) {
+    const numeral = parseNcoRankNumeral(row.awardDetails);
+    if (numeral !== null && numeral > this.highestRankNumeral) {
+      this.highestRankNumeral = numeral;
+    }
+  }
+
+  calculateNewDisplayCount() {
+    this.displayNumeral(this.highestRankNumeral);
   }
 }
 
