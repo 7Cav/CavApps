@@ -155,4 +155,35 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
 });
 
+// ── Service ribbons: the medal display, in precedence order ──────────────────
+// canvas.jsx draws the medal display from data[3], already sorted into
+// precedence order, and reads awardTitle to label each medal. Those are the
+// only two things asserted here. An award the registry does not know never
+// reaches data[3], so a missing catalog entry shows up as a missing name.
+
+/** The medal display's award names, in the order the builder hands them over. */
+const medalTitlesFor = async (awardNames) => {
+  const payload = rosterResponse("11B", awardNames);
+  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
+  return (await GetCanvasObject(payload.user.username))[3].map(
+    (medal) => medal.awardTitle,
+  );
+};
+
+await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+  // Expected order is MILPAC's, not the catalog's: display_order 205
+  // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
+  // the API's ordering cannot satisfy this by accident.
+  const held = [
+    "Ready or Not Service Ribbon",
+    "Vietnam Service Ribbon",
+    "Overseas Service Ribbon",
+  ];
+  assert.deepStrictEqual(await medalTitlesFor(held), [
+    "Overseas Service Ribbon",
+    "Vietnam Service Ribbon",
+    "Ready or Not Service Ribbon",
+  ]);
+});
+
 report();
