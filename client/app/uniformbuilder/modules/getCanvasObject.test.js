@@ -8,6 +8,10 @@
  * the badge object are internal and are deliberately left alone, so this suite
  * survives a rewrite of how the badge is chosen.
  *
+ * For the collar it reads three things off data[0]: mosCheck (non-null means
+ * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
+ * (asset names, or false for none). The collar cases assert those three.
+ *
  * The only stub is globalThis.fetch, the outermost network adapter. No
  * internal collaborator is mocked.
  *
@@ -42,18 +46,36 @@ const { test, report } = createHarness();
  * consume it. `awardName` is the field that links a fetched award to its
  * catalog entry, and the API returns the catalog's own award names.
  */
-const rosterResponse = (mos, awardNames) => ({
+// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
+// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
+// each collar case pairs its MOS with the matching rank.
+const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
+const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
+
+const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
-  rank: { rankShort: "SPC", rankId: "19" }, // E4, Specialist
+  rank,
   mos,
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
-/** Everything the builder hands the renderer for a member holding these awards. */
-const canvasObjectFor = async (mos, awardNames) => {
-  const payload = rosterResponse(mos, awardNames);
+/** Everything the builder hands the renderer for one member. */
+const canvasObjectFor = async (mos, awardNames, rank = ENLISTED) => {
+  const payload = rosterResponse(mos, awardNames, rank);
   globalThis.fetch = async () => ({ status: 200, json: async () => payload });
   return GetCanvasObject(payload.user.username);
+};
+
+/** The collar decorations the builder hands the renderer for one member. */
+const collarFor = async (mos, rank) => {
+  const { mosCheck, shoulderCord, neckPins } = (
+    await canvasObjectFor(mos, [], rank)
+  )[0];
+  // The fixture's rank must match the MOS class, or the canvas discards the
+  // cord and pins whatever their values. Loose equality on purpose. The canvas
+  // tests `mosCheck != null`, so undefined draws the collar too.
+  assert.equal(mosCheck, null, "fixture rank does not match MOS");
+  return { shoulderCord, neckPins };
 };
 
 /** The combat badge the builder hands the renderer, or null for none. */
@@ -195,6 +217,43 @@ await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the
     rows[0] < rows[1] && rows[1] < rows[2],
     `medal sheet rows ${rows} do not follow the display order`,
   );
+});
+
+// ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
+// Expected asset names are literals. They are the filenames the canvas loads
+// from uniformCords/ and uniformLapelPins/.
+
+await test("90A officer wears the Logistics cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("90A", OFFICER), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsOfficer",
+  });
+});
+
+await test("92Y enlisted wears the Logistics cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("92Y", ENLISTED), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsNCO",
+  });
+});
+
+// Regression guards. Both were green before #225. A new case block lands at
+// the end of a switch, so each guard covers the block that was last before
+// this change: 19A's cord block in the cord lookup, 11B's pin block in the pin
+// lookup. A misplaced insertion shows up here rather than in the cases above.
+
+await test("19A officer still wears the Armor cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("19A", OFFICER), {
+    shoulderCord: "Armor",
+    neckPins: "ArmorOfficer",
+  });
+});
+
+await test("11B enlisted still wears the Infantry cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("11B", ENLISTED), {
+    shoulderCord: "Infantry",
+    neckPins: "InfantryNCO",
+  });
 });
 
 report();
