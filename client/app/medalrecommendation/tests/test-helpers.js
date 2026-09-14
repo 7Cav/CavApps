@@ -1,7 +1,8 @@
 import { createElement } from "react";
 import { render, screen } from "@testing-library/react";
 import MedalRecommendationClient from "../MedalRecommendationClient";
-import MedalRecommendationPage from "../page";
+import { MEDAL_FAMILY_IDS } from "../lib/medal-families.js";
+import OperationMedalRecommendationPage from "../operation/page";
 
 export function makeRecipient(overrides = {}) {
   const recipient = {
@@ -118,10 +119,20 @@ export const combatRoster = {
   }),
 };
 
-export function renderClient({ roster = Object.values(combatRoster) } = {}) {
+export function renderClient({
+  roster = Object.values(combatRoster),
+  medalFamily = MEDAL_FAMILY_IDS.OPERATION,
+} = {}) {
   return render(
-    createElement(MedalRecommendationClient, { recipientRoster: roster }),
+    createElement(MedalRecommendationClient, {
+      recipientRoster: roster,
+      medalFamily,
+    }),
   );
+}
+
+export function renderServiceClient(options = {}) {
+  return renderClient({ ...options, medalFamily: MEDAL_FAMILY_IDS.SERVICE });
 }
 
 export async function renderPageWithRoster(roster = combatRoster) {
@@ -136,7 +147,7 @@ export async function renderPageWithRoster(roster = combatRoster) {
     json: async () => ({ profiles }),
   });
 
-  return render(await MedalRecommendationPage());
+  return render(await OperationMedalRecommendationPage());
 }
 
 export async function selectComboboxOption(user, label, option) {
@@ -146,6 +157,10 @@ export async function selectComboboxOption(user, label, option) {
 
 export async function selectAward(user, awardName = "Army Commendation Medal") {
   await selectComboboxOption(user, "Award", awardName);
+}
+
+export async function selectServiceAward(user) {
+  await selectAward(user, "Army Achievement Medal");
 }
 
 export async function selectRecipient(

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import MedalRecommendationPage from "../page";
+import OperationMedalRecommendationPage from "../operation/page";
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import {
   makeRecipient,
@@ -18,10 +18,6 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   test("shows all supported Operation Medals in the Award selector", async () => {
     const user = userEvent.setup();
     renderClient();
-
-    expect(
-      screen.getByRole("heading", { name: "Medal Recommendation Aid" }),
-    ).toBeVisible();
 
     await user.click(screen.getByRole("combobox", { name: "Award" }));
 
@@ -47,7 +43,14 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     );
   });
 
-  test("keeps the worksheet hidden until an award is selected", async () => {
+  test("every Operation Medal has a non-empty abbreviation", () => {
+    for (const medal of OPERATION_MEDALS) {
+      expect(medal.abbreviation).toEqual(expect.any(String));
+      expect(medal.abbreviation.trim()).not.toBe("");
+    }
+  });
+
+  test("keeps recipient selection and generation hidden until an award is selected", async () => {
     const user = userEvent.setup();
     renderClient();
 
@@ -86,7 +89,6 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     "$name renders its guidance and medal-specific controls",
     async ({
       name,
-      recommendationPrompt,
       criteriaPattern,
       guidancePattern,
       eligibilityNotes,
@@ -100,13 +102,12 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
       await selectAward(user, name);
 
       expect(screen.getAllByRole("heading", { name })[0]).toBeVisible();
-      expect(screen.getByText(recommendationPrompt)).toBeVisible();
       expect(screen.getByText(criteriaPattern)).toBeVisible();
       expect(screen.getByText(guidancePattern)).toBeVisible();
 
       if (eligibilityNotes.length > 0) {
         expect(
-          screen.getByRole("heading", { name: "Eligibility" }),
+          screen.getByRole("heading", { name: "Eligibility Guidance" }),
         ).toBeVisible();
 
         for (const note of eligibilityNotes) {
@@ -114,7 +115,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
         }
       } else {
         expect(
-          screen.queryByRole("heading", { name: "Eligibility" }),
+          screen.queryByRole("heading", { name: "Eligibility Guidance" }),
         ).not.toBeInTheDocument();
       }
 
@@ -146,7 +147,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
       new TypeError("fetch failed"),
     );
 
-    render(await MedalRecommendationPage());
+    render(await OperationMedalRecommendationPage());
 
     expect(
       screen.getByRole("heading", {
@@ -158,7 +159,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     ).toBeVisible();
 
     const retryLink = screen.getByRole("link", { name: "Try Again" });
-    expect(retryLink).toHaveAttribute("href", "/medalrecommendation");
+    expect(retryLink).toHaveAttribute("href", "/medalrecommendation/operation");
   });
 
   test("lets a user search for and select a medal recipient", async () => {

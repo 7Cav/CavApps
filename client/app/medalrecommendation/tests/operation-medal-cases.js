@@ -4,7 +4,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "army-commendation-medal",
     name: "Army Commendation Medal",
-    recommendationPrompt: "Create an Army Commendation Medal recommendation.",
     criteriaPattern:
       /awarded for skillful or heroic actions over an entire operation/i,
     guidancePattern:
@@ -23,8 +22,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "army-commendation-medal-with-valor",
     name: "Army Commendation Medal With Valor",
-    recommendationPrompt:
-      "Create an Army Commendation Medal With Valor recommendation.",
     criteriaPattern: /awarded for a single act of heroism or skill under fire/i,
     guidancePattern:
       /describe how the trooper demonstrated heroism and skill in a single act during the operation/i,
@@ -41,7 +38,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "air-medal",
     name: "Air Medal",
-    recommendationPrompt: "Create an Air Medal recommendation.",
     criteriaPattern: /awarded to any member of an aircrew, including pilots/i,
     guidancePattern:
       /describe how the trooper demonstrated exceptional skill or heroism over the entire duration of the operation/i,
@@ -61,7 +57,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "purple-heart",
     name: "Purple Heart",
-    recommendationPrompt: "Create a Purple Heart recommendation.",
     criteriaPattern:
       /awarded for a single or multiple heroic actions while under enemy fire/i,
     guidancePattern:
@@ -82,7 +77,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "bronze-star-medal",
     name: "Bronze Star Medal",
-    recommendationPrompt: "Create a Bronze Star Medal recommendation.",
     criteriaPattern:
       /awarded for skillful or heroic actions over the entire operation/i,
     guidancePattern:
@@ -101,8 +95,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "bronze-star-medal-with-valor",
     name: "Bronze Star Medal With Valor",
-    recommendationPrompt:
-      "Create a Bronze Star Medal With Valor recommendation.",
     criteriaPattern:
       /awarded for a single act demonstrating extraordinary heroism and skill while under enemy fire/i,
     guidancePattern:
@@ -122,7 +114,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "distinguished-flying-cross",
     name: "Distinguished Flying Cross",
-    recommendationPrompt: "Create a Distinguished Flying Cross recommendation.",
     criteriaPattern:
       /awarded to pilots for a single act demonstrating extraordinary heroism and skill while under enemy fire/i,
     guidancePattern:
@@ -145,7 +136,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "silver-star",
     name: "Silver Star",
-    recommendationPrompt: "Create a Silver Star recommendation.",
     criteriaPattern:
       /awarded for actions demonstrating extraordinary heroism, skill, and leadership under fire/i,
     guidancePattern:
@@ -166,8 +156,6 @@ export const OPERATION_MEDAL_CASES = [
   {
     id: "distinguished-service-cross",
     name: "Distinguished Service Cross",
-    recommendationPrompt:
-      "Create a Distinguished Service Cross recommendation.",
     criteriaPattern:
       /awarded for actions, or a single act, demonstrating extraordinary heroism and skill under fire/i,
     guidancePattern:

@@ -31,6 +31,11 @@ describe("Medal Recommendation recipient roster", () => {
     const user = userEvent.setup();
 
     await renderPageWithRoster(medalRecipientRoster);
+
+    expect(
+      screen.getByRole("heading", { name: "Operation Medal Recommendation" }),
+    ).toBeVisible();
+
     await selectAward(user);
 
     await selectRecipient(user, "Res", "Reserve.R");

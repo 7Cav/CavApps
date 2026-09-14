@@ -3,8 +3,10 @@ import userEvent from "@testing-library/user-event";
 import {
   fillOperationWorksheet,
   renderClient,
+  renderServiceClient,
   selectAward,
   selectRecipient,
+  selectServiceAward,
   submitRecommendation,
 } from "./test-helpers.js";
 
@@ -13,23 +15,38 @@ describe("Medal Recommendation Aid - validation", () => {
     vi.restoreAllMocks();
   });
 
-  test("does not show required-field errors before generation is attempted", async () => {
-    const user = userEvent.setup();
-    renderClient();
-    await selectAward(user);
+  test.each([
+    ["Operation", renderClient, selectAward, "combobox", "Action Character"],
+    [
+      "Service",
+      renderServiceClient,
+      selectServiceAward,
+      "textbox",
+      "Affected Area of the Cav",
+    ],
+  ])(
+    "%s required-field errors remain hidden until generation is attempted",
+    async (_family, renderWorksheet, selectMedal, role, fieldName) => {
+      const user = userEvent.setup();
+      renderWorksheet();
+      await selectMedal(user);
 
-    expect(
-      screen.getByRole("textbox", { name: "Recipient" }),
-    ).not.toHaveAttribute("aria-invalid", "true");
-    expect(
-      screen.getByRole("combobox", { name: "Action Character" }),
-    ).not.toHaveAttribute("aria-invalid", "true");
-    expect(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-    ).not.toHaveAttribute("aria-invalid", "true");
-    expect(screen.queryByText("Required")).not.toBeInTheDocument();
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
+      const recipient = screen.getByRole("textbox", { name: "Recipient" });
+      const requiredField = screen.getByRole(role, { name: fieldName });
+
+      expect(recipient).not.toHaveAttribute("aria-invalid", "true");
+      expect(requiredField).not.toHaveAttribute("aria-invalid", "true");
+      expect(screen.queryByText("Required")).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+      await submitRecommendation(user);
+
+      expect(recipient).toHaveAttribute("aria-invalid", "true");
+      expect(requiredField).toHaveAttribute("aria-invalid", "true");
+      expect(screen.getAllByText("Required").length).toBeGreaterThan(0);
+      expect(screen.getByRole("alert")).toBeVisible();
+    },
+  );
 
   test("clears a required field error immediately when the user fixes the field", async () => {
     const user = userEvent.setup();

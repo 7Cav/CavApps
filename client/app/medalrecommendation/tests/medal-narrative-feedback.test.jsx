@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   analyzeNarrative,
@@ -344,6 +344,45 @@ describe("narrative validation utilities", () => {
 describe("Medal Recommendation Aid - narrative feedback", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test("updates Operation narrative warnings live before generation", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user);
+    await selectRecipient(user);
+
+    expect(
+      screen.queryByRole("status", { name: "Narrative Warnings" }),
+    ).not.toBeInTheDocument();
+
+    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
+    await user.type(
+      narrativeField,
+      "Specialist John Smith secured the objective.",
+    );
+
+    expect(
+      screen.getByRole("status", { name: "Narrative Warnings" }),
+    ).toHaveTextContent(
+      "Sentence count: This medal requires a minimum of three sentences.",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Recommendation Preview" }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(narrativeField);
+    await user.click(narrativeField);
+    await user.paste(compliantNarrative);
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("status", { name: "Narrative Warnings" }),
+      ).not.toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("region", { name: "Recommendation Preview" }),
+    ).not.toBeInTheDocument();
   });
 
   test("preserves citation text exactly when highlight ranges overlap", async () => {

@@ -1,3 +1,18 @@
+export function combineNarrative(requiredOpening, continuation) {
+  const normalizedOpening = requiredOpening.trim();
+  const normalizedContinuation = continuation.trim();
+
+  if (!normalizedOpening) {
+    return normalizedContinuation;
+  }
+
+  if (!normalizedContinuation) {
+    return normalizedOpening;
+  }
+
+  return `${normalizedOpening} ${normalizedContinuation}`;
+}
+
 function buildOperationLocationDateTail({ operationTitle, location, date }) {
   return `Operation ${operationTitle} near ${location} on ${date}.`;
 }
@@ -153,4 +168,26 @@ export function buildExtraordinaryHeroismPilotOpening({
     `while serving as ${combatElement} pilot in the 7th Cavalry Regiment during combat in ` +
     buildOperationLocationDateTail({ operationTitle, location, date })
   );
+}
+
+export function buildServiceContributionOpening({ affectedArea }) {
+  return `For contributions in ${affectedArea}.`;
+}
+
+export function buildServiceDedicationClosing({
+  recipientRank,
+  recipientCitationName,
+  affectedArea,
+}) {
+  return (
+    `${recipientRank} ${recipientCitationName}'s dedication to duty and commitment ` +
+    `is in great credit to themselves, ${affectedArea} and the 7th Cavalry Gaming Regiment.`
+  );
+}
+
+export function buildServiceNarrativeOpening({
+  recipientRank,
+  recipientCitationName,
+}) {
+  return `${recipientRank} ${recipientCitationName} distinguished themselves by`;
 }
