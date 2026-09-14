@@ -92,4 +92,25 @@ for (const tag of weaponQualTags) {
   });
 }
 
+// WeaponQual sorts plates by the awardPriority on the catalog entry. A tag with
+// no priority gives the comparator NaN, and where the sort puts it is then up
+// to the engine. No canvas test can see that for the last weapon in the SOP,
+// because last is where the SOP puts it (#242). One row per tag. The three
+// entries for a weapon must all carry the same number, so a missing or
+// disagreeing entry prints the set it broke.
+for (const tag of weaponQualTags) {
+  await test(`weapon qual tag ${tag} carries one awardPriority`, () => {
+    const priorities = new Set(
+      AWARD_CATALOG.filter((award) => award.awardTag === tag).map(
+        (award) => award.awardPriority,
+      ),
+    );
+    assert.deepStrictEqual(
+      [...priorities].map((priority) => typeof priority),
+      ["number"],
+      `awardPriority across ${tag} entries was ${JSON.stringify([...priorities])}`,
+    );
+  });
+}
+
 report();

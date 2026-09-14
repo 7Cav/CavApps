@@ -309,20 +309,10 @@ export class WeaponQual extends Award {
   sharpshooterQuals = [];
   marksmanQuals = [];
 
-  weaponOrder = [
-    "rifle",
-    "grenade",
-    "tankWeapons",
-    "m203",
-    "machineGun",
-    "recoilless",
-    "pistol",
-    "aeroweapons",
-    //"carbine",
-    //"autoRifle",
-    "hydra70",
-    "mk82",
-  ];
+  // SOP rank per tag, copied from the catalog entry as each qual is filed.
+  // The level arrays hold bare tags because the canvas names the plate file
+  // after the tag, so the rank lives here instead of on the array entries.
+  priorityByTag = new Map();
 
   constructor(data, AwardRegistry) {
     super(data);
@@ -331,19 +321,17 @@ export class WeaponQual extends Award {
   }
 
   sortQuals(qualArray) {
-    qualArray.sort((a, b) => {
-      const indexA = this.weaponOrder.indexOf(a);
-      const indexB = this.weaponOrder.indexOf(b);
-
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-
-      return indexA - indexB;
-    });
+    qualArray.sort(
+      (a, b) => this.priorityByTag.get(a) - this.priorityByTag.get(b),
+    );
   }
 
   addAward(data, AwardRegistry) {
     const registryDetails = AwardRegistry.getAwardDetails(data.awardName);
+    this.priorityByTag.set(
+      registryDetails.awardTag,
+      registryDetails.awardPriority,
+    );
 
     if (data.awardName.includes("Expert")) {
       this.expertQuals.push(registryDetails.awardTag);
