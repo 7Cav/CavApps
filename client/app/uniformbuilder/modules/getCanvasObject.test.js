@@ -297,11 +297,13 @@ await test("expert quals listed in reverse SOP order stack in SOP order", async 
 });
 
 // ── Mk-82: each MILPAC title reaches its level array (#227) ──────────────────
-// No catalog entry named Mk-82, so a member holding one of its titles got no
-// weapon qual object at all ([5] was 0) and nothing drew. Each title is held
-// alone, so a row can only see whether that one title maps to a weapon qual at
-// its level. The tag is a literal, like every other tag in this file. Whether
-// the tag names a plate file that exists is the catalog test's job.
+// Before this change Mk-82 was not in the catalog, so the builder handed the
+// canvas a 0 instead of a list of quals and no plate drew. Each test gives the
+// member one award, so the only way it fails is if that title goes to the
+// wrong bucket or no bucket. The expected "mk82" is typed by hand on purpose.
+// Copied from the catalog it would agree with the catalog no matter what.
+// These tests do not check that the picture file exists. awardCatalog.test.js
+// does that.
 
 await test("Mk-82 Expert is filed under expert quals", async () => {
   assert.deepStrictEqual((await weaponQualsFor(["Mk-82 Expert"])).expertQuals, [
