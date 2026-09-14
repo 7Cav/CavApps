@@ -643,6 +643,21 @@ export const AWARD_CATALOG = [
     awardTag: "tankWeapons",
     awardType: AwardType.WeaponQual,
   },
+  {
+    name: "Mk-82 Expert",
+    awardTag: "mk82",
+    awardType: AwardType.WeaponQual,
+  },
+  {
+    name: "Mk-82 Sharpshooter",
+    awardTag: "mk82",
+    awardType: AwardType.WeaponQual,
+  },
+  {
+    name: "Mk-82 Marksman",
+    awardTag: "mk82",
+    awardType: AwardType.WeaponQual,
+  },
 
   //____ TABS ____
   { name: "Special Forces Tab", awardPriority: 0, awardType: AwardType.Tab },

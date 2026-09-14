@@ -296,14 +296,46 @@ await test("expert quals listed in reverse SOP order stack in SOP order", async 
   ]);
 });
 
+// ── Mk-82: each MILPAC title reaches its level array (#227) ──────────────────
+// No catalog entry named Mk-82, so a member holding one of its titles got no
+// weapon qual object at all ([5] was 0) and nothing drew. Each title is held
+// alone, so a row can only see whether that one title maps to a weapon qual at
+// its level. The tag is a literal, like every other tag in this file. Whether
+// the tag names a plate file that exists is the catalog test's job.
+
+await test("Mk-82 Expert is filed under expert quals", async () => {
+  assert.deepStrictEqual((await weaponQualsFor(["Mk-82 Expert"])).expertQuals, [
+    "mk82",
+  ]);
+});
+
+await test("Mk-82 Sharpshooter is filed under sharpshooter quals", async () => {
+  assert.deepStrictEqual(
+    (await weaponQualsFor(["Mk-82 Sharpshooter"])).sharpshooterQuals,
+    ["mk82"],
+  );
+});
+
+await test("Mk-82 Marksman is filed under marksman quals", async () => {
+  assert.deepStrictEqual(
+    (await weaponQualsFor(["Mk-82 Marksman"])).marksmanQuals,
+    ["mk82"],
+  );
+});
+
 // ── Every weapon has a slot ──────────────────────────────────────────────────
 // A tag with no slot sorts after every known tag, so the Recoilless Rifle
-// defect is one instance of a class. Hydra-70 is last in the SOP, so every
-// other weapon must stack above it. Weapons come from the catalog, not a list
-// here, so a new weapon is covered the day its catalog entry lands. Hydra-70's
-// own slot is the blind spot: a slotless hydra70 sorts last, which is where
-// the SOP puts it, so no row can see that mistake until a weapon lands below
-// Hydra-70.
+// defect is one instance of a class. Mk-82 is last in the SOP, so every other
+// weapon must stack above it. Weapons come from the catalog, not a list here,
+// so a new weapon is covered the day its catalog entry lands.
+//
+// The last weapon's own slot is the blind spot. A slotless mk82 sorts last,
+// which is where the SOP puts it, so no row here can see that mistake. The
+// blind spot moves with the anchor. Hydra-70 held it until Mk-82 landed below
+// it (#227). Now the Hydra-70 row sees Hydra-70 lose its slot. It is also the
+// only row that goes red alone when the mk82 slot lands anywhere but last,
+// whether before Hydra-70 or in place of it. That row was green from birth,
+// so it is a regression pin, not defect evidence.
 //
 // The catalog has no level field: the builder files a qual under expert,
 // sharpshooter or marksman by the word in its name, so the Expert entry is
@@ -323,22 +355,22 @@ const expertQualNamed = (tag) =>
     (award) => award.awardTag === tag && award.name.includes("Expert"),
   )?.name;
 
-const weaponsAboveHydra70 = weaponQualTags
-  .filter((tag) => tag !== "hydra70")
+const weaponsAboveMk82 = weaponQualTags
+  .filter((tag) => tag !== "mk82")
   .map((tag) => [tag, expertQualNamed(tag)])
   .filter(([, name]) => name !== undefined);
 
 await test("every weapon qual tag in the catalog has an Expert entry to check", () => {
   // Guards the rows below: a tag whose Expert entry was renamed would vanish
   // from the list instead of failing.
-  assert.strictEqual(weaponsAboveHydra70.length, weaponQualTags.length - 1);
-  assert.ok(weaponsAboveHydra70.length > 0);
+  assert.strictEqual(weaponsAboveMk82.length, weaponQualTags.length - 1);
+  assert.ok(weaponsAboveMk82.length > 0);
 });
 
-for (const [tag, expertName] of weaponsAboveHydra70) {
-  await test(`${expertName} stacks above Hydra-70 Expert`, async () => {
-    const quals = await weaponQualsFor(["Hydra-70 Expert", expertName]);
-    assert.deepStrictEqual(quals.expertQuals, [tag, "hydra70"]);
+for (const [tag, expertName] of weaponsAboveMk82) {
+  await test(`${expertName} stacks above Mk-82 Expert`, async () => {
+    const quals = await weaponQualsFor(["Mk-82 Expert", expertName]);
+    assert.deepStrictEqual(quals.expertQuals, [tag, "mk82"]);
   });
 }
 

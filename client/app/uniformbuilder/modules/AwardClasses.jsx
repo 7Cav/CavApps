@@ -321,6 +321,7 @@ export class WeaponQual extends Award {
     //"carbine",
     //"autoRifle",
     "hydra70",
+    "mk82",
   ];
 
   constructor(data, AwardRegistry) {
