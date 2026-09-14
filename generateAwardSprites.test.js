@@ -1986,6 +1986,76 @@ async function main() {
     tileRes.warnings.length === 0,
   );
 
+  // --- run: the gap line ---
+  // Every hand-made tile on the real sheet is 13 lines of ribbon over one
+  // transparent line, and that line is the gap the rack shows between ribbons.
+  // A 43x13 source is the ribbon alone, so it has to land on the top 13 lines
+  // with the 14th left clear; stretching it to 14 (which is what fit:"fill"
+  // does on its own) paints over the gap and the ribbon touches the one below.
+  // A 43x14 source already carries its own 14th line and is used as it is.
+  // Each case replaces row 0 of a one-row sheet seeded [1,0,0] with a source
+  // of a different colour, so the seed and the source are told apart on
+  // every line. readSheet only ever returns RGBA.
+  const alphaAt = async (sheetPath, y) => {
+    const { data, width, channels } = await readSheet(sheetPath);
+    return data[y * width * channels + 3];
+  };
+  const spliceOnlyRibbon = async (tag, sourcePng) => {
+    const paths = makeScratch(tag, [
+      { name: "Only Ribbon", awardPriority: 0, awardType: "Ribbon" },
+    ]);
+    await makeSheet(paths.ribbonSheet, 43, 14, [[1, 0, 0]]);
+    await makeSheet(paths.medalSheet, 70, 120, [[0, 1, 0]]);
+    fs.writeFileSync(path.join(paths.uploadDir, "src.png"), sourcePng);
+    fs.writeFileSync(
+      paths.manifest,
+      JSON.stringify(
+        [{ name: "Only Ribbon", ribbon: "src.png", replace: true }],
+        null,
+        2,
+      ) + "\n",
+    );
+    await run(paths, silent());
+    return paths.ribbonSheet;
+  };
+
+  const ribbonOnly = await spliceOnlyRibbon(
+    "gapline-bare",
+    await colorTile(43, 13, [4, 4, 4]),
+  );
+  ok(
+    "run(gap line): a 43x13 source fills the tile's first 13 lines",
+    (await rowColor(ribbonOnly, 0)).join() === "4,4,4" &&
+      (await rowColor(ribbonOnly, 12)).join() === "4,4,4",
+  );
+  ok(
+    "run(gap line): a 43x13 source leaves the tile's 14th line transparent",
+    (await alphaAt(ribbonOnly, 13)) === 0,
+  );
+
+  const withGap = await spliceOnlyRibbon(
+    "gapline-tile",
+    await colorTile(43, 14, [5, 5, 5]),
+  );
+  ok(
+    "run(gap line): a 43x14 source lands its own 14th line on the tile",
+    (await rowColor(withGap, 13)).join() === "5,5,5" &&
+      (await alphaAt(withGap, 13)) === 255,
+  );
+
+  // A multiple of the bare shape is still the ribbon alone. The base is what
+  // decides the art height, so a check on the literal 43x13 would pass while
+  // 86x26 stretched back over the gap.
+  const twice = await spliceOnlyRibbon(
+    "gapline-2x",
+    await colorTile(86, 26, [6, 6, 6]),
+  );
+  ok(
+    "run(gap line): an 86x26 source, 2x of the bare ribbon, keeps the gap",
+    (await rowColor(twice, 12)).join() === "6,6,6" &&
+      (await alphaAt(twice, 13)) === 0,
+  );
+
   // --- replace onto the row one past the end: the boundary that copies nothing ---
   // `ins.y >= height` is the whole guard, and `>` instead of `>=` leaves every
   // assertion in this file green. It is not a cosmetic off-by-one: Buffer.copy
