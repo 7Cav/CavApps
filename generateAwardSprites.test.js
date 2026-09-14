@@ -1986,6 +1986,49 @@ async function main() {
     tileRes.warnings.length === 0,
   );
 
+  // --- run: the gap line ---
+  // Every hand-made tile on the real sheet is 13 lines of ribbon over one
+  // transparent line, and that line is the gap the rack shows between ribbons.
+  // A 43x13 source is the ribbon alone, so it has to land on the top 13 lines
+  // with the 14th left clear; stretching it to 14 (which is what fit:"fill"
+  // does on its own) paints over the gap and the ribbon touches the one below.
+  // A 43x14 source already carries its own 14th line and is used as it is.
+  const alphaAt = async (sheetPath, y) => {
+    const { data, width, channels } = await readSheet(sheetPath);
+    return channels === 4 ? data[y * width * channels + 3] : 255;
+  };
+  const gapLine = makeScratch("gapline", [
+    { name: "Only Ribbon", awardPriority: 0, awardType: "Ribbon" },
+  ]);
+  await makeSheet(gapLine.ribbonSheet, 43, 14, [[1, 0, 0]]);
+  await makeSheet(gapLine.medalSheet, 70, 120, [[0, 1, 0]]);
+  fs.writeFileSync(
+    path.join(gapLine.uploadDir, "bare.png"),
+    await colorTile(43, 13, [4, 4, 4]),
+  );
+  fs.writeFileSync(
+    gapLine.manifest,
+    JSON.stringify(
+      [{ name: "Only Ribbon", ribbon: "bare.png", replace: true }],
+      null,
+      2,
+    ) + "\n",
+  );
+  await run(gapLine, silent());
+  ok(
+    "run(gap line): a 43x13 source fills the tile's first 13 lines",
+    (await rowColor(gapLine.ribbonSheet, 0)).join() === "4,4,4" &&
+      (await rowColor(gapLine.ribbonSheet, 12)).join() === "4,4,4",
+  );
+  ok(
+    "run(gap line): a 43x13 source leaves the tile's 14th line transparent",
+    (await alphaAt(gapLine.ribbonSheet, 13)) === 0,
+  );
+  ok(
+    "run(gap line): a 43x14 source keeps its own 14th line",
+    (await alphaAt(tile.ribbonSheet, 13)) === 255,
+  );
+
   // --- replace onto the row one past the end: the boundary that copies nothing ---
   // `ins.y >= height` is the whole guard, and `>` instead of `>=` leaves every
   // assertion in this file green. It is not a cosmetic off-by-one: Buffer.copy

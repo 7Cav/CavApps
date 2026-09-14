@@ -440,12 +440,17 @@ function isRibbonSourceShape(width, height) {
 }
 
 /**
- * Normalize a ribbon source to a 43x14 tile. Ribbon stripes are vertical, so a
- * vertical stretch from the typical 43x13 source is distortion-free.
+ * Normalize a ribbon source to a 43x14 tile. The tile is 13 lines of ribbon
+ * over one transparent line: that line is the gap the rack shows between
+ * ribbons, and every hand-made tile on the sheet keeps it. A 13-based source
+ * is the ribbon alone, so it lands on the top 13 lines and the 14th stays
+ * clear. A 14-based source already carries its own 14th line and is used as
+ * it is. Stretching a 13-line source to 14 paints over the gap, and the ribbon
+ * touches the one below it on the rack.
  *
  * A source of any other shape is rejected rather than reshaped, because the
  * resize is `fit: "fill"` — a stretch, not a scale. A 512x512 source does not
- * come out imperfect, it comes out as 43x14 of mush, and by the time anyone
+ * come out imperfect, it comes out as 43x13 of mush, and by the time anyone
  * sees it the only copy has been deleted. The medal side keeps warning
  * instead: `fit: "inside"` preserves aspect there, so a mismatch costs
  * transparent margin rather than the art.
@@ -466,8 +471,19 @@ async function normalizeRibbon(srcPath) {
         `other shape is distorted beyond use`,
     );
   }
+  // Which base the source is a multiple of decides how many of the tile's
+  // lines the art covers. The two bases cannot both match one shape: a width
+  // of 43k pairs with 13k lines or 14k, never both.
+  const thirteenBased =
+    meta.height % 13 === 0 && meta.width / RIBBON.width === meta.height / 13;
+  const artHeight = thirteenBased ? 13 : RIBBON.tileHeight;
   const png = await sharp(srcPath)
-    .resize({ width: RIBBON.width, height: RIBBON.tileHeight, fit: "fill" })
+    .resize({ width: RIBBON.width, height: artHeight, fit: "fill" })
+    .ensureAlpha()
+    .extend({
+      bottom: RIBBON.tileHeight - artHeight,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    })
     .png()
     .toBuffer();
   return { png };
