@@ -8,6 +8,10 @@
  * the badge object are internal and are deliberately left alone, so this suite
  * survives a rewrite of how the badge is chosen.
  *
+ * For the collar it reads three things off data[0]: mosCheck (non-null means
+ * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
+ * (asset names, or false for none). The collar cases assert those three.
+ *
  * The only stub is globalThis.fetch, the outermost network adapter. No
  * internal collaborator is mocked.
  *
@@ -42,12 +46,38 @@ const { test, report } = createHarness();
  * consume it. `awardName` is the field that links a fetched award to its
  * catalog entry, and the API returns the catalog's own award names.
  */
-const rosterResponse = (mos, awardNames) => ({
+const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
-  rank: { rankShort: "SPC", rankId: "19" }, // E4, Specialist
+  rank,
   mos,
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
+
+// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
+// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
+// each collar case pairs its MOS with the matching rank.
+const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
+const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
+
+/** The collar decorations the builder hands the renderer for one member. */
+const collarFor = async (mos, rank) => {
+  const payload = rosterResponse(mos, [], rank);
+  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
+  const { mosCheck, shoulderCord, neckPins } = (
+    await GetCanvasObject(payload.user.username)
+  )[0];
+  return { mosCheck, shoulderCord, neckPins };
+};
+
+const assertCollar = (collar, expected) => {
+  // Precondition on the fixture: the rank must match the MOS class, or the
+  // canvas discards the cord and pins whatever their values.
+  assert.strictEqual(collar.mosCheck, null, "fixture rank does not match MOS");
+  assert.deepStrictEqual(
+    { shoulderCord: collar.shoulderCord, neckPins: collar.neckPins },
+    expected,
+  );
+};
 
 /** The combat badge the builder hands the renderer, or null for none. */
 const combatBadgeFor = async (mos, awardNames) => {
@@ -153,6 +183,41 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   const held = ["Combat Infantry Badge", "Flight Medic Badge"];
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
+});
+
+// ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
+// Expected asset names are literals: they are the filenames the canvas loads
+// from uniformCords/ and uniformLapelPins/.
+
+await test("90A officer wears the Logistics cord and officer pins", async () => {
+  assertCollar(await collarFor("90A", OFFICER), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsOfficer",
+  });
+});
+
+await test("92Y enlisted wears the Logistics cord and NCO pins", async () => {
+  assertCollar(await collarFor("92Y", ENLISTED), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsNCO",
+  });
+});
+
+// Regression pins. Both were green before #225. They sit on the case blocks
+// that end each lookup's switch, which is where a new block lands, so a
+// misplaced insertion shows up here rather than in the two cases above.
+
+await test("19A officer still wears the Armor cord and officer pins", async () => {
+  assertCollar(await collarFor("19A", OFFICER), {
+    shoulderCord: "Armor",
+    neckPins: "ArmorOfficer",
+  });
+});
+
+await test("11B enlisted still wears the Infantry NCO pins", async () => {
+  const { mosCheck, neckPins } = await collarFor("11B", ENLISTED);
+  assert.strictEqual(mosCheck, null, "fixture rank does not match MOS");
+  assert.strictEqual(neckPins, "InfantryNCO");
 });
 
 report();
