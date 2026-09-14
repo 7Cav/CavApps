@@ -7,6 +7,7 @@ import {
   MedalWithValor,
   MedalTiered,
   RibbonDonationLogic,
+  RibbonByHighestRank,
   UnitCitation,
   BadgeCombat,
   WeaponQual,
@@ -114,7 +115,7 @@ export default async function GetCanvasObject(userName) {
         existingAward instanceof Ribbon ||
         existingAward instanceof UnitCitation
       ) {
-        existingAward.incrementAwardCount();
+        existingAward.incrementAwardCount(data.awards[i]);
       }
     } else {
       const awardDetails = AwardRegistryInstance.getAwardDetails(key);
@@ -136,6 +137,14 @@ export default async function GetCanvasObject(userName) {
               AwardRegistryInstance,
             );
             awardMap.set(key, newRibbonDonation);
+            totalRibbonCount++;
+            break;
+          case AwardType.RibbonByHighestRank:
+            const newRibbonByHighestRank = new RibbonByHighestRank(
+              data.awards[i],
+              AwardRegistryInstance,
+            );
+            awardMap.set(key, newRibbonByHighestRank);
             totalRibbonCount++;
             break;
           case AwardType.Medal:
