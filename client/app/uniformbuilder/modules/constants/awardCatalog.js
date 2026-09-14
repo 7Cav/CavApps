@@ -520,142 +520,189 @@ export const AWARD_CATALOG = [
   }, // et. al.
 
   //____ WEAPON QUALS ____
-  { name: "Rifle Expert", awardTag: "rifle", awardType: AwardType.WeaponQual },
+  // awardPriority is the weapon's rank in the S1 Uniforms SOP weapon order.
+  // Plates stack in that order, lowest first, and all three entries for a
+  // weapon carry the same number. Ranks 9 and 10 are Carbine and Auto Rifle,
+  // which the SOP lists and MILPAC does not award yet. The plate is the file
+  // named after awardTag, see weaponQualPlates.js.
+  {
+    name: "Rifle Expert",
+    awardTag: "rifle",
+    awardPriority: 1,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "Rifle Sharpshooter",
     awardTag: "rifle",
+    awardPriority: 1,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Rifle Marksman",
     awardTag: "rifle",
+    awardPriority: 1,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Expert",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Sharpshooter",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Marksman",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Expert",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Sharpshooter",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Marksman",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
-  { name: "M-203 Expert", awardTag: "m203", awardType: AwardType.WeaponQual },
+  {
+    name: "M-203 Expert",
+    awardTag: "m203",
+    awardPriority: 4,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "M-203 Sharpshooter",
     awardTag: "m203",
+    awardPriority: 4,
     awardType: AwardType.WeaponQual,
   },
-  { name: "M-203 Marksman", awardTag: "m203", awardType: AwardType.WeaponQual },
+  {
+    name: "M-203 Marksman",
+    awardTag: "m203",
+    awardPriority: 4,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "Machine Gun Expert",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Machine Gun Sharpshooter",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Machine Gun Marksman",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Expert",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Sharpshooter",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Marksman",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Expert",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Sharpshooter",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Marksman",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Expert",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Sharpshooter",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Marksman",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Expert",
     awardTag: "tankWeapons",
+    awardPriority: 3,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Sharpshooter",
     awardTag: "tankWeapons",
+    awardPriority: 3,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Marksman",
     awardTag: "tankWeapons",
+    awardPriority: 3,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Mk-82 Expert",
     awardTag: "mk82",
+    awardPriority: 12,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Mk-82 Sharpshooter",
     awardTag: "mk82",
+    awardPriority: 12,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Mk-82 Marksman",
     awardTag: "mk82",
+    awardPriority: 12,
     awardType: AwardType.WeaponQual,
   },
 
