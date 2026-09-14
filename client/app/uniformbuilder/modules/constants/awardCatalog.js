@@ -243,7 +243,7 @@ export const AWARD_CATALOG = [
     name: "NCO Professional Development Ribbon",
     awardPriority: 33,
     awardAttachmentType: AwardAttachmentType.NCO_NUMS,
-    awardType: AwardType.RibbonPerRank,
+    awardType: AwardType.RibbonByHighestRank,
   },
   {
     name: "Honor Graduate Ribbon",

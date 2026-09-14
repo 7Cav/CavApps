@@ -7,7 +7,7 @@ import {
   MedalWithValor,
   MedalTiered,
   RibbonDonationLogic,
-  RibbonPerRank,
+  RibbonByHighestRank,
   UnitCitation,
   BadgeCombat,
   WeaponQual,
@@ -139,12 +139,12 @@ export default async function GetCanvasObject(userName) {
             awardMap.set(key, newRibbonDonation);
             totalRibbonCount++;
             break;
-          case AwardType.RibbonPerRank:
-            const newRibbonPerRank = new RibbonPerRank(
+          case AwardType.RibbonByHighestRank:
+            const newRibbonByHighestRank = new RibbonByHighestRank(
               data.awards[i],
               AwardRegistryInstance,
             );
-            awardMap.set(key, newRibbonPerRank);
+            awardMap.set(key, newRibbonByHighestRank);
             totalRibbonCount++;
             break;
           case AwardType.Medal:

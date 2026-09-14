@@ -9,11 +9,14 @@
  * fixed slot in the returned arrays, so each award is found by its title.
  *
  * The Air Medal and the NCO Professional Development Ribbon (NCOPDR) carry a
- * numeral device. Per the award SOP (issue #226) the numeral is the award
- * count: one award draws a plain ribbon, two draw "2". NCOPDR counts distinct
- * NCO ranks read from each row's free text details.
+ * numeral device. The rule is the S1 Uniforms SOP, 7CAV-DR-021 section
+ * 5.2.3.6 "Numerals". Air Medal: the numeral is the award count, and the
+ * first award draws a plain ribbon. NCOPDR: the numeral marks the highest NCO
+ * rank held above Sergeant, SSG "2" through CSM "7", read from each row's free
+ * text details.
  *
- * Expected numerals are literals from the SOP, not computed from the rows.
+ * Expected numerals are literals from the SOP table, not computed from the
+ * rows.
  *
  * The only stub is globalThis.fetch, the outermost network adapter.
  *
@@ -84,13 +87,22 @@ await test("seven Air Medals draw the highest numeral that exists, 6", async () 
   assert.strictEqual(await numeralFor(AIR_MEDAL, rows), 6);
 });
 
-// ── NCOPDR: the numeral is the count of distinct NCO ranks ───────────────────
+// ── NCOPDR: the numeral marks the highest rank named across the rows ───────
 // S1 types the rank into each row's details by hand. The strings below are
-// real MILPAC values, typos included.
+// real MILPAC values, typos included. Under the count rule this file replaced,
+// each case below drew a different numeral.
+
+await test("an NCOPDR row for SGT alone draws a plain ribbon", async () => {
+  const rows = rowsOf(NCOPDR, ["Sergeant Promotion"]);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 0);
+});
+
+await test("an NCOPDR row for SSG alone draws the numeral 2", async () => {
+  const rows = rowsOf(NCOPDR, ["Staff Sergeant Promotion"]);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 2);
+});
 
 await test("NCOPDR rows for SGT, SSG, SFC and MSG draw the numeral 4", async () => {
-  // The SOP's own example: a SGT promoted straight to MSG is issued the
-  // three rows he skipped, so his ribbon shows "4".
   const rows = rowsOf(NCOPDR, [
     "Master Sergeant Promotion",
     "Sergeant Promotion",
@@ -100,35 +112,43 @@ await test("NCOPDR rows for SGT, SSG, SFC and MSG draw the numeral 4", async () 
   assert.strictEqual(await numeralFor(NCOPDR, rows), 4);
 });
 
-await test("two NCOPDR rows for the same rank, one misspelled, draw a plain ribbon", async () => {
-  const rows = rowsOf(NCOPDR, ["Sergeant Promotion", "Sergent Promotion"]);
-  assert.strictEqual(await numeralFor(NCOPDR, rows), 0);
+await test("NCOPDR rows for SGT and MSG alone draw the numeral 4, not a count", async () => {
+  const rows = rowsOf(NCOPDR, [
+    "Sergeant Promotion",
+    "Master Sergeant Promotion",
+  ]);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 4);
 });
 
-await test("NCOPDR rows for MSG and 1SG, both E-8, draw the numeral 2", async () => {
+await test("NCOPDR rows for MSG and 1SG draw the numeral 5", async () => {
   const rows = rowsOf(NCOPDR, [
     "Master Sergeant Promotion",
     "First Sergeant Promotion",
   ]);
-  assert.strictEqual(await numeralFor(NCOPDR, rows), 2);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 5);
 });
 
-await test("NCOPDR rows for SGM and CSM draw the numeral 2", async () => {
+await test("NCOPDR rows for SGM and CSM draw 6, the highest numeral image, not the SOP's 7", async () => {
   const rows = rowsOf(NCOPDR, [
     "Sergeant Major Promotion",
     "Command Sergeant Major Promotion",
   ]);
-  assert.strictEqual(await numeralFor(NCOPDR, rows), 2);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 6);
 });
 
-await test("an NCOPDR row with blank details counts as a rank of its own", async () => {
+await test("two NCOPDR rows for SGT, one misspelled, draw a plain ribbon", async () => {
+  const rows = rowsOf(NCOPDR, ["Sergeant Promotion", "Sergent Promotion"]);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 0);
+});
+
+await test("an NCOPDR row with blank details does not raise the numeral", async () => {
   const rows = rowsOf(NCOPDR, ["Sergeant Promotion", ""]);
-  assert.strictEqual(await numeralFor(NCOPDR, rows), 2);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 0);
 });
 
-await test("two NCOPDR rows with blank details draw the numeral 2", async () => {
+await test("two NCOPDR rows with blank details draw a plain ribbon", async () => {
   const rows = rowsOf(NCOPDR, ["", ""]);
-  assert.strictEqual(await numeralFor(NCOPDR, rows), 2);
+  assert.strictEqual(await numeralFor(NCOPDR, rows), 0);
 });
 
 // ── Other devices keep the oak leaf convention ───────────────────────────────

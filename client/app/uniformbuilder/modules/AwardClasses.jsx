@@ -1,7 +1,7 @@
 import {
   AwardAttachmentType,
   hasValorDevice,
-  parseNcoRank,
+  parseNcoRankNumeral,
   stripValorDevice,
 } from "./constants";
 
@@ -44,7 +44,9 @@ export class Ribbon extends Award {
 
   calculateNewDisplayCount() {
     // Clusters and stars mark the awards past the first, so their count runs
-    // one lower than the award count. A numeral shows the award count itself.
+    // one lower than the award count. A numeral shows the award count itself
+    // (7CAV-DR-021, section 5.2.3.6: Air Medal, 2nd award = "2"). A subclass
+    // that reads the numeral off the rows overrides this method.
     if (this.ribbonAttachmentType === AwardAttachmentType.NCO_NUMS) {
       this.displayNumeral(this.ribbonTrueAttachmentCount + 1);
       return;
@@ -54,11 +56,11 @@ export class Ribbon extends Award {
     }
   }
 
-  // One award draws a plain ribbon, two draw "2". For a numeral, maxAwardcount
-  // is the highest numeral image that exists.
-  displayNumeral(awardCount) {
+  // A numeral of 1 is never drawn; the ribbon stays plain. For a numeral,
+  // maxAwardcount is the highest numeral image that exists.
+  displayNumeral(numeral) {
     this.ribbonDisplayedAttachmentCount =
-      awardCount > 1 ? Math.min(awardCount, this.maxAwardcount) : 0;
+      numeral > 1 ? Math.min(numeral, this.maxAwardcount) : 0;
   }
 }
 
@@ -136,36 +138,38 @@ export class RibbonDonationLogic extends Ribbon {
   }
 }
 
-// The NCO Professional Development Ribbon is awarded once per NCO rank
-// achieved, so its numeral is the number of ranks, not the number of rows. S1
-// issues one MILPAC row per promotion and names the rank in its details. A
-// second row for the same rank adds nothing. A row whose details name no known
-// rank counts as one rank of its own.
-export class RibbonPerRank extends Ribbon {
-  ranksHeld = new Set();
-  unknownRankRows = 0;
+// The NCO Professional Development Ribbon's numeral marks the highest NCO
+// rank held above Sergeant (7CAV-DR-021, section 5.2.3.6): Sergeant plain,
+// Staff Sergeant "2", up to Command Sergeant Major "7". S1 names the rank in
+// each MILPAC row's details. The numeral is the highest rank named across the
+// rows, however many there are, and a demotion never lowers it.
+//
+// The SOP has no rule for a row that names no rank. Such a row cannot prove a
+// rank above Sergeant, so it never raises the numeral. A trooper whose only
+// rows are blank draws a plain ribbon.
+export class RibbonByHighestRank extends Ribbon {
+  highestRankNumeral = 0;
 
   constructor(data, AwardRegistry) {
     super(data, AwardRegistry);
-    this.tallyRank(data);
+    this.noteRank(data);
+    this.calculateNewDisplayCount();
   }
 
   incrementAwardCount(row) {
-    this.tallyRank(row);
+    this.noteRank(row);
     super.incrementAwardCount();
   }
 
-  tallyRank(row) {
-    const rank = parseNcoRank(row.awardDetails);
-    if (rank === null) {
-      this.unknownRankRows++;
-    } else {
-      this.ranksHeld.add(rank);
+  noteRank(row) {
+    const numeral = parseNcoRankNumeral(row.awardDetails);
+    if (numeral !== null && numeral > this.highestRankNumeral) {
+      this.highestRankNumeral = numeral;
     }
   }
 
   calculateNewDisplayCount() {
-    this.displayNumeral(this.ranksHeld.size + this.unknownRankRows);
+    this.displayNumeral(this.highestRankNumeral);
   }
 }
 
