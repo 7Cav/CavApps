@@ -8,6 +8,10 @@
  * the badge object are internal and are deliberately left alone, so this suite
  * survives a rewrite of how the badge is chosen.
  *
+ * For the collar it reads three things off data[0]: mosCheck (non-null means
+ * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
+ * (asset names, or false for none). The collar cases assert those three.
+ *
  * The only stub is globalThis.fetch, the outermost network adapter. No
  * internal collaborator is mocked.
  *
@@ -42,19 +46,41 @@ const { test, report } = createHarness();
  * consume it. `awardName` is the field that links a fetched award to its
  * catalog entry, and the API returns the catalog's own award names.
  */
-const rosterResponse = (mos, awardNames) => ({
+// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
+// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
+// each collar case pairs its MOS with the matching rank.
+const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
+const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
+
+const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
-  rank: { rankShort: "SPC", rankId: "19" }, // E4, Specialist
+  rank,
   mos,
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
-/** The combat badge the builder hands the renderer, or null for none. */
-const combatBadgeFor = async (mos, awardNames) => {
-  const payload = rosterResponse(mos, awardNames);
+/** Everything the builder hands the renderer for one member. */
+const canvasObjectFor = async (mos, awardNames, rank = ENLISTED) => {
+  const payload = rosterResponse(mos, awardNames, rank);
   globalThis.fetch = async () => ({ status: 200, json: async () => payload });
-  return (await GetCanvasObject(payload.user.username))[4];
+  return GetCanvasObject(payload.user.username);
 };
+
+/** The collar decorations the builder hands the renderer for one member. */
+const collarFor = async (mos, rank) => {
+  const { mosCheck, shoulderCord, neckPins } = (
+    await canvasObjectFor(mos, [], rank)
+  )[0];
+  // The fixture's rank must match the MOS class, or the canvas discards the
+  // cord and pins whatever their values. Loose equality on purpose. The canvas
+  // tests `mosCheck != null`, so undefined draws the collar too.
+  assert.equal(mosCheck, null, "fixture rank does not match MOS");
+  return { shoulderCord, neckPins };
+};
+
+/** The combat badge the builder hands the renderer, or null for none. */
+const combatBadgeFor = async (mos, awardNames) =>
+  (await canvasObjectFor(mos, awardNames))[4];
 
 const assertDraws = (badge, expectedImageNum) => {
   assert.notStrictEqual(badge, null, "expected a combat badge, got none");
@@ -153,6 +179,81 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   const held = ["Combat Infantry Badge", "Flight Medic Badge"];
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
+});
+
+// ── Service ribbons: the medal display, in precedence order ──────────────────
+// canvas.jsx lays out data[3] in list order and reads each entry's
+// medalPriority for its sprite-sheet row. An award the registry does not know
+// never reaches data[3], so a missing catalog entry shows up as a missing
+// medal. awardTitle is the award name as the API sent it; it is read here only
+// to tell the medals apart, since the row number is the sole other identity a
+// medal carries and it shifts with every award added above it.
+
+/** The medal display for a member holding these awards. MOS plays no part in it. */
+const medalsFor = async (awardNames) =>
+  (await canvasObjectFor("11B", awardNames))[3];
+
+await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+  // Expected order is MILPAC's, not the catalog's: display_order 205
+  // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
+  // the API's ordering cannot satisfy this by accident.
+  const medals = await medalsFor([
+    "Ready or Not Service Ribbon",
+    "Vietnam Service Ribbon",
+    "Overseas Service Ribbon",
+  ]);
+  assert.deepStrictEqual(
+    medals.map((medal) => medal.awardTitle),
+    [
+      "Overseas Service Ribbon",
+      "Vietnam Service Ribbon",
+      "Ready or Not Service Ribbon",
+    ],
+  );
+  // The sprite rows must climb with the display order, or Vietnam's slot
+  // would draw a neighbour's medal art.
+  const rows = medals.map((medal) => medal.medalPriority);
+  assert.ok(
+    rows[0] < rows[1] && rows[1] < rows[2],
+    `medal sheet rows ${rows} do not follow the display order`,
+  );
+});
+
+// ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
+// Expected asset names are literals. They are the filenames the canvas loads
+// from uniformCords/ and uniformLapelPins/.
+
+await test("90A officer wears the Logistics cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("90A", OFFICER), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsOfficer",
+  });
+});
+
+await test("92Y enlisted wears the Logistics cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("92Y", ENLISTED), {
+    shoulderCord: "Logistics",
+    neckPins: "LogisticsNCO",
+  });
+});
+
+// Regression guards. Both were green before #225. A new case block lands at
+// the end of a switch, so each guard covers the block that was last before
+// this change: 19A's cord block in the cord lookup, 11B's pin block in the pin
+// lookup. A misplaced insertion shows up here rather than in the cases above.
+
+await test("19A officer still wears the Armor cord and officer pins", async () => {
+  assert.deepStrictEqual(await collarFor("19A", OFFICER), {
+    shoulderCord: "Armor",
+    neckPins: "ArmorOfficer",
+  });
+});
+
+await test("11B enlisted still wears the Infantry cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("11B", ENLISTED), {
+    shoulderCord: "Infantry",
+    neckPins: "InfantryNCO",
+  });
 });
 
 report();

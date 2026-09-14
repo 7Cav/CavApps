@@ -59,6 +59,9 @@ export const Mos = Object.freeze({
   // JAG
   JAG_OFFICER: "27A",
   JAG_ENLISTED: "27D",
+  // Logistics
+  LOGISTICS_OFFICER: "90A",
+  LOGISTICS_ENLISTED: "92Y",
   // RRD
   RRD_OFFICER: "79A",
   RRD_ENLISTED: "79R",
