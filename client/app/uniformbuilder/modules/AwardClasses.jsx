@@ -1,6 +1,7 @@
 import {
   AwardAttachmentType,
   hasValorDevice,
+  parseNcoRank,
   stripValorDevice,
 } from "./constants";
 
@@ -40,6 +41,16 @@ export class Ribbon extends Award {
   }
 
   calculateNewDisplayCount() {
+    // A numeral is the award count itself: one award draws plain, two draw
+    // "2". Clusters and stars mark the awards past the first, so their count
+    // runs one lower. For a numeral, maxAwardcount is the highest numeral
+    // image that exists.
+    if (this.ribbonAttachmentType === AwardAttachmentType.NCO_NUMS) {
+      const awardCount = this.ribbonTrueAttachmentCount + 1;
+      this.ribbonDisplayedAttachmentCount =
+        awardCount > 1 ? Math.min(awardCount, this.maxAwardcount) : 0;
+      return;
+    }
     if (this.ribbonTrueAttachmentCount <= this.maxAwardcount) {
       this.ribbonDisplayedAttachmentCount++;
     }
@@ -117,6 +128,34 @@ export class RibbonDonationLogic extends Ribbon {
     if (this.ribbonTrueAttachmentCount >= 101) {
       this.ribbonDisplayedAttachmentCount = 12;
     }
+  }
+}
+
+// The NCO Professional Development Ribbon is awarded once per NCO rank
+// achieved, so its numeral is the number of ranks, not the number of rows. S1
+// issues one MILPAC row per promotion and names the rank in its details. A
+// second row for the same rank adds nothing. A row whose details name no known
+// rank counts as one rank of its own.
+export class RibbonPerRank extends Ribbon {
+  ranksHeld = new Set();
+  unknownRankRows = 0;
+
+  constructor(data, AwardRegistry) {
+    super(data, AwardRegistry);
+    this.incrementAwardCount(data);
+  }
+
+  incrementAwardCount(row) {
+    const rank = parseNcoRank(row.awardDetails);
+    if (rank === null) {
+      this.unknownRankRows++;
+    } else {
+      this.ranksHeld.add(rank);
+    }
+    // Ribbon counts the awards past the first.
+    this.ribbonTrueAttachmentCount =
+      this.ranksHeld.size + this.unknownRankRows - 1;
+    this.calculateNewDisplayCount();
   }
 }
 

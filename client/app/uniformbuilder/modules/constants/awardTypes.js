@@ -7,6 +7,7 @@ export const AwardType = Object.freeze({
   MedalWithValor: "MedalWithValor",
   MedalTiered: "MedalTiered",
   RibbonDonationLogic: "RibbonDonationLogic",
+  RibbonPerRank: "RibbonPerRank",
   UnitCitation: "UnitCitation",
   BadgeCombat: "BadgeCombat",
   WeaponQual: "WeaponQual",
