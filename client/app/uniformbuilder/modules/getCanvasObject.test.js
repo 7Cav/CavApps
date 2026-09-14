@@ -46,18 +46,18 @@ const { test, report } = createHarness();
  * consume it. `awardName` is the field that links a fetched award to its
  * catalog entry, and the API returns the catalog's own award names.
  */
+// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
+// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
+// each collar case pairs its MOS with the matching rank.
+const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
+const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
+
 const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
   rank,
   mos,
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
-
-// The two rank classes GetUserInfo.jsx tells apart. An officer MOS on an
-// enlisted rank (or the reverse) sets mosCheck and the collar stays bare, so
-// each collar case pairs its MOS with the matching rank.
-const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
-const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
 
 /** The collar decorations the builder hands the renderer for one member. */
 const collarFor = async (mos, rank) => {
@@ -66,17 +66,11 @@ const collarFor = async (mos, rank) => {
   const { mosCheck, shoulderCord, neckPins } = (
     await GetCanvasObject(payload.user.username)
   )[0];
-  return { mosCheck, shoulderCord, neckPins };
-};
-
-const assertCollar = (collar, expected) => {
-  // Precondition on the fixture: the rank must match the MOS class, or the
-  // canvas discards the cord and pins whatever their values.
-  assert.strictEqual(collar.mosCheck, null, "fixture rank does not match MOS");
-  assert.deepStrictEqual(
-    { shoulderCord: collar.shoulderCord, neckPins: collar.neckPins },
-    expected,
-  );
+  // The fixture's rank must match the MOS class, or the canvas discards the
+  // cord and pins whatever their values. Loose equality on purpose. The canvas
+  // tests `mosCheck != null`, so undefined draws the collar too.
+  assert.equal(mosCheck, null, "fixture rank does not match MOS");
+  return { shoulderCord, neckPins };
 };
 
 /** The combat badge the builder hands the renderer, or null for none. */
@@ -186,38 +180,40 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
 });
 
 // ── Collar: Logistics cord and pins for the two Logistics MOSs (#225) ────────
-// Expected asset names are literals: they are the filenames the canvas loads
+// Expected asset names are literals. They are the filenames the canvas loads
 // from uniformCords/ and uniformLapelPins/.
 
 await test("90A officer wears the Logistics cord and officer pins", async () => {
-  assertCollar(await collarFor("90A", OFFICER), {
+  assert.deepStrictEqual(await collarFor("90A", OFFICER), {
     shoulderCord: "Logistics",
     neckPins: "LogisticsOfficer",
   });
 });
 
 await test("92Y enlisted wears the Logistics cord and NCO pins", async () => {
-  assertCollar(await collarFor("92Y", ENLISTED), {
+  assert.deepStrictEqual(await collarFor("92Y", ENLISTED), {
     shoulderCord: "Logistics",
     neckPins: "LogisticsNCO",
   });
 });
 
-// Regression pins. Both were green before #225. They sit on the case blocks
-// that end each lookup's switch, which is where a new block lands, so a
-// misplaced insertion shows up here rather than in the two cases above.
+// Regression guards. Both were green before #225. A new case block lands at
+// the end of a switch, so each guard covers the block that was last before
+// this change: 19A's cord block in the cord lookup, 11B's pin block in the pin
+// lookup. A misplaced insertion shows up here rather than in the cases above.
 
 await test("19A officer still wears the Armor cord and officer pins", async () => {
-  assertCollar(await collarFor("19A", OFFICER), {
+  assert.deepStrictEqual(await collarFor("19A", OFFICER), {
     shoulderCord: "Armor",
     neckPins: "ArmorOfficer",
   });
 });
 
-await test("11B enlisted still wears the Infantry NCO pins", async () => {
-  const { mosCheck, neckPins } = await collarFor("11B", ENLISTED);
-  assert.strictEqual(mosCheck, null, "fixture rank does not match MOS");
-  assert.strictEqual(neckPins, "InfantryNCO");
+await test("11B enlisted still wears the Infantry cord and NCO pins", async () => {
+  assert.deepStrictEqual(await collarFor("11B", ENLISTED), {
+    shoulderCord: "Infantry",
+    neckPins: "InfantryNCO",
+  });
 });
 
 report();
