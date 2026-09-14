@@ -65,7 +65,9 @@ const DEFAULT_PATHS = {
   ),
 };
 
-const RIBBON = { width: 43, tileHeight: 14 };
+// A ribbon tile is artHeight lines of ribbon over one transparent line, the
+// gap the rack shows between ribbons.
+const RIBBON = { width: 43, artHeight: 13, tileHeight: 14 };
 const MEDAL = { width: 70, tileHeight: 120 };
 
 // awardTypes that actually render from each sprite sheet. Awards of any other
@@ -421,22 +423,34 @@ function readSheetMetadata(sheetPath) {
   );
 }
 
-// Source shapes a ribbon tile can be produced from: the documented 43x13, the
-// already-tile-sized 43x14, or an exact integer multiple of either.
+// Source shapes a ribbon tile can be produced from: the documented 43x13 (the
+// ribbon alone), the already-tile-sized 43x14 (ribbon plus its gap line), or
+// an exact integer multiple of either.
 const RIBBON_SOURCE_BASES = [
-  [RIBBON.width, 13],
+  [RIBBON.width, RIBBON.artHeight],
   [RIBBON.width, RIBBON.tileHeight],
 ];
 
+/**
+ * The base shape this ribbon source is a whole-number multiple of, or null.
+ * At most one base can match: a width of 43k pairs with 13k lines or 14k,
+ * never both.
+ */
+function ribbonSourceBase(width, height) {
+  return (
+    RIBBON_SOURCE_BASES.find(
+      ([baseWidth, baseHeight]) =>
+        width % baseWidth === 0 &&
+        height % baseHeight === 0 &&
+        width / baseWidth === height / baseHeight &&
+        width >= baseWidth,
+    ) ?? null
+  );
+}
+
 /** Is this ribbon source one of the accepted shapes, at any whole-number scale? */
 function isRibbonSourceShape(width, height) {
-  return RIBBON_SOURCE_BASES.some(
-    ([baseWidth, baseHeight]) =>
-      width % baseWidth === 0 &&
-      height % baseHeight === 0 &&
-      width / baseWidth === height / baseHeight &&
-      width >= baseWidth,
-  );
+  return ribbonSourceBase(width, height) !== null;
 }
 
 /**
@@ -449,11 +463,11 @@ function isRibbonSourceShape(width, height) {
  * touches the one below it on the rack.
  *
  * A source of any other shape is rejected rather than reshaped, because the
- * resize is `fit: "fill"` — a stretch, not a scale. A 512x512 source does not
- * come out imperfect, it comes out as 43x13 of mush, and by the time anyone
- * sees it the only copy has been deleted. The medal side keeps warning
- * instead: `fit: "inside"` preserves aspect there, so a mismatch costs
- * transparent margin rather than the art.
+ * resize is `fit: "fill"` — a stretch to the tile's width, not a scale. A
+ * 512x512 source does not come out imperfect, it comes out as 43 columns of
+ * mush, and by the time anyone sees it the only copy has been deleted. The
+ * medal side keeps warning instead: `fit: "inside"` preserves aspect there,
+ * so a mismatch costs transparent margin rather than the art.
  *
  * Exact multiples are accepted rather than a percentage tolerance. A tolerance
  * needs a threshold nobody can justify later, and the two failure modes here
@@ -462,24 +476,22 @@ function isRibbonSourceShape(width, height) {
  */
 async function normalizeRibbon(srcPath) {
   const meta = await readSourceMetadata(srcPath, "ribbon");
-  if (!isRibbonSourceShape(meta.width, meta.height)) {
+  const base = ribbonSourceBase(meta.width, meta.height);
+  if (base === null) {
     throw new Error(
       `ribbon source ${path.basename(srcPath)} is ${meta.width}x${meta.height}; ` +
-        `ribbon art must be ${RIBBON.width}x13 or ${RIBBON.width}x${RIBBON.tileHeight}, ` +
-        `or an exact multiple of one of those (86x26, 129x39, ...). The tile is made ` +
-        `by stretching the source to fill ${RIBBON.width}x${RIBBON.tileHeight}, so any ` +
-        `other shape is distorted beyond use`,
+        `ribbon art must be ${RIBBON.width}x${RIBBON.artHeight} or ` +
+        `${RIBBON.width}x${RIBBON.tileHeight}, or an exact multiple of one of those ` +
+        `(86x26, 129x39, ...). The resize is a stretch to fill the tile's width, so ` +
+        `any other shape is distorted beyond use`,
     );
   }
-  // Which base the source is a multiple of decides how many of the tile's
-  // lines the art covers. The two bases cannot both match one shape: a width
-  // of 43k pairs with 13k lines or 14k, never both.
-  const thirteenBased =
-    meta.height % 13 === 0 && meta.width / RIBBON.width === meta.height / 13;
-  const artHeight = thirteenBased ? 13 : RIBBON.tileHeight;
+  // The base decides how many of the tile's lines the art covers; the rest
+  // of the tile is left transparent. sharp adds the alpha channel itself when
+  // it extends an RGB source with a transparent background.
+  const [, artHeight] = base;
   const png = await sharp(srcPath)
     .resize({ width: RIBBON.width, height: artHeight, fit: "fill" })
-    .ensureAlpha()
     .extend({
       bottom: RIBBON.tileHeight - artHeight,
       background: { r: 0, g: 0, b: 0, alpha: 0 },
