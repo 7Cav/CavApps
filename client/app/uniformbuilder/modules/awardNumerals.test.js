@@ -158,4 +158,14 @@ await test("two Meritorious Service Medals still draw one oak leaf cluster", asy
   assert.strictEqual(await numeralFor(msm, rowsOf(msm, ["", ""])), 1);
 });
 
+// ── An award with no device stays plain ─────────────────────────────────────
+// The catalog names no device for this ribbon. A second row must not turn
+// into a device request. canvas.jsx asks for attachments/<type>/<count>.png
+// whenever the count is not 0, and with no type that path is attachments/null/.
+
+await test("two Basic Assault Course Ribbons draw a plain ribbon", async () => {
+  const bacr = "Basic Assault Course Ribbon";
+  assert.strictEqual(await numeralFor(bacr, rowsOf(bacr, ["", ""])), 0);
+});
+
 report();
