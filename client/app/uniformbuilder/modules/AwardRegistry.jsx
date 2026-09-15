@@ -29,9 +29,11 @@ export class AwardRegistry {
     return this.awards.get(awardName) ?? 0;
   }
 
+  // The catalog gives some awards no device. With no image to draw, a repeat
+  // row must never raise the displayed count, so those awards get 0 (#244).
   getMaxAwardCount(awardName) {
     return (
-      MAX_AWARD_COUNT[this.getAwardDetails(awardName).awardAttachmentType] ?? 1
+      MAX_AWARD_COUNT[this.getAwardDetails(awardName).awardAttachmentType] ?? 0
     );
   }
 }
