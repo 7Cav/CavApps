@@ -24,9 +24,10 @@
  * caduceus, 10/11/12.png are aircrew wings plain / with a star / with a star in
  * a wreath, and so on. They are deliberately NOT read back from the catalog:
  * sourcing them from the data under test would move both sides of the
- * assertion together and no row could ever fail. The one exception is the
- * weapon list at the end, which reads the catalog to find out which weapons
- * exist. The expected position in each of those rows is still a literal.
+ * assertion together and no row could ever fail. The weapon qual order is a
+ * literal for the same reason. The one catalog read in this file is the guard
+ * that checks the literal names every weapon the catalog has, which is
+ * membership, not order.
  *
  * Run with `npm run test:client` — not a bare `node`; the script carries the
  * loader hook that lets Node import the client's .jsx modules.
@@ -265,9 +266,12 @@ await test("11B enlisted still wears the Infantry cord and NCO pins", async () =
 });
 
 // ── Weapon quals: plates stack in SOP order ──────────────────────────────────
-// The S1 Uniforms SOP fixes the order plates stack in a column. The expected
-// arrays below are transcribed from it, not read from the slot list in
-// WeaponQual, so a slot that drifts from its catalog tag fails here.
+// The S1 Uniforms SOP fixes the order plates stack in a column. The held list
+// and the expected array are both typed from the SOP, not read from the
+// catalog, so a catalog priority that disagrees with the SOP fails here. This
+// is the one place a person types out the whole SOP order. The guard after
+// the test reads the catalog for which weapons exist, order aside, and goes
+// red the day a weapon qual entry lands with no place in the held list.
 
 /** The weapon qual object the builder hands the renderer, or 0 for none. */
 const weaponQualsFor = async (awardNames) => {
@@ -276,24 +280,53 @@ const weaponQualsFor = async (awardNames) => {
   return (await GetCanvasObject(payload.user.username))[5];
 };
 
+// Reverse of the SOP order, so insertion order alone cannot pass, and two
+// weapons given the same priority stay reversed under a stable sort. Before
+// #229 Recoilless Rifle sorted after Hydra-70 because its slot was spelled
+// "recoillessRifle" while the catalog tags it "recoilless".
+const EXPERT_QUALS_IN_REVERSE_SOP_ORDER = [
+  "Mk-82 Expert",
+  "Hydra-70 Expert",
+  "Aeroweapons Expert",
+  "Pistol Expert",
+  "Recoilless Rifle Expert",
+  "Machine Gun Expert",
+  "M-203 Expert",
+  "Tank Weapons Expert",
+  "Grenade Expert",
+  "Rifle Expert",
+];
+
 await test("expert quals listed in reverse SOP order stack in SOP order", async () => {
-  // Reverse of the SOP order, so insertion order alone cannot pass. Before the
-  // fix Recoilless Rifle sorted after Hydra-70 because its slot was spelled
-  // "recoillessRifle" while the catalog tags it "recoilless".
-  const held = [
-    "Hydra-70 Expert",
-    "Pistol Expert",
-    "Recoilless Rifle Expert",
-    "Machine Gun Expert",
-    "Rifle Expert",
-  ];
+  const held = EXPERT_QUALS_IN_REVERSE_SOP_ORDER;
   assert.deepStrictEqual((await weaponQualsFor(held)).expertQuals, [
     "rifle",
+    "grenade",
+    "tankWeapons",
+    "m203",
     "machineGun",
     "recoilless",
     "pistol",
+    "aeroweapons",
     "hydra70",
+    "mk82",
   ]);
+});
+
+// The catalog has no level field. The builder files a qual under expert by the
+// word in its name, so the Expert entries are picked the same way. A rename
+// that drops the word fails here too, as a title the held list has and the
+// catalog does not.
+const expertQualTitlesInCatalog = AWARD_CATALOG.filter(
+  (award) =>
+    award.awardType === AwardType.WeaponQual && award.name.includes("Expert"),
+).map((award) => award.name);
+
+await test("the reverse SOP list names every weapon qual in the catalog", () => {
+  assert.deepStrictEqual(
+    [...EXPERT_QUALS_IN_REVERSE_SOP_ORDER].sort(),
+    [...expertQualTitlesInCatalog].sort(),
+  );
 });
 
 // ── Mk-82: each MILPAC title reaches its level array (#227) ──────────────────
@@ -324,56 +357,5 @@ await test("Mk-82 Marksman is filed under marksman quals", async () => {
     ["mk82"],
   );
 });
-
-// ── Every weapon has a slot ──────────────────────────────────────────────────
-// A tag with no slot sorts after every known tag, so the Recoilless Rifle
-// defect is one instance of a class. Mk-82 is last in the SOP, so every other
-// weapon must stack above it. Weapons come from the catalog, not a list here,
-// so a new weapon is covered the day its catalog entry lands.
-//
-// The last weapon's own slot is the blind spot. A slotless mk82 sorts last,
-// which is where the SOP puts it, so no row here can see that mistake. The
-// blind spot moves with the anchor. Hydra-70 held it until Mk-82 landed below
-// it (#227). Now the Hydra-70 row sees Hydra-70 lose its slot. It is also the
-// only row that goes red alone when the mk82 slot lands anywhere but last,
-// whether before Hydra-70 or in place of it. That row was green from birth,
-// so it is a regression pin, not defect evidence.
-//
-// The catalog has no level field: the builder files a qual under expert,
-// sharpshooter or marksman by the word in its name, so the Expert entry is
-// picked the same way. The count guard turns a rename that drops the word into
-// a failure here rather than a silently missing row.
-
-const weaponQualTags = [
-  ...new Set(
-    AWARD_CATALOG.filter(
-      (award) => award.awardType === AwardType.WeaponQual,
-    ).map((award) => award.awardTag),
-  ),
-];
-
-const expertQualNamed = (tag) =>
-  AWARD_CATALOG.find(
-    (award) => award.awardTag === tag && award.name.includes("Expert"),
-  )?.name;
-
-const weaponsAboveMk82 = weaponQualTags
-  .filter((tag) => tag !== "mk82")
-  .map((tag) => [tag, expertQualNamed(tag)])
-  .filter(([, name]) => name !== undefined);
-
-await test("every weapon qual tag in the catalog has an Expert entry to check", () => {
-  // Guards the rows below: a tag whose Expert entry was renamed would vanish
-  // from the list instead of failing.
-  assert.strictEqual(weaponsAboveMk82.length, weaponQualTags.length - 1);
-  assert.ok(weaponsAboveMk82.length > 0);
-});
-
-for (const [tag, expertName] of weaponsAboveMk82) {
-  await test(`${expertName} stacks above Mk-82 Expert`, async () => {
-    const quals = await weaponQualsFor(["Mk-82 Expert", expertName]);
-    assert.deepStrictEqual(quals.expertQuals, [tag, "mk82"]);
-  });
-}
 
 report();
