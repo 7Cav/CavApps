@@ -809,6 +809,61 @@ describe("Expanded Service Medal family", () => {
     );
   });
 
+  test("changing LOM to DSM to DDSM requires a new Role but preserves Narrative and Service Period", async () => {
+    const { user } = await openWorksheet("Legion of Merit");
+    await selectRecipient(user);
+    await enter(user, "Role", "a clerk");
+    await enter(user, "Secondary Billet", "S1 MILPACS");
+    await enter(user, "Service Start", "2025-09");
+    await enter(user, "Service End", "2026-09");
+    await enter(user, "Narrative", SERVICE_CONTINUATION);
+    await submitRecommendation(user);
+    expect(preview()).toBeVisible();
+    expect(getCitationText()).toContain(
+      "while serving as a clerk in S1 MILPACS",
+    );
+
+    let previousRole = "a clerk";
+    for (const [award, nextRole] of [
+      ["Distinguished Service Medal", "a trooper"],
+      ["Defense Distinguished Service Medal", "Company Commander"],
+    ]) {
+      await selectAward(user, award);
+      expect(preview()).not.toBeInTheDocument();
+      const role = screen.getByLabelText("Role", { exact: true });
+      expect(role).toHaveValue("");
+      expect(screen.getByLabelText("Narrative", { exact: true })).toHaveValue(
+        SERVICE_CONTINUATION,
+      );
+      for (const [label, year] of [
+        ["Service Start", "2025"],
+        ["Service End", "2026"],
+      ]) {
+        expect(
+          screen.getByRole("combobox", { name: `${label} Month` }),
+        ).toHaveTextContent("September");
+        expect(
+          screen.getByRole("textbox", { name: `${label} Year` }),
+        ).toHaveValue(year);
+      }
+      await enter(user, "Element", "B/2-7");
+      await submitRecommendation(user);
+      expect(role).toHaveAttribute("aria-invalid", "true");
+      expect(role).toHaveAccessibleDescription("Required");
+      expect(preview()).not.toBeInTheDocument();
+
+      await enter(user, "Role", nextRole);
+      await submitRecommendation(user);
+      expect(preview()).toBeVisible();
+      expect(getCitationText()).toContain(`while serving as ${nextRole}`);
+      expect(getCitationText()).toContain(
+        "during September 2025 to September 2026.",
+      );
+      expect(getCitationText()).not.toContain(previousRole);
+      previousRole = nextRole;
+    }
+  });
+
   test("shared ARCOM identity resolves independent Operation and Service workflows", async () => {
     const operationMedal = getMedalFamily(
       MEDAL_FAMILY_IDS.OPERATION,

@@ -1,4 +1,4 @@
-// Independent expectations from Service Medal Mapping - Post PR 219 Updated.docx.
+// Independent expected Service Medal contracts used as test oracles.
 // Exact prose is intentional: production builders must not supply their own oracle.
 export const SERVICE_CATALOG_CASES = [
   {
@@ -146,7 +146,7 @@ export const SERVICE_CATALOG_CASES = [
     criteria:
       "Awarded for multiple, significant and distinguished meritorious contributions to any area of the Regiment requiring significant time investment. Can only be awarded once per person, in any six-month period.",
     guidance:
-      "Describe the recipient's multiple meritorious service/contributions and significant time investment in a minimum of three professionally written sentences.",
+      "Describe how the recipient demonstrated their multiple meritorious service/contributions in a minimum of three professionally written sentences.",
     eligibility: [
       "The medal may only be awarded once per person in any six-month period.",
     ],
@@ -234,7 +234,7 @@ export const SERVICE_CHOICE_CASES = [
   {
     medalId: "joint-service-commendation-medal",
     fieldName: "recognitionType",
-    defaultValue: "contributions",
+    initialValue: "contributions",
     options: [
       { id: "contributions", label: "Contributions" },
       { id: "actions", label: "Custom Action Phrase" },
@@ -243,7 +243,7 @@ export const SERVICE_CHOICE_CASES = [
   ...["meritorious-service-medal", "soldiers-medal"].map((medalId) => ({
     medalId,
     fieldName: "serviceType",
-    defaultValue: "",
+    initialValue: "",
     options: [
       { id: "service", label: "Service" },
       { id: "contributions", label: "Contributions" },
@@ -256,7 +256,7 @@ export const SERVICE_CHOICE_CASES = [
   ].map((medalId) => ({
     medalId,
     fieldName: "narrativeOpening",
-    defaultValue: "distinguished",
+    initialValue: "distinguished",
     options: [
       { id: "distinguished", label: "Distinguished" },
       { id: "contributed", label: "Contributed" },
@@ -265,7 +265,7 @@ export const SERVICE_CHOICE_CASES = [
   {
     medalId: "defense-superior-service-medal",
     fieldName: "leadershipArea",
-    defaultValue: "",
+    initialValue: "",
     options: [
       { id: "secondary", label: "Secondary Billet" },
       { id: "operations", label: "Operations Leadership" },

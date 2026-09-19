@@ -191,7 +191,10 @@ export const WORKSHEET_PROFILES = {
     narrativeOpening: NARRATIVE_OPENING,
   }),
   serviceSecondaryPeriod: serviceWorksheet({
-    role: serviceText("Role", "a clerk, an investigator, etc."),
+    role: {
+      ...serviceText("Role", "a clerk, an investigator, etc."),
+      awardChange: "reset",
+    },
     secondaryBillet: serviceText(
       "Secondary Billet",
       "S1 MILPACS, S5 Public Affairs, etc.",
@@ -230,7 +233,10 @@ export const WORKSHEET_PROFILES = {
     ...SERVICE_PERIOD,
   }),
   servicePrimaryPeriod: serviceWorksheet({
-    role: serviceText("Role", "a trooper, an infantryman, etc."),
+    role: {
+      ...serviceText("Role", "a trooper, an infantryman, etc."),
+      awardChange: "reset",
+    },
     element: serviceText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
     ...SERVICE_PERIOD,
   }),

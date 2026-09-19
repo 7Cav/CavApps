@@ -168,7 +168,7 @@ export const SERVICE_MEDALS = [
     criteria:
       "Awarded for multiple, significant and distinguished meritorious contributions to any area of the Regiment requiring significant time investment. Can only be awarded once per person, in any six-month period.",
     narrativeGuidance:
-      "Describe the recipient's multiple meritorious service/contributions and significant time investment in a minimum of three professionally written sentences.",
+      "Describe how the recipient demonstrated their multiple meritorious service/contributions in a minimum of three professionally written sentences.",
     eligibilityNotes: [
       "The medal may only be awarded once per person in any six-month period.",
     ],

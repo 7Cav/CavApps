@@ -117,16 +117,17 @@ describe("Service worksheet capabilities", () => {
 
   test.each(SERVICE_CHOICE_CASES)(
     "$medalId / $fieldName validates explicit semantic IDs and fails closed",
-    ({ medalId, fieldName, options, defaultValue }) => {
+    ({ medalId, fieldName, options, initialValue }) => {
       const medal = getServiceMedalById(medalId);
-      const field = worksheetFor(medalId).fields[fieldName];
-      expect(field).toMatchObject({
-        type: "semanticChoice",
-        required: true,
-        options,
-        defaultValue,
-        awardChange: "reset",
-      });
+      const worksheet = worksheetFor(medalId);
+      const initial = applyAwardChange(null, worksheet, {});
+      expect(initial[fieldName]).toBe(initialValue);
+      expect(
+        worksheet.fields[fieldName].options.map(({ id, label }) => ({
+          id,
+          label,
+        })),
+      ).toEqual(options);
       for (const value of [
         ...options.map(({ id }) => id),
         "",
@@ -134,10 +135,8 @@ describe("Service worksheet capabilities", () => {
         undefined,
       ]) {
         expect(
-          validateWorksheet(
-            { fields: { [fieldName]: field } },
-            { [fieldName]: value },
-          ).isComplete,
+          validateWorksheet(worksheet, { ...initial, [fieldName]: value })
+            .fields[fieldName],
         ).toBe(options.some(({ id }) => id === value));
       }
       const builders =
@@ -154,7 +153,7 @@ describe("Service worksheet capabilities", () => {
 
   test.each(SERVICE_CHOICE_CASES)(
     "$medalId / $fieldName resets an established choice across award changes",
-    ({ medalId, fieldName, options, defaultValue }) => {
+    ({ medalId, fieldName, options, initialValue }) => {
       const worksheet = worksheetFor(medalId);
       const other = worksheetFor("humanitarian-service-medal");
       const values = {
@@ -164,13 +163,13 @@ describe("Service worksheet capabilities", () => {
         serviceStart: "2025-01",
         serviceEnd: "2026-01",
       };
-      expect(values[fieldName]).not.toBe(defaultValue);
+      expect(values[fieldName]).not.toBe(initialValue);
       const returned = applyAwardChange(
         other,
         worksheet,
         applyAwardChange(worksheet, other, values),
       );
-      expect(returned[fieldName]).toBe(defaultValue);
+      expect(returned[fieldName]).toBe(initialValue);
       expect(returned).toMatchObject({
         narrative: values.narrative,
         serviceStart: values.serviceStart,
@@ -380,40 +379,31 @@ describe("Service worksheet capabilities", () => {
       { role: "Company Commander", element: "B/2-7" },
     ],
   ])(
-    "%s uses required month/year fields with chronological validation",
+    "%s validates service periods and preserves them across award changes",
     (id, context) => {
       const worksheet = worksheetFor(id);
-      expect(worksheet.fields).toMatchObject({
-        serviceStart: {
-          type: "monthYear",
-          required: true,
-          defaultValue: "",
-          awardChange: "preserve",
-          label: "Service Start",
-        },
-        serviceEnd: {
-          type: "monthYear",
-          required: true,
-          defaultValue: "",
-          awardChange: "preserve",
-          label: "Service End",
-        },
+      const initial = applyAwardChange(null, worksheet, {});
+      expect(initial).toMatchObject({ serviceStart: "", serviceEnd: "" });
+      expect(validateWorksheet(worksheet, initial).fields).toMatchObject({
+        serviceStart: false,
+        serviceEnd: false,
       });
       const values = {
+        ...initial,
         ...context,
         narrative: "providing service.",
         serviceStart: "2025-01",
         serviceEnd: "2025-01",
       };
       expect(validateWorksheet(worksheet, values).isComplete).toBe(true);
-      expect(
-        validateWorksheet(worksheet, { ...values, serviceStart: "" }).fields
-          .serviceStart,
-      ).toBe(false);
-      expect(
-        validateWorksheet(worksheet, { ...values, serviceEnd: "" }).fields
-          .serviceEnd,
-      ).toBe(false);
+      for (const fieldName of ["serviceStart", "serviceEnd"]) {
+        for (const value of ["", "2025-", "2027-01"]) {
+          expect(
+            validateWorksheet(worksheet, { ...values, [fieldName]: value })
+              .fields[fieldName],
+          ).toBe(false);
+        }
+      }
       expect(
         validateWorksheet(worksheet, { ...values, serviceStart: "2025-08" })
           .fields.serviceEnd,
@@ -422,6 +412,60 @@ describe("Service worksheet capabilities", () => {
         validateWorksheet(worksheet, { ...values, serviceEnd: "2025-08" })
           .isComplete,
       ).toBe(true);
+      const other = worksheetFor("humanitarian-service-medal");
+      const returned = applyAwardChange(
+        other,
+        worksheet,
+        applyAwardChange(worksheet, other, values),
+      );
+      expect(returned).toMatchObject({
+        serviceStart: values.serviceStart,
+        serviceEnd: values.serviceEnd,
+        narrative: values.narrative,
+      });
+    },
+  );
+
+  test.each([
+    ["legion-of-merit", "distinguished-service-medal", "a clerk"],
+    ["legion-of-merit", "defense-distinguished-service-medal", "a clerk"],
+    ["distinguished-service-medal", "legion-of-merit", "a trooper"],
+    [
+      "distinguished-service-medal",
+      "defense-distinguished-service-medal",
+      "a trooper",
+    ],
+    [
+      "defense-distinguished-service-medal",
+      "legion-of-merit",
+      "Company Commander",
+    ],
+    [
+      "defense-distinguished-service-medal",
+      "distinguished-service-medal",
+      "Company Commander",
+    ],
+  ])(
+    "%s to %s clears an established incompatible Role",
+    (fromId, toId, role) => {
+      const from = worksheetFor(fromId);
+      const to = worksheetFor(toId);
+      const values = {
+        ...applyAwardChange(null, from, {}),
+        role,
+        narrative: SERVICE_CONTINUATION,
+        serviceStart: "2025-09",
+        serviceEnd: "2026-09",
+      };
+      expect(validateWorksheet(from, values).fields.role).toBe(true);
+      const switched = applyAwardChange(from, to, values);
+      expect(switched.role).toBe("");
+      expect(validateWorksheet(to, switched).fields.role).toBe(false);
+      expect(switched).toMatchObject({
+        narrative: values.narrative,
+        serviceStart: values.serviceStart,
+        serviceEnd: values.serviceEnd,
+      });
     },
   );
 
