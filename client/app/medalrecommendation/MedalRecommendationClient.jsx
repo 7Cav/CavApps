@@ -21,10 +21,13 @@ import { combineNarrative } from "./lib/citation-builders";
 import { getMedalFamily } from "./lib/medal-families";
 import {
   applyAwardChange,
+  getActiveWorksheetValues,
   getCitationChoiceText,
+  isWorksheetFieldActive,
   resolveMedalWorksheet,
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
+import ServiceMonthYearField from "./ServiceMonthYearField";
 
 function formatOperationDate(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -112,6 +115,7 @@ function WorksheetField({
   field,
   value,
   isInvalid,
+  validationError,
   systemOwnedOpening = "",
   warnings = [],
   onChange,
@@ -131,13 +135,15 @@ function WorksheetField({
     .filter(Boolean)
     .join(" ");
   const errorMessage =
-    value && field.invalidMessage ? field.invalidMessage : "Required";
+    validationError ??
+    (value && field.invalidMessage ? field.invalidMessage : "Required");
 
   let control;
 
   switch (field.type) {
     case "citationChoice":
     case "scopeChoice":
+    case "semanticChoice":
       control = (
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger
@@ -161,6 +167,19 @@ function WorksheetField({
             ))}
           </SelectContent>
         </Select>
+      );
+      break;
+
+    case "monthYear":
+      control = (
+        <ServiceMonthYearField
+          id={controlId}
+          label={field.label}
+          value={value}
+          isInvalid={isInvalid}
+          describedBy={describedBy}
+          onChange={onChange}
+        />
       );
       break;
 
@@ -350,6 +369,11 @@ export default function MedalRecommendationClient({
 
   const recipientIsInvalid = hasAttemptedGenerate && !recipientIsValid;
 
+  const activeWorksheetValues = getActiveWorksheetValues(
+    selectedWorksheet,
+    worksheetValues,
+  );
+
   const {
     actionCharacter = "",
     scope = "",
@@ -357,15 +381,16 @@ export default function MedalRecommendationClient({
     operationTitle = "",
     location = "",
     operationDate = "",
-    affectedArea = "",
-    narrative = "",
-  } = worksheetValues;
+  } = activeWorksheetValues;
+
+  const narrative = worksheetValues.narrative ?? "";
 
   const recipientCitationName = getCitationName(recipientRosterName);
 
   const requiredNarrativeOpening =
     selectedMedal?.buildNarrativeOpening && recipientIsValid
       ? selectedMedal.buildNarrativeOpening({
+          ...activeWorksheetValues,
           recipientRank,
           recipientCitationName,
         })
@@ -459,13 +484,13 @@ export default function MedalRecommendationClient({
     }
 
     const citationContext = {
+      ...activeWorksheetValues,
       actionCharacter: citationActionCharacter,
       scope,
       combatElement: combatElement.trim(),
       operationTitle: normalizedOperationTitle,
       location: location.trim(),
       date: formattedDate,
-      affectedArea: affectedArea.trim(),
       recipientRank,
       recipientCitationName,
     };
@@ -685,6 +710,9 @@ export default function MedalRecommendationClient({
 
                 {selectedWorksheet?.fieldOrder.map((fieldName) => {
                   const field = selectedWorksheet.fields[fieldName];
+                  if (!isWorksheetFieldActive(field, worksheetValues)) {
+                    return null;
+                  }
                   const isInvalid =
                     hasAttemptedGenerate &&
                     !worksheetValidation.fields[fieldName];
@@ -704,6 +732,7 @@ export default function MedalRecommendationClient({
                         worksheetValues[fieldName] ?? field.defaultValue ?? ""
                       }
                       isInvalid={isInvalid}
+                      validationError={worksheetValidation.errors?.[fieldName]}
                       systemOwnedOpening={
                         field.systemOwnedNarrativeOpening
                           ? requiredNarrativeOpening

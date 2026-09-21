@@ -1,3 +1,5 @@
+import { isWorksheetFieldActive } from "./worksheet-profiles.js";
+
 export function isOperationDateValid(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     return false;
@@ -24,7 +26,13 @@ export function isOperationDateValid(value) {
   return value <= localToday;
 }
 
-function validateField(field, value) {
+export function isServiceMonthValid(value) {
+  return (
+    typeof value === "string" && /^(?!0000)\d{4}-(0[1-9]|1[0-2])$/.test(value)
+  );
+}
+
+function validateField(field, value, values) {
   if (!field.required) {
     return true;
   }
@@ -37,8 +45,37 @@ function validateField(field, value) {
     case "date":
       return isOperationDateValid(value);
 
+    case "monthYear": {
+      if (!isServiceMonthValid(value)) {
+        return "Required";
+      }
+
+      const now = new Date();
+      const currentMonth = [
+        String(now.getFullYear()).padStart(4, "0"),
+        String(now.getMonth() + 1).padStart(2, "0"),
+      ].join("-");
+
+      if (value > currentMonth) {
+        return `${field.label} must be the current month or earlier`;
+      }
+
+      const start = values[field.notBefore];
+      if (
+        field.notBefore &&
+        isServiceMonthValid(start) &&
+        start <= currentMonth &&
+        value < start
+      ) {
+        return field.invalidMessage ?? false;
+      }
+
+      return true;
+    }
+
     case "citationChoice":
     case "scopeChoice":
+    case "semanticChoice":
       return (
         Array.isArray(field.options) &&
         field.options.some((option) => option.id === value)
@@ -58,13 +95,21 @@ export function validateWorksheet(worksheet, values = {}) {
   }
 
   const fields = {};
+  const errors = {};
 
   for (const [fieldName, field] of Object.entries(worksheet.fields)) {
-    fields[fieldName] = validateField(field, values[fieldName]);
+    if (isWorksheetFieldActive(field, values)) {
+      const result = validateField(field, values[fieldName], values);
+      fields[fieldName] = result === true;
+      if (typeof result === "string") {
+        errors[fieldName] = result;
+      }
+    }
   }
 
   return {
     fields,
+    ...(Object.keys(errors).length ? { errors } : {}),
     isComplete: Object.values(fields).every(Boolean),
   };
 }
