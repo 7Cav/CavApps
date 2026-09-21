@@ -8,6 +8,7 @@ const CLIENT_TOKEN = process.env.CLIENT_TOKEN;
 const { cacheTime, initializeCache } = require("./controllers/cacheManager");
 const { initDatabase } = require("./db/database");
 const diffRoutes = require("./routes/diffRoutes");
+const versionRoute = require("./routes/version");
 const { startPoller } = require("./controllers/diffPoller");
 
 const corsOptions = {
@@ -70,6 +71,7 @@ app.use(
 // and the client's readiness probe (wget --spider http://server:4000) both
 // hit GET / with no auth header, so it has to answer 200 without the token.
 // /cache-timestamp is likewise public, as it was before the diff routes landed.
+// /version is public too. The deploy workflow polls it with no token.
 app.get("/", (req, res) => {
   res.send(
     "Server Test Page Loaded Successfully. Any issues? Submit a ticket to S6! Frontend is at https://apps.7cav.us/",
@@ -79,6 +81,8 @@ app.get("/", (req, res) => {
 app.get("/cache-timestamp", (req, res) => {
   res.json({ cacheTime });
 });
+
+app.use(versionRoute);
 
 // Apply token checking middleware only to these routes
 app.use("/roster", checkToken, middleware);

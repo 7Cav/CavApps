@@ -1,11 +1,23 @@
 name: Production Deploy
 
+# A published release builds and pushes both images, then deploys them. A
+# prerelease stops after the push. workflow_dispatch skips the build and
+# deploys a tag Docker Hub already holds; that is the redeploy and rollback
+# path. There is no auto-rollback. A failed deploy leaves the host as it is,
+# and the fix is a dispatch with the last good tag.
 on:
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to deploy. Bare semver, already pushed to Docker Hub.
+        required: true
+        type: string
 
 jobs:
   build:
+    if: github.event_name == 'release'
     runs-on: ubuntu-latest
 
     steps:
@@ -18,12 +30,17 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      # VERSION reaches each container as APP_VERSION, which GET /version
+      # reports. The deploy job's probe reads it to tell when the new
+      # containers are the ones serving.
       - name: Build and Push Client Docker Image
         uses: docker/build-push-action@v7.3.0
         with:
           context: ./client
           file: ./client/client.Dockerfile
           push: true
+          build-args: |
+            VERSION=${{ github.ref_name }}
           tags: |
             7cav/apps_client:${{ github.ref_name }}
             7cav/apps_client:latest
@@ -34,10 +51,96 @@ jobs:
           context: ./server
           file: ./server/server.Dockerfile
           push: true
+          build-args: |
+            VERSION=${{ github.ref_name }}
           tags: |
             7cav/apps_server:${{ github.ref_name }}
             7cav/apps_server:latest
 
-      - name: Force Watchtower Update
+  deploy:
+    needs: build
+    # Referencing the production environment is what makes GitHub record a
+    # deployment for this run. Its status follows the job outcome, so a host
+    # failure or a probe timeout marks the deployment failed.
+    #
+    # The build job is skipped on workflow_dispatch. Under the default success()
+    # gate that would skip this job too, so the gate is spelled out. Run after a
+    # successful or skipped build, never after a failed one, and never for a
+    # prerelease.
+    if: >-
+      ${{ !cancelled()
+          && (needs.build.result == 'success' || needs.build.result == 'skipped')
+          && (github.event_name == 'workflow_dispatch' || !github.event.release.prerelease) }}
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://apps.7cav.us
+    # One deploy at a time. A run that arrives while another is deploying waits
+    # for it instead of cancelling it, so the host is never left mid-recreate.
+    # (GitHub keeps only the newest waiting run. Older waiting runs are
+    # cancelled before they start and never touch the host.)
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    env:
+      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
+      SERVER_VERSION_URL: https://bff.apps.7cav.us/version
+      CLIENT_VERSION_URL: https://apps.7cav.us/version
+      # The client runs `next build` when its container starts, which is why
+      # this is long.
+      PROBE_TIMEOUT_SECONDS: 600
+
+    steps:
+      # The host's forced command rejects anything but a bare semver tag. Failing
+      # here first gives a readable error instead of a bare non-zero ssh exit.
+      - name: Check the tag
         run: |
-          curl -H "Authorization: Bearer ${{ secrets.WATCHER_KEY }}" https://watcher.7cav.us/v1/update
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "tag '$TAG' is not a bare semver version" >&2
+            exit 1
+          fi
+
+      # The command string is the bare tag and nothing else. The host's forced
+      # command reads it from SSH_ORIGINAL_COMMAND, writes it to the stack .env,
+      # then runs docker compose pull and up -d. Host key checking is strict
+      # against the pinned DEPLOY_KNOWN_HOSTS. A non-zero exit from the host
+      # fails the job.
+      - name: Deploy the tag over SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          ssh -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
+              -o IdentitiesOnly=yes \
+              -i "$RUNNER_TEMP/deploy_key" \
+              "$DEPLOY_USER@$DEPLOY_HOST" "$TAG"
+
+      # The host returning is not the same as the new containers serving. Poll
+      # both public /version routes (no token needed) until each reports the
+      # tag. The timeout covers the pull, the recreate and the client's build;
+      # past it the job fails and the deployment is recorded as failed.
+      - name: Wait for both /version routes to report the tag
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + PROBE_TIMEOUT_SECONDS))
+          while (( SECONDS < deadline )); do
+            server=$(curl -fsS --max-time 10 "$SERVER_VERSION_URL" | jq -r '.version' || true)
+            client=$(curl -fsS --max-time 10 "$CLIENT_VERSION_URL" | jq -r '.version' || true)
+            if [[ "$server" == "$TAG" && "$client" == "$TAG" ]]; then
+              echo "server and client both report $TAG"
+              exit 0
+            fi
+            echo "server '${server:-<none>}', client '${client:-<none>}', want '$TAG', retrying"
+            sleep 5
+          done
+          echo "server '${server:-<none>}', client '${client:-<none>}' did not both report $TAG within ${PROBE_TIMEOUT_SECONDS}s" >&2
+          exit 1
