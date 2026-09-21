@@ -137,7 +137,7 @@ describe("Medal Recommendation Aid - validation", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("marks a missing Purple Heart Scope as invalid", async () => {
+  test("generates a complete Purple Heart recommendation using only shared required inputs", async () => {
     const user = userEvent.setup();
     renderClient();
     await selectAward(user, "Purple Heart");
@@ -154,15 +154,11 @@ describe("Medal Recommendation Aid - validation", () => {
     });
     await submitRecommendation(user);
 
-    const scope = screen.getByRole("combobox", { name: "Scope" });
-
-    expect(scope).toHaveAttribute("aria-invalid", "true");
-    expect(scope).toHaveAccessibleDescription("Required");
-    expect(scope).toHaveAttribute("aria-describedby", "scope-required");
-    expect(screen.getByText("Required")).toBeVisible();
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Complete all required fields before generating a recommendation.",
-    );
+    expect(
+      screen.getByRole("region", { name: "Recommendation Preview" }),
+    ).toBeVisible();
+    expect(screen.queryByText("Required")).not.toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   test("clears the previous recommendation when regeneration fails", async () => {
@@ -484,7 +480,7 @@ describe("Medal Recommendation Aid - validation", () => {
     );
   });
 
-  test("clears medal-specific field state when the selected award changes", async () => {
+  test("clears Action Character after an award round trip", async () => {
     const user = userEvent.setup();
 
     renderClient();
@@ -505,22 +501,8 @@ describe("Medal Recommendation Aid - validation", () => {
     await selectAward(user, "Purple Heart");
 
     expect(
-      screen.getByRole("combobox", {
-        name: "Scope",
-      }),
-    ).toHaveTextContent("Select action scope");
-
-    await user.click(
-      screen.getByRole("combobox", {
-        name: "Scope",
-      }),
-    );
-
-    await user.click(
-      screen.getByRole("option", {
-        name: "Single",
-      }),
-    );
+      screen.queryByRole("combobox", { name: "Action Character" }),
+    ).not.toBeInTheDocument();
 
     await selectAward(user, "Army Commendation Medal");
 
@@ -529,14 +511,6 @@ describe("Medal Recommendation Aid - validation", () => {
         name: "Action Character",
       }),
     ).toHaveTextContent("Select action character");
-
-    await selectAward(user, "Purple Heart");
-
-    expect(
-      screen.getByRole("combobox", {
-        name: "Scope",
-      }),
-    ).toHaveTextContent("Select action scope");
   });
 
   test("clears required-field validation state when the selected award changes", async () => {
@@ -556,8 +530,8 @@ describe("Medal Recommendation Aid - validation", () => {
     await selectAward(user, "Purple Heart");
 
     expect(
-      screen.getByRole("combobox", {
-        name: "Scope",
+      screen.getByRole("textbox", {
+        name: "Combat Element",
       }),
     ).not.toHaveAttribute("aria-invalid", "true");
 
@@ -715,53 +689,6 @@ describe("Medal Recommendation Aid - validation", () => {
       screen.queryByRole("region", {
         name: "Recommendation Preview",
       }),
-    ).not.toBeInTheDocument();
-  });
-
-  test("clears the generated preview when Purple Heart Scope changes", async () => {
-    const user = userEvent.setup();
-
-    renderClient();
-    await selectAward(user, "Purple Heart");
-
-    await user.click(screen.getByRole("combobox", { name: "Scope" }));
-    await user.click(screen.getByRole("option", { name: "Single" }));
-
-    await selectRecipient(user);
-
-    await user.type(
-      screen.getByRole("textbox", { name: "Combat Element" }),
-      "rifleman",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Operation Title" }),
-      "Exfor",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Location" }),
-      "Remagen",
-    );
-    await user.type(screen.getByLabelText("Operation Date"), "2026-08-11");
-    const narrative =
-      "Specialist John Smith held the line under heavy fire. " +
-      "Specialist Smith continued fighting despite overwhelming opposition. " +
-      "Specialist Smith's actions allowed the remainder of the element to complete the mission.";
-
-    const narrativeField = screen.getByRole("textbox", { name: "Narrative" });
-
-    await user.click(narrativeField);
-    await user.paste(narrative);
-    await submitRecommendation(user);
-
-    expect(
-      screen.getByRole("region", { name: "Recommendation Preview" }),
-    ).toBeVisible();
-
-    await user.click(screen.getByRole("combobox", { name: "Scope" }));
-    await user.click(screen.getByRole("option", { name: "Multiple" }));
-
-    expect(
-      screen.queryByRole("region", { name: "Recommendation Preview" }),
     ).not.toBeInTheDocument();
   });
 

@@ -74,7 +74,6 @@ function validateField(field, value, values) {
     }
 
     case "citationChoice":
-    case "scopeChoice":
     case "semanticChoice":
       return (
         Array.isArray(field.options) &&

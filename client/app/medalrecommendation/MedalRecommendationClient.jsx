@@ -142,7 +142,6 @@ function WorksheetField({
 
   switch (field.type) {
     case "citationChoice":
-    case "scopeChoice":
     case "semanticChoice":
       control = (
         <Select value={value} onValueChange={onChange}>
@@ -376,7 +375,6 @@ export default function MedalRecommendationClient({
 
   const {
     actionCharacter = "",
-    scope = "",
     combatElement = "",
     operationTitle = "",
     location = "",
@@ -486,7 +484,6 @@ export default function MedalRecommendationClient({
     const citationContext = {
       ...activeWorksheetValues,
       actionCharacter: citationActionCharacter,
-      scope,
       combatElement: combatElement.trim(),
       operationTitle: normalizedOperationTitle,
       location: location.trim(),

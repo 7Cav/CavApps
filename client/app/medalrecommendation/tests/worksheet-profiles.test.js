@@ -46,7 +46,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     });
 
     expect(worksheet.fields.actionCharacter).toBeDefined();
-    expect(worksheet.fields.scope).toBeUndefined();
   });
 
   test("overrides only the element configuration needed by DFC", () => {
@@ -68,7 +67,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     expect(worksheet.fields.narrative.label).toBe("Narrative");
 
     expect(worksheet.fields.actionCharacter).toBeUndefined();
-    expect(worksheet.fields.scope).toBeUndefined();
   });
 
   test.each([
@@ -123,12 +121,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
       getOperationMedal("Army Commendation Medal"),
     );
 
-    const purpleHeartWorksheet = resolveMedalWorksheet(
-      getOperationMedal("Purple Heart"),
-    );
-
     expect(arcomWorksheet.fields.actionCharacter.awardChange).toBe("reset");
-    expect(purpleHeartWorksheet.fields.scope.awardChange).toBe("reset");
   });
 
   test("preserves shared Operation values when changing between compatible medals", () => {
@@ -142,7 +135,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
     const values = {
       actionCharacter: "skillful",
-      scope: "",
       combatElement: "a rifleman",
       operationTitle: "Overlord",
       location: "Remagen",
@@ -152,7 +144,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
     expect(applyAwardChange(previousWorksheet, nextWorksheet, values)).toEqual({
       actionCharacter: "",
-      scope: "",
       combatElement: "a rifleman",
       operationTitle: "Overlord",
       location: "Remagen",
@@ -172,7 +163,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
 
     const values = {
       actionCharacter: "",
-      scope: "",
       combatElement: "a rifleman",
       operationTitle: "Overlord",
       location: "Remagen",
@@ -188,33 +178,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
       location: "Remagen",
       operationDate: "2026-08-11",
       narrative: "Existing narrative",
-    });
-  });
-
-  test("clears Scope when leaving Purple Heart", () => {
-    const previousWorksheet = resolveMedalWorksheet(
-      getOperationMedal("Purple Heart"),
-    );
-
-    const nextWorksheet = resolveMedalWorksheet(
-      getOperationMedal("Army Commendation Medal"),
-    );
-
-    const values = {
-      actionCharacter: "",
-      scope: "single",
-      combatElement: "a rifleman",
-      operationTitle: "Overlord",
-      location: "Remagen",
-      operationDate: "2026-08-11",
-      narrative: "Existing narrative",
-    };
-
-    expect(
-      applyAwardChange(previousWorksheet, nextWorksheet, values),
-    ).toMatchObject({
-      scope: "",
-      combatElement: "a rifleman",
     });
   });
 
@@ -251,24 +214,12 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     expect(worksheet.fields.location.defaultValue).toBe("");
   });
 
-  test("declares worksheet-controlled field order", () => {
+  test("places Action Character before the shared Operation fields", () => {
     const arcomWorksheet = resolveMedalWorksheet(
       getOperationMedal("Army Commendation Medal"),
     );
-    const purpleHeartWorksheet = resolveMedalWorksheet(
-      getOperationMedal("Purple Heart"),
-    );
-
     expect(arcomWorksheet.fieldOrder).toEqual([
       "actionCharacter",
-      "combatElement",
-      "operationTitle",
-      "location",
-      "operationDate",
-      "narrative",
-    ]);
-    expect(purpleHeartWorksheet.fieldOrder).toEqual([
-      "scope",
       "combatElement",
       "operationTitle",
       "location",
@@ -493,42 +444,6 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     });
   });
 
-  test("declares Purple Heart Scope as semantic choices", () => {
-    const medal = getOperationMedal("Purple Heart");
-
-    expect(medal.fields.scope).toEqual({
-      type: "scopeChoice",
-      required: true,
-      defaultValue: "",
-      label: "Scope",
-      placeholder: "Select action scope",
-      options: [
-        {
-          id: "single",
-          label: "Single",
-        },
-        {
-          id: "multiple",
-          label: "Multiple",
-        },
-      ],
-    });
-  });
-
-  test("Purple Heart rejects an unsupported Scope value", () => {
-    const medal = getOperationMedal("Purple Heart");
-
-    expect(() =>
-      medal.buildOpening({
-        scope: "unsupported",
-        combatElement: "a rifleman",
-        operationTitle: "Overlord",
-        location: "Remagen",
-        date: "11 August 2026",
-      }),
-    ).toThrow("Unsupported Purple Heart scope: unsupported");
-  });
-
   test("resolves citation-ready text independently from a choice id", () => {
     const field = {
       type: "citationChoice",
@@ -583,7 +498,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     ],
     [
       {
-        type: "scopeChoice",
+        type: "text",
         options: [
           {
             id: "heroic",

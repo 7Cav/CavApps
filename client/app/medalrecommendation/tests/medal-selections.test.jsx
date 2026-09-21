@@ -93,7 +93,6 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
       guidancePattern,
       eligibilityNotes,
       showsActionCharacter,
-      showsScope,
       elementLabel,
       elementPlaceholder,
     }) => {
@@ -122,7 +121,6 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
       const actionCharacter = screen.queryByRole("combobox", {
         name: "Action Character",
       });
-      const scope = screen.queryByRole("combobox", { name: "Scope" });
 
       if (showsActionCharacter) {
         expect(actionCharacter).toBeVisible();
@@ -130,17 +128,31 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
         expect(actionCharacter).not.toBeInTheDocument();
       }
 
-      if (showsScope) {
-        expect(scope).toBeVisible();
-      } else {
-        expect(scope).not.toBeInTheDocument();
-      }
-
       expect(
         screen.getByRole("textbox", { name: elementLabel }),
       ).toHaveAttribute("placeholder", elementPlaceholder);
     },
   );
+
+  test("Purple Heart shows shared Operation inputs without a Scope control", async () => {
+    const user = userEvent.setup();
+    renderClient();
+    await selectAward(user, "Purple Heart");
+
+    for (const label of [
+      "Recipient",
+      "Combat Element",
+      "Operation Title",
+      "Location",
+      "Operation Date",
+      "Narrative",
+    ]) {
+      expect(screen.getByLabelText(label)).toBeVisible();
+    }
+    expect(
+      screen.queryByRole("combobox", { name: "Scope" }),
+    ).not.toBeInTheDocument();
+  });
 
   test("shows a graceful unavailable state when the medal recipient roster cannot be loaded", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(

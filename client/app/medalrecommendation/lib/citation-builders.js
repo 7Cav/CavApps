@@ -64,7 +64,7 @@ export function buildHeroismSkillDevotionClosing({
 }) {
   return (
     `${recipientRank} ${recipientCitationName}'s heroism, skill and devotion to duty ` +
-    `reflects ${GREAT_CREDIT_CLOSING}`
+    `reflect ${GREAT_CREDIT_CLOSING}`
   );
 }
 
@@ -78,14 +78,14 @@ export function buildSkillsAndHeroicActionsClosing({
   );
 }
 
-export function buildSingleHeroismAndSkillOpening({
+export function buildSingleHeroismOrSkillOpening({
   combatElement,
   operationTitle,
   location,
   date,
 }) {
   return (
-    "For a single act of heroism and skill under enemy fire while serving as " +
+    "For a single act of heroism or skill under enemy fire while serving as " +
     `${combatElement} in the 7th Cavalry Regiment during combat in ` +
     buildOperationLocationDateTail({ operationTitle, location, date })
   );
@@ -102,29 +102,13 @@ export function buildHeroismAndSkillClosing({
 }
 
 export function buildPurpleHeartOpening({
-  scope,
   combatElement,
   operationTitle,
   location,
   date,
 }) {
-  let actionText;
-
-  switch (scope) {
-    case "single":
-      actionText = "a single heroic action";
-      break;
-
-    case "multiple":
-      actionText = "multiple heroic actions";
-      break;
-
-    default:
-      throw new Error(`Unsupported Purple Heart scope: ${scope}`);
-  }
-
   return (
-    `For ${actionText} and skill under enemy fire resulting in their ` +
+    "For a single or multiple heroic actions while under enemy fire resulting in their " +
     `sacrifice and death while serving as ${combatElement} in the 7th Cavalry ` +
     `Regiment during combat in ${buildOperationLocationDateTail({
       operationTitle,

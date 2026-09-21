@@ -89,7 +89,6 @@ export const WORKSHEET_PROFILES = {
 
     fieldOrder: [
       "actionCharacter",
-      "scope",
       "combatElement",
       "operationTitle",
       "location",

@@ -8,7 +8,7 @@ import {
   buildHeroismAndSkillClosing,
   buildHeroismSkillDevotionClosing,
   buildPurpleHeartOpening,
-  buildSingleHeroismAndSkillOpening,
+  buildSingleHeroismOrSkillOpening,
   buildSkillsAndHeroicActionsClosing,
 } from "./citation-builders.js";
 
@@ -75,7 +75,7 @@ export const OPERATION_MEDALS = [
 
     eligibilityNotes: [],
 
-    buildOpening: buildSingleHeroismAndSkillOpening,
+    buildOpening: buildSingleHeroismOrSkillOpening,
 
     buildClosing: buildHeroismAndSkillClosing,
   },
@@ -127,26 +127,6 @@ export const OPERATION_MEDALS = [
       "Describe how the trooper's one or more heroic actions while under fire resulted in their sacrifice and death in a minimum of three professionally written sentences containing the explanation leading up to the event, the event itself, and the outcome of the event.",
 
     minimumNarrativeSentences: 3,
-
-    fields: {
-      scope: {
-        type: "scopeChoice",
-        required: true,
-        defaultValue: "",
-        label: "Scope",
-        placeholder: "Select action scope",
-        options: [
-          {
-            id: "single",
-            label: "Single",
-          },
-          {
-            id: "multiple",
-            label: "Multiple",
-          },
-        ],
-      },
-    },
 
     eligibilityNotes: [
       "The recipient must have been killed while undertaking the combat actions being cited.",

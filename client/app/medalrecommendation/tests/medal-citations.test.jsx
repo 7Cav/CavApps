@@ -19,7 +19,6 @@ const BASE_OPENING_VALUES = {
   operationTitle: "Exfor",
   location: "Remagen",
   date: "11 August 2026",
-  scope: "single",
 };
 
 const BASE_CLOSING_VALUES = {
@@ -48,7 +47,7 @@ const OPENING_CASES = [
     medalName: "Army Commendation Medal With Valor",
     values: {},
     expected:
-      "For a single act of heroism and skill under enemy fire while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
+      "For a single act of heroism or skill under enemy fire while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
   },
   {
     label: "Air Medal skillful actions",
@@ -68,18 +67,11 @@ const OPENING_CASES = [
       "For heroic actions over an entire operation while serving as rotary-wing pilot in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
   },
   {
-    label: "Purple Heart single scope",
+    label: "Purple Heart",
     medalName: "Purple Heart",
     values: {},
     expected:
-      "For a single heroic action and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
-  },
-  {
-    label: "Purple Heart multiple scope",
-    medalName: "Purple Heart",
-    values: { scope: "multiple" },
-    expected:
-      "For multiple heroic actions and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
+      "For a single or multiple heroic actions while under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
   },
   {
     label: "Bronze Star Medal skillful actions",
@@ -201,14 +193,14 @@ const CLOSING_CASES = [
     medalName: "Silver Star",
     values: {},
     expected:
-      "Specialist John Smith's heroism, skill and devotion to duty reflects great credit upon themselves and the 7th Cavalry Gaming Regiment.",
+      "Specialist John Smith's heroism, skill and devotion to duty reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
   },
   {
     label: "Distinguished Service Cross",
     medalName: "Distinguished Service Cross",
     values: {},
     expected:
-      "Specialist John Smith's heroism, skill and devotion to duty reflects great credit upon themselves and the 7th Cavalry Gaming Regiment.",
+      "Specialist John Smith's heroism, skill and devotion to duty reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
   },
 ];
 
@@ -327,43 +319,27 @@ describe("Medal Recommendation Aid - citation integrations", () => {
     );
   });
 
-  test.each([
-    {
-      scope: "Single",
-      opening:
-        "For a single heroic action and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
-    },
-    {
-      scope: "Multiple",
-      opening:
-        "For multiple heroic actions and skill under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026.",
-    },
-  ])(
-    "flows Purple Heart $scope scope into the citation",
-    async ({ scope, opening }) => {
-      const user = userEvent.setup();
-      renderClient();
+  test("generates the exact Purple Heart citation with its fixed opening and unchanged closing", async () => {
+    const user = userEvent.setup();
+    renderClient();
 
-      await selectAward(user, "Purple Heart");
-      await selectRecipient(user);
-      await fillOperationWorksheet(user, {
-        scope,
-        combatElement: "rifleman",
-        operationTitle: "Exfor",
-        location: "Remagen",
-        operationDate: "2026-08-11",
-        narrative: PURPLE_HEART_NARRATIVE,
-      });
-      await submitRecommendation(user);
+    await selectAward(user, "Purple Heart");
+    await selectRecipient(user);
+    await fillOperationWorksheet(user, {
+      combatElement: "rifleman",
+      operationTitle: "Operation Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative: PURPLE_HEART_NARRATIVE,
+    });
+    await submitRecommendation(user);
 
-      expect(getCitationText()).toBe(
-        opening +
-          " " +
-          PURPLE_HEART_NARRATIVE +
-          " Specialist John Smith's heroism and sacrifice reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
-      );
-    },
-  );
+    expect(getCitationText()).toBe(
+      "For a single or multiple heroic actions while under enemy fire resulting in their sacrifice and death while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +
+        PURPLE_HEART_NARRATIVE +
+        " Specialist John Smith's heroism and sacrifice reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.",
+    );
+  });
 
   test("flows the Distinguished Flying Cross Airframe override into the citation", async () => {
     const user = userEvent.setup();
