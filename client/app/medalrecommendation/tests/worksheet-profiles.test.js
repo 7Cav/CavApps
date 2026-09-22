@@ -162,7 +162,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     );
 
     const values = {
-      actionCharacter: "",
+      actionCharacter: "skillful",
       combatElement: "a rifleman",
       operationTitle: "Overlord",
       location: "Remagen",
@@ -173,6 +173,7 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     expect(
       applyAwardChange(previousWorksheet, nextWorksheet, values),
     ).toMatchObject({
+      actionCharacter: "",
       combatElement: "",
       operationTitle: "Overlord",
       location: "Remagen",
@@ -220,6 +221,20 @@ describe("Medal Recommendation Aid - worksheet profiles", () => {
     );
     expect(arcomWorksheet.fieldOrder).toEqual([
       "actionCharacter",
+      "combatElement",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ]);
+  });
+
+  test("omits profile-order fields that are not present in the resolved worksheet", () => {
+    const worksheet = resolveMedalWorksheet(
+      getOperationMedal("Army Commendation Medal With Valor"),
+    );
+
+    expect(worksheet.fieldOrder).toEqual([
       "combatElement",
       "operationTitle",
       "location",

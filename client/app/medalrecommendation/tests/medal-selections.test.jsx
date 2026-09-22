@@ -141,7 +141,6 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
     for (const label of [
       "Recipient",
-      "Combat Element",
       "Operation Title",
       "Location",
       "Operation Date",

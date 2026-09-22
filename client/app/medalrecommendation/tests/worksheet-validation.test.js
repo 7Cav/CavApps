@@ -79,42 +79,42 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
     });
   });
 
-  describe("required citationChoice fields", () => {
-    const field = {
-      type: "citationChoice",
-      required: true,
-      options: [
-        { id: "first", label: "First" },
-        { id: "second", label: "Second" },
-      ],
-    };
+  describe.each(["citationChoice", "semanticChoice"])(
+    "required %s fields",
+    (type) => {
+      const field = {
+        type,
+        required: true,
+        options: [
+          { id: "first", label: "First" },
+          { id: "second", label: "Second" },
+        ],
+      };
 
-    test.each([
-      ["the first declared option", "first", true],
-      ["the second declared option", "second", true],
-      ["an empty choice", "", false],
-      ["an unsupported choice id", "unsupported", false],
-    ])("handles %s", (_caseName, value, expected) => {
-      const result = validateSingleField(field, value);
+      test.each([
+        ["the first declared option", "first", true],
+        ["the second declared option", "second", true],
+        ["an empty choice", "", false],
+        ["an unsupported choice id", "unsupported", false],
+      ])("handles %s", (_caseName, value, expected) => {
+        const result = validateSingleField(field, value);
 
-      expect(result).toEqual({
-        fields: { fieldUnderTest: expected },
-        isComplete: expected,
+        expect(result).toEqual({
+          fields: { fieldUnderTest: expected },
+          isComplete: expected,
+        });
       });
-    });
 
-    test("fails closed when options are missing", () => {
-      const result = validateSingleField(
-        { type: "citationChoice", required: true },
-        "first",
-      );
+      test("fails closed when options are missing", () => {
+        const result = validateSingleField({ type, required: true }, "first");
 
-      expect(result).toEqual({
-        fields: { fieldUnderTest: false },
-        isComplete: false,
+        expect(result).toEqual({
+          fields: { fieldUnderTest: false },
+          isComplete: false,
+        });
       });
-    });
-  });
+    },
+  );
 
   test.each(["text", "textarea", "date", "citationChoice", "unsupported"])(
     "accepts a missing optional %s field",
