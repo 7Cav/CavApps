@@ -3,7 +3,7 @@
 ## Overview
 
 [![Production Deployment](https://github.com/7Cav/CavApps/actions/workflows/prod_deploy.yml/badge.svg)](https://apps.7cav.us/)
-[![Development Deployment](https://github.com/7Cav/CavApps/actions/workflows/dev_deploy.yml/badge.svg)](https://beta.apps.7cav.us/)
+[![Beta Deployment](https://github.com/7Cav/CavApps/actions/workflows/beta_deploy.yml/badge.svg)](https://appsbeta.7cav.us/)
 
 7th Cavalry Apps (CavApps) is a Nextjs based collection of tools and apps designed to aid the 7th Cavalry Gaming Regiment in its day to day functions. It currently includes the Active Duty Roster (ADR), a small collection of Roster Statistics, and the Uniform Builder. Future iterations could include a more advanced statistics tool, an AWOL tracker, and a migration of S1 Documents, among other possible tools. CavApps uses a Frontend-Backend architecture and includes basic authentication.
 
@@ -298,6 +298,14 @@ And you should be good! Simply navigate to your server in your browser and the i
 ### Production deploys
 
 A published GitHub release builds both images, pushes them to Docker Hub and deploys them to the live host. To redeploy or roll back, run the Production Deploy workflow by hand with the tag to deploy. The deploy job reads the `production` environment, which holds the secret `DEPLOY_SSH_KEY` and the variables `DEPLOY_HOST`, `DEPLOY_USER` and `DEPLOY_KNOWN_HOSTS`.
+
+### Beta deploys
+
+Beta at https://appsbeta.7cav.us/ is where a branch gets tested before it ships. To put a branch, tag or SHA on Beta, run the Beta Deploy workflow from `main` and enter it as `ref`. The workflow builds both images, tags them with the full commit SHA and deploys them. Beta holds one ref at a time, and each run replaces the last. The deploy job reads the `beta` environment, which holds the same four names as `production`.
+
+A `ref` can point at a pull request from a fork. Deploying it runs outside code with Beta's secrets, so read the diff before you deploy it.
+
+The Beta database keeps the migrations of every branch deployed before. If the server restarts in a loop after you deploy a branch whose migration conflicts with one already applied, reset the database. Run `docker compose down -v` in the Beta stack directory on the host, then run Beta Deploy again.
 
 ## Roster Statistics
 

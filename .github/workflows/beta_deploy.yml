@@ -1,0 +1,163 @@
+name: Beta Deploy
+
+# Beta holds one ref at a time. A run builds the branch, tag or SHA given as
+# `ref`, pushes both images tagged with its full commit SHA, and deploys that
+# SHA. Each run replaces whatever Beta ran before.
+#
+# Start every run from main. The beta environment allows main only, and GitHub
+# matches that rule against the ref a run starts from, not the ref it builds.
+# So a feature branch that edits this file cannot reach the Beta deploy key.
+run-name: Beta deploy ${{ inputs.ref }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to build and deploy to Beta.
+        required: true
+        type: string
+        default: main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      # The image tag is the commit that was checked out. github.sha would be
+      # main's head, since every run starts from main.
+      - name: Resolve the commit SHA
+        id: resolve
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Beta build"
+            echo
+            echo "- Ref: \`$REF\`"
+            echo "- Commit: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v4.6.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # VERSION reaches each container as APP_VERSION, which GET /version
+      # reports. The deploy job's probe reads it to tell when the new
+      # containers are the ones serving. The build pushes no latest tag. Nothing
+      # reads it, and it would name whichever branch deployed last.
+      - name: Build and Push Client Docker Image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: ./client
+          file: ./client/client.Dockerfile
+          push: true
+          build-args: |
+            VERSION=${{ steps.resolve.outputs.sha }}
+          tags: 7cav/apps_beta_client:${{ steps.resolve.outputs.sha }}
+
+      - name: Build and Push Server Docker Image
+        uses: docker/build-push-action@v7.3.0
+        with:
+          context: ./server
+          file: ./server/server.Dockerfile
+          push: true
+          build-args: |
+            VERSION=${{ steps.resolve.outputs.sha }}
+          tags: 7cav/apps_beta_server:${{ steps.resolve.outputs.sha }}
+
+  deploy:
+    needs: build
+    # Referencing the beta environment is what makes GitHub record a deployment
+    # for this run. Its status follows the job outcome, so a host failure or a
+    # probe timeout marks the deployment failed. The deployment is recorded
+    # against main, the ref the run started from. The run name and the build
+    # job's summary carry the ref that was built.
+    #
+    # This job checks out no code, so nothing from the built ref runs where the
+    # deploy key is.
+    runs-on: ubuntu-latest
+    environment:
+      name: beta
+      url: https://appsbeta.7cav.us
+    # One deploy at a time. A run that arrives while another is deploying waits
+    # for it instead of cancelling it, so the host is never left mid-recreate.
+    # (GitHub keeps only the newest waiting run. Older waiting runs are
+    # cancelled before they start and never touch the host.)
+    concurrency:
+      group: deploy-beta
+      cancel-in-progress: false
+    env:
+      TAG: ${{ needs.build.outputs.sha }}
+      SERVER_VERSION_URL: https://bffappsbeta.7cav.us/version
+      CLIENT_VERSION_URL: https://appsbeta.7cav.us/version
+      # The client runs `next build` when its container starts, which is why
+      # this is long.
+      PROBE_TIMEOUT_SECONDS: 600
+
+    steps:
+      # The host's forced command for Beta rejects anything but a full commit
+      # SHA. Failing here first gives a readable error instead of a bare
+      # non-zero ssh exit.
+      - name: Check the tag
+        run: |
+          set -euo pipefail
+          if [[ ! "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "tag '$TAG' is not a full commit SHA" >&2
+            exit 1
+          fi
+
+      # The command string is the bare SHA and nothing else. The host's forced
+      # command reads it from SSH_ORIGINAL_COMMAND, writes it to the stack .env,
+      # then runs docker compose pull and up -d. Host key checking is strict
+      # against the pinned DEPLOY_KNOWN_HOSTS. A non-zero exit from the host
+      # fails the job.
+      - name: Deploy the tag over SSH
+        env:
+          DEPLOY_HOST: ${{ vars.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+          DEPLOY_KNOWN_HOSTS: ${{ vars.DEPLOY_KNOWN_HOSTS }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          ssh -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
+              -o IdentitiesOnly=yes \
+              -i "$RUNNER_TEMP/deploy_key" \
+              "$DEPLOY_USER@$DEPLOY_HOST" "$TAG"
+
+      # The host returning is not the same as the new containers serving. Poll
+      # both public /version routes (no token needed) until each reports the
+      # SHA. The timeout covers the pull, the recreate and the client's build;
+      # past it the job fails and the deployment is recorded as failed.
+      - name: Wait for both /version routes to report the tag
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + PROBE_TIMEOUT_SECONDS))
+          while (( SECONDS < deadline )); do
+            server=$(curl -fsS --max-time 10 "$SERVER_VERSION_URL" | jq -r '.version' || true)
+            client=$(curl -fsS --max-time 10 "$CLIENT_VERSION_URL" | jq -r '.version' || true)
+            if [[ "$server" == "$TAG" && "$client" == "$TAG" ]]; then
+              echo "server and client both report $TAG"
+              exit 0
+            fi
+            echo "server '${server:-<none>}', client '${client:-<none>}', want '$TAG', retrying"
+            sleep 5
+          done
+          echo "server '${server:-<none>}', client '${client:-<none>}' did not both report $TAG within ${PROBE_TIMEOUT_SECONDS}s" >&2
+          exit 1
