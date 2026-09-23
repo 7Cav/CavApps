@@ -295,6 +295,10 @@ And you should be good! Simply navigate to your server in your browser and the i
 
 **NOTE:** On slower servers, the generation of nextjs static pages may cause a hang. This is normal. Give it a few seconds.
 
+### Production deploys
+
+A published GitHub release builds both images, pushes them to Docker Hub and deploys them to the live host. To redeploy or roll back, run the Production Deploy workflow by hand with the tag to deploy. The deploy job reads the `production` environment, which holds the secret `DEPLOY_SSH_KEY` and the variables `DEPLOY_HOST`, `DEPLOY_USER` and `DEPLOY_KNOWN_HOSTS`.
+
 ## Roster Statistics
 
 The Roster Statistics section is currently pending rewrite to include more information. Stay Tuned!
