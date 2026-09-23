@@ -183,10 +183,6 @@ async function pasteIntoField(user, label, value) {
 }
 
 export async function fillOperationWorksheet(user, values) {
-  if (values.scope !== undefined) {
-    await selectComboboxOption(user, "Scope", values.scope);
-  }
-
   if (values.actionCharacter !== undefined) {
     await selectComboboxOption(
       user,

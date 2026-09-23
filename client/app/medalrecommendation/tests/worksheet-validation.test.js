@@ -5,7 +5,6 @@ import { getOperationMedal } from "./operation-medal-cases.js";
 function completeOperationValues(overrides = {}) {
   return {
     actionCharacter: "skillful",
-    scope: "",
     combatElement: "a rifleman",
     operationTitle: "Overlord",
     location: "Remagen",
@@ -80,7 +79,7 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
     });
   });
 
-  describe.each(["citationChoice", "scopeChoice"])(
+  describe.each(["citationChoice", "semanticChoice"])(
     "required %s fields",
     (type) => {
       const field = {
@@ -117,23 +116,19 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
     },
   );
 
-  test.each([
-    "text",
-    "textarea",
-    "date",
-    "citationChoice",
-    "scopeChoice",
-    "unsupported",
-  ])("accepts a missing optional %s field", (type) => {
-    const result = validateSingleField({ type, required: false }, undefined, {
-      omitValue: true,
-    });
+  test.each(["text", "textarea", "date", "citationChoice", "unsupported"])(
+    "accepts a missing optional %s field",
+    (type) => {
+      const result = validateSingleField({ type, required: false }, undefined, {
+        omitValue: true,
+      });
 
-    expect(result).toEqual({
-      fields: { fieldUnderTest: true },
-      isComplete: true,
-    });
-  });
+      expect(result).toEqual({
+        fields: { fieldUnderTest: true },
+        isComplete: true,
+      });
+    },
+  );
 
   test("only validates medal-specific fields present in the resolved worksheet", () => {
     const worksheet = resolveMedalWorksheet(
@@ -144,28 +139,11 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
       worksheet,
       completeOperationValues({
         actionCharacter: "",
-        scope: "",
       }),
     );
 
     expect(result.fields.actionCharacter).toBeUndefined();
-    expect(result.fields.scope).toBeUndefined();
     expect(result.isComplete).toBe(true);
-  });
-
-  test("requires Purple Heart Scope because the resolved worksheet declares it", () => {
-    const worksheet = resolveMedalWorksheet(getOperationMedal("Purple Heart"));
-
-    const result = validateWorksheet(
-      worksheet,
-      completeOperationValues({
-        actionCharacter: "",
-        scope: "",
-      }),
-    );
-
-    expect(result.isComplete).toBe(false);
-    expect(result.fields.scope).toBe(false);
   });
 
   describe("required date fields", () => {
