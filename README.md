@@ -301,7 +301,7 @@ A published GitHub release builds both images, pushes them to Docker Hub and dep
 
 ### Beta deploys
 
-Beta at https://appsbeta.7cav.us/ is where a branch gets tested before it ships. To put a branch, tag or SHA on Beta, run the Beta Deploy workflow from `main` and enter it as `ref`. The workflow builds both images, tags them with the full commit SHA and deploys them. Beta holds one ref at a time, and each run replaces the last. The deploy job reads the `beta` environment, which holds the same four names as `production`.
+Beta at https://appsbeta.7cav.us/ is where maintainers test a branch before it ships. To put a branch, tag or full commit SHA on Beta, run the Beta Deploy workflow from `main` and enter it as `ref`. The workflow builds both images, tags them with the full commit SHA and deploys them. Beta holds one commit at a time, and each run replaces the last. The deploy job reads the `beta` environment, which holds the same secret and three variables as `production`.
 
 A `ref` can point at a pull request from a fork. Deploying it runs outside code with Beta's secrets, so read the diff before you deploy it.
 
