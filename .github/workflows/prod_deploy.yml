@@ -84,7 +84,7 @@ jobs:
       cancel-in-progress: false
     env:
       TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
-      SERVER_VERSION_URL: https://bff.apps.7cav.us/version
+      SERVER_VERSION_URL: https://bffapps.7cav.us/version
       CLIENT_VERSION_URL: https://apps.7cav.us/version
       # The client runs `next build` when its container starts, which is why
       # this is long.

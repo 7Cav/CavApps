@@ -7,7 +7,7 @@
 
 7th Cavalry Apps (CavApps) is a Nextjs based collection of tools and apps designed to aid the 7th Cavalry Gaming Regiment in its day to day functions. It currently includes the Active Duty Roster (ADR), a small collection of Roster Statistics, and the Uniform Builder. Future iterations could include a more advanced statistics tool, an AWOL tracker, and a migration of S1 Documents, among other possible tools. CavApps uses a Frontend-Backend architecture and includes basic authentication.
 
-The live deployment can be found at https://apps.7cav.us/ and the backend at https://bff.apps.7cav.us/
+The live deployment can be found at https://apps.7cav.us/ and the backend at https://bffapps.7cav.us/
 
 **NOTE:** This documentation is written so that an average member of the 7th Cavalry <em>should</em> be able to make basic edits to CavApps. If you need help with a particular matter or believe this documentation could be improved, please message S6 Development Staff on Discord or on the Forums.
 
