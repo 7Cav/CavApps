@@ -58,7 +58,7 @@ jobs:
       # containers are the ones serving. The build pushes no latest tag. Nothing
       # reads it, and it would name whichever branch deployed last.
       - name: Build and Push Client Docker Image
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: ./client
           file: ./client/client.Dockerfile
@@ -68,7 +68,7 @@ jobs:
           tags: 7cav/apps_beta_client:${{ steps.resolve.outputs.sha }}
 
       - name: Build and Push Server Docker Image
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: ./server
           file: ./server/server.Dockerfile
