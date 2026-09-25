@@ -34,7 +34,7 @@ jobs:
       # reports. The deploy job's probe reads it to tell when the new
       # containers are the ones serving.
       - name: Build and Push Client Docker Image
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: ./client
           file: ./client/client.Dockerfile
@@ -46,7 +46,7 @@ jobs:
             7cav/apps_client:latest
 
       - name: Build and Push Server Docker Image
-        uses: docker/build-push-action@v7.3.0
+        uses: docker/build-push-action@v7.4.0
         with:
           context: ./server
           file: ./server/server.Dockerfile
