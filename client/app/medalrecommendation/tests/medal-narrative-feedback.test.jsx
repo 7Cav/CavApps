@@ -10,6 +10,7 @@ import {
   getCitationText,
   getHighlightTexts,
   renderClient,
+  makeRecipient,
   selectAward,
   selectRecipient,
   submitRecommendation,
@@ -344,6 +345,49 @@ describe("narrative validation utilities", () => {
 describe("Medal Recommendation Aid - narrative feedback", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test("Operation individual identity warning stays soft and clears when the author supplies the existing full identity", async () => {
+    const user = userEvent.setup();
+    renderClient({
+      roster: [
+        makeRecipient({
+          user: { username: "Kenton.W" },
+          realName: "Wade Kenton",
+          rank: { rankFull: "Staff Sergeant", rankShort: "SSG" },
+        }),
+      ],
+    });
+    await selectAward(user);
+    await selectRecipient(user, "Kenton", "Kenton.W");
+    const text =
+      "The team secured the objective. Their coordination sustained the advance. All assigned goals were achieved.";
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative: text,
+    });
+    const warning =
+      "Recipient mention: The selected recipient's Full Rank Full Name was not detected in the narrative. Verify that the recipient is identified correctly.";
+    expect(screen.getByText(warning)).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Narrative" }),
+    ).not.toHaveAttribute("aria-invalid", "true");
+    await submitRecommendation(user);
+    expect(getCitationText()).toContain(
+      "Staff Sergeant Wade Kenton's skillful actions",
+    );
+    expect(screen.getByText(warning)).toBeVisible();
+    const field = screen.getByRole("textbox", { name: "Narrative" });
+    await user.clear(field);
+    await user.click(field);
+    await user.paste(text.replace("The team", "Staff  Sergeant Wade Kenton"));
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
+    await submitRecommendation(user);
+    expect(screen.queryByText(warning)).not.toBeInTheDocument();
   });
 
   test("updates Operation narrative warnings live before generation", async () => {

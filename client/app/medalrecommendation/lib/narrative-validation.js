@@ -99,6 +99,18 @@ export function getRankEntries(rosterMembers) {
   return Array.from(rankEntriesByShortName.values());
 }
 
+export function hasRecipientIdentity(
+  text,
+  recipientRank,
+  recipientCitationName,
+) {
+  const fullIdentityPattern = new RegExp(
+    `${buildFlexiblePhrasePattern(recipientRank)}\\s+${buildFlexiblePhrasePattern(recipientCitationName)}`,
+    "i",
+  );
+  return fullIdentityPattern.test(text);
+}
+
 export function analyzeNarrative(
   narrative,
   {
@@ -113,14 +125,7 @@ export function analyzeNarrative(
   const highlightRanges = [];
 
   if (recipientRank && recipientCitationName) {
-    const fullIdentityPattern = new RegExp(
-      `${buildFlexiblePhrasePattern(
-        recipientRank,
-      )}\\s+${buildFlexiblePhrasePattern(recipientCitationName)}`,
-      "i",
-    );
-
-    if (!fullIdentityPattern.test(text)) {
+    if (!hasRecipientIdentity(text, recipientRank, recipientCitationName)) {
       addWarning(
         warnings,
         "recipient-mention",

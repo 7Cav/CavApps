@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   fillOperationWorksheet,
@@ -581,7 +581,9 @@ describe("Medal Recommendation Aid - validation", () => {
 
     await selectAward(user, "Purple Heart");
 
-    expect(screen.getByText("Selected recipient: Smith.J")).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Recipient", exact: true }),
+    ).toHaveValue("Smith.J");
 
     expect(
       screen.getByRole("textbox", {
@@ -718,7 +720,8 @@ describe("Medal Recommendation Aid - validation", () => {
       screen.getByRole("region", { name: "Recommendation Preview" }),
     ).toBeVisible();
 
-    expect(screen.getByText("Selected recipient: Smith.J")).toBeVisible();
+    const recipients = screen.getByRole("region", { name: "Recipients" });
+    expect(within(recipients).getByText("Specialist John Smith")).toBeVisible();
 
     const recipientField = screen.getByRole("textbox", {
       name: "Recipient",
@@ -728,7 +731,7 @@ describe("Medal Recommendation Aid - validation", () => {
     await user.type(recipientField, "Long");
 
     expect(
-      screen.queryByText("Selected recipient: Smith.J"),
+      within(recipients).queryByText("Specialist John Smith"),
     ).not.toBeInTheDocument();
 
     expect(

@@ -306,11 +306,14 @@ describe("Medal Recommendation Aid - citation integrations", () => {
       name: "Recommendation Preview",
     });
     const citation = screen.getByLabelText("Citation Narrative");
-    const paragraphs = preview.querySelectorAll("p");
-
-    expect(paragraphs).toHaveLength(2);
-    expect(paragraphs[0]).toHaveTextContent(/^Specialist John Smith$/);
-    expect(paragraphs[1]).toBe(citation);
+    const recipients = within(preview).getByRole("list", {
+      name: "Recommendation recipients",
+    });
+    expect(within(recipients).getAllByRole("listitem")).toHaveLength(1);
+    expect(recipients).toHaveTextContent(/^Specialist John Smith$/);
+    expect(
+      within(preview).getAllByLabelText("Citation Narrative"),
+    ).toHaveLength(1);
     expect(citation).toBeVisible();
     expect(getCitationText()).toBe(
       "For skillful actions over an entire operation while serving as rifleman in the 7th Cavalry Regiment during combat in Operation Exfor near Remagen on 11 August 2026. " +

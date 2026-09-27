@@ -122,11 +122,13 @@ export const combatRoster = {
 export function renderClient({
   roster = Object.values(combatRoster),
   medalFamily = MEDAL_FAMILY_IDS.OPERATION,
+  rosterGroups = [],
 } = {}) {
   return render(
     createElement(MedalRecommendationClient, {
       recipientRoster: roster,
       medalFamily,
+      rosterGroups,
     }),
   );
 }
@@ -135,18 +137,36 @@ export function renderServiceClient(options = {}) {
   return renderClient({ ...options, medalFamily: MEDAL_FAMILY_IDS.SERVICE });
 }
 
-export async function renderPageWithRoster(roster = combatRoster) {
+export function mockMedalPageFetch({
+  roster = combatRoster,
+  groups = [],
+  rosterError,
+  groupError,
+} = {}) {
   const profiles = Array.isArray(roster)
     ? Object.fromEntries(
         roster.map((recipient) => [recipient.user.userId, recipient]),
       )
     : roster;
 
-  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({ profiles }),
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    if (url === process.env.MEDAL_RECIPIENT_API_URL) {
+      if (rosterError) throw rosterError;
+      return { ok: true, json: async () => ({ profiles }) };
+    }
+    if (url === process.env.GROUP_API_URL) {
+      if (groupError) throw groupError;
+      return { ok: true, json: async () => ({ groups }) };
+    }
+    throw new Error(`Unexpected page request: ${url}`);
   });
+}
 
+export async function renderPageWithRoster(
+  roster = combatRoster,
+  options = {},
+) {
+  mockMedalPageFetch({ roster, ...options });
   return render(await OperationMedalRecommendationPage());
 }
 
