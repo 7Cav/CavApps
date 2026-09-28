@@ -1,3 +1,5 @@
+const INDIVIDUAL_RECIPIENT_POLICY = { minimum: 1 };
+
 const SERVICE_NARRATIVE = {
   type: "textarea",
   required: true,
@@ -78,6 +80,7 @@ function serviceWorksheet(contextFields = {}) {
   const fields = { ...contextFields, narrative: SERVICE_NARRATIVE };
   return {
     recipientType: "individual",
+    recipientPolicy: INDIVIDUAL_RECIPIENT_POLICY,
     fieldOrder: Object.keys(fields),
     fields,
   };
@@ -86,6 +89,7 @@ function serviceWorksheet(contextFields = {}) {
 export const WORKSHEET_PROFILES = {
   operationIndividual: {
     recipientType: "individual",
+    recipientPolicy: INDIVIDUAL_RECIPIENT_POLICY,
 
     fieldOrder: [
       "actionCharacter",
@@ -316,6 +320,7 @@ export function resolveMedalWorksheet(medal) {
 
   return {
     recipientType: profile.recipientType,
+    recipientPolicy: { ...profile.recipientPolicy },
     fieldOrder,
     fields,
   };

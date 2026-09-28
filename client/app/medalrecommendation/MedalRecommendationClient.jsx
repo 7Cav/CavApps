@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -14,10 +14,14 @@ import {
 } from "@/components/ui/select";
 import {
   analyzeNarrative,
+  getGroupRecipientWarning,
   getRankEntries,
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
-import { combineNarrative } from "./lib/citation-builders";
+import {
+  combineNarrative,
+  resolveRecommendationRecipientSubject,
+} from "./lib/citation-builders";
 import { getMedalFamily } from "./lib/medal-families";
 import {
   applyAwardChange,
@@ -28,6 +32,17 @@ import {
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
 import ServiceMonthYearField from "./ServiceMonthYearField";
+import RecipientManager from "./RecipientManager";
+import {
+  RECIPIENT_INLINE_LIMIT,
+  buildRecipientOrganizations,
+  getRecipientDisplayName,
+  getRecipientId,
+  getRecipientIdentity,
+  orderRecipientsForRecommendation,
+  uniqueRecipients,
+  validateRecipientEntries,
+} from "./lib/recipient-utils";
 
 function formatOperationDate(value) {
   const [year, month, day] = value.split("-").map(Number);
@@ -40,16 +55,6 @@ function formatOperationDate(value) {
     year: "numeric",
     timeZone: "UTC",
   }).format(date);
-}
-
-function getCitationName(fullName) {
-  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
-
-  if (nameParts.length < 2) {
-    return fullName.trim();
-  }
-
-  return `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
 }
 
 function renderNarrativeWithHighlights(text, highlightRanges) {
@@ -86,8 +91,35 @@ function renderNarrativeWithHighlights(text, highlightRanges) {
   return parts;
 }
 
-function requiresEligibilityWarning(recipient) {
-  return Boolean(recipient && recipient.roster !== "ROSTER_TYPE_COMBAT");
+function analyzeRecommendationNarrative(
+  narrative,
+  recipients,
+  systemOpening,
+  medal,
+  rankEntries,
+  narrativeField,
+) {
+  const systemOwnedNarrativeOpening =
+    narrativeField?.systemOwnedNarrativeOpening;
+  const text =
+    systemOwnedNarrativeOpening && systemOpening
+      ? combineNarrative(systemOpening, narrative)
+      : narrative;
+  const analysis = analyzeNarrative(text, {
+    ...(!systemOwnedNarrativeOpening && recipients.length === 1
+      ? getRecipientIdentity(recipients[0])
+      : {}),
+    rankEntries,
+    minimumNarrativeSentences: medal.minimumNarrativeSentences,
+  });
+  // User-owned identity checks inspect authored narrative, never generated prose.
+  const groupWarning = getGroupRecipientWarning(
+    narrative,
+    recipients,
+    narrativeField,
+  );
+  if (groupWarning) analysis.warnings.unshift(groupWarning);
+  return analysis;
 }
 
 function renderCitationNarrative(recommendation) {
@@ -299,6 +331,7 @@ function WorksheetField({
 
 export default function MedalRecommendationClient({
   recipientRoster = [],
+  rosterGroups = [],
   medalFamily,
 }) {
   const family = getMedalFamily(medalFamily);
@@ -308,9 +341,10 @@ export default function MedalRecommendationClient({
 
   const [selectedMedalId, setSelectedMedalId] = useState("");
 
-  const [recipientQuery, setRecipientQuery] = useState("");
-
-  const [selectedRecipient, setSelectedRecipient] = useState(null);
+  const [recipientEntries, setRecipientEntries] = useState([
+    { slotId: 0, query: "", member: null },
+  ]);
+  const nextSlotId = useRef(1);
 
   const [worksheetValues, setWorksheetValues] = useState({});
 
@@ -318,13 +352,32 @@ export default function MedalRecommendationClient({
 
   const [recommendation, setRecommendation] = useState(null);
 
-  const rosterMembers = useMemo(() => recipientRoster ?? [], [recipientRoster]);
+  const rosterMembers = useMemo(
+    () => uniqueRecipients(recipientRoster ?? []),
+    [recipientRoster],
+  );
+  const organizations = useMemo(
+    () => buildRecipientOrganizations(rosterMembers, rosterGroups),
+    [rosterMembers, rosterGroups],
+  );
+  const recipients = useMemo(
+    () => uniqueRecipients(recipientEntries.map((entry) => entry.member)),
+    [recipientEntries],
+  );
+  const recommendationRecipients = useMemo(
+    () => orderRecipientsForRecommendation(recipients),
+    [recipients],
+  );
 
   const selectedMedal = getMedalById(selectedMedalId);
 
   const displayedEligibilityNotes = selectedMedal?.eligibilityNotes ?? [];
 
-  const selectedWorksheet = resolveMedalWorksheet(selectedMedal);
+  const selectedWorksheet = useMemo(
+    () => resolveMedalWorksheet(selectedMedal),
+    [selectedMedal],
+  );
+  const recipientPolicy = selectedWorksheet?.recipientPolicy;
 
   const narrativeField = selectedWorksheet?.fields?.narrative;
 
@@ -336,41 +389,21 @@ export default function MedalRecommendationClient({
     [rosterMembers],
   );
 
-  const suggestions = useMemo(() => {
-    const query = recipientQuery.trim().toLowerCase();
-
-    if (
-      query.length < 3 ||
-      selectedRecipient?.user?.username === recipientQuery
-    ) {
-      return [];
-    }
-
-    return rosterMembers
-      .filter((member) => member?.user?.username?.toLowerCase().includes(query))
-      .slice(0, 10);
-  }, [recipientQuery, rosterMembers, selectedRecipient]);
-
-  const recipientRank = selectedRecipient?.rank?.rankFull?.trim() ?? "";
-
-  const recipientRosterName = selectedRecipient?.realName?.trim() ?? "";
-
-  const recipientIsValid = Boolean(
-    selectedRecipient && recipientRank && recipientRosterName,
-  );
+  const recipientValidation = recipientPolicy
+    ? validateRecipientEntries(recipientEntries, recipientPolicy)
+    : { isComplete: false, errors: [] };
 
   const worksheetValidation = validateWorksheet(
     selectedWorksheet,
     worksheetValues,
   );
 
-  const isComplete = recipientIsValid && worksheetValidation.isComplete;
+  const isComplete =
+    recipientValidation.isComplete && worksheetValidation.isComplete;
 
-  const recipientIsInvalid = hasAttemptedGenerate && !recipientIsValid;
-
-  const activeWorksheetValues = getActiveWorksheetValues(
-    selectedWorksheet,
-    worksheetValues,
+  const activeWorksheetValues = useMemo(
+    () => getActiveWorksheetValues(selectedWorksheet, worksheetValues),
+    [selectedWorksheet, worksheetValues],
   );
 
   const {
@@ -383,57 +416,103 @@ export default function MedalRecommendationClient({
 
   const narrative = worksheetValues.narrative ?? "";
 
-  const recipientCitationName = getCitationName(recipientRosterName);
-
-  const requiredNarrativeOpening =
-    selectedMedal?.buildNarrativeOpening && recipientIsValid
-      ? selectedMedal.buildNarrativeOpening({
-          ...activeWorksheetValues,
-          recipientRank,
-          recipientCitationName,
-        })
-      : "";
-
-  const effectiveNarrative = narrativeField?.systemOwnedNarrativeOpening
-    ? combineNarrative(requiredNarrativeOpening, narrative)
-    : narrative;
+  const requiredNarrativeOpening = useMemo(
+    () =>
+      selectedMedal?.buildNarrativeOpening && recipientValidation.isComplete
+        ? selectedMedal.buildNarrativeOpening({
+            ...activeWorksheetValues,
+            recipientSubject: resolveRecommendationRecipientSubject(
+              recommendationRecipients,
+            ),
+          })
+        : "",
+    [
+      activeWorksheetValues,
+      recommendationRecipients,
+      recipientValidation.isComplete,
+      selectedMedal,
+    ],
+  );
 
   const liveNarrativeAnalysis = useMemo(() => {
     if (
       !supportsLiveNarrativeWarnings ||
-      !recipientIsValid ||
+      !recipientValidation.isComplete ||
       !narrative.trim()
-    ) {
+    )
       return null;
-    }
-
-    return analyzeNarrative(effectiveNarrative, {
-      recipientRank,
-      recipientCitationName,
+    return analyzeRecommendationNarrative(
+      narrative,
+      recommendationRecipients,
+      requiredNarrativeOpening,
+      selectedMedal,
       rankEntries,
-      minimumNarrativeSentences: selectedMedal.minimumNarrativeSentences,
-    });
+      narrativeField,
+    );
   }, [
-    effectiveNarrative,
     narrative,
-    rankEntries,
-    recipientCitationName,
-    recipientIsValid,
-    recipientRank,
+    recommendationRecipients,
+    requiredNarrativeOpening,
     selectedMedal,
+    rankEntries,
+    recipientValidation.isComplete,
     supportsLiveNarrativeWarnings,
+    narrativeField,
   ]);
 
-  function selectRecipient(member) {
-    setSelectedRecipient(member);
-    setRecipientQuery(member.user.username);
+  function updateRecipientEntries(entries) {
+    setRecipientEntries(entries);
     setRecommendation(null);
   }
 
-  function handleRecipientQueryChange(event) {
-    setRecipientQuery(event.target.value);
-    setSelectedRecipient(null);
-    setRecommendation(null);
+  function selectRecipient(slotId, member) {
+    if (
+      recipientEntries.some(
+        (entry) =>
+          entry.slotId !== slotId &&
+          getRecipientId(entry.member) === getRecipientId(member),
+      )
+    )
+      return;
+    updateRecipientEntries(
+      recipientEntries.map((entry) =>
+        entry.slotId === slotId
+          ? { ...entry, member, query: member.user.username }
+          : entry,
+      ),
+    );
+  }
+
+  function confirmRecipients(members) {
+    const unique = uniqueRecipients(members);
+    if (
+      !validateRecipientEntries(
+        unique.map((member) => ({ member })),
+        recipientPolicy,
+      ).isComplete
+    )
+      return;
+    if (
+      unique.length === recipientEntries.length &&
+      unique.every(
+        (member, index) =>
+          getRecipientId(member) ===
+          getRecipientId(recipientEntries[index].member),
+      )
+    )
+      return;
+    const slots = new Map(
+      recipientEntries
+        .filter((entry) => entry.member)
+        .map((entry) => [getRecipientId(entry.member), entry.slotId]),
+    );
+    updateRecipientEntries(
+      unique.map((member) => ({
+        slotId: slots.get(getRecipientId(member)) ?? nextSlotId.current++,
+        member,
+        query: member.user.username,
+      })),
+    );
   }
 
   function handleWorksheetValueChange(fieldName, value) {
@@ -469,13 +548,6 @@ export default function MedalRecommendationClient({
         )
       : "";
 
-    const narrativeAnalysis = analyzeNarrative(effectiveNarrative, {
-      recipientRank,
-      recipientCitationName,
-      rankEntries,
-      minimumNarrativeSentences: selectedMedal.minimumNarrativeSentences,
-    });
-
     if (!selectedMedal?.buildOpening || !selectedMedal?.buildClosing) {
       setRecommendation(null);
       return;
@@ -488,21 +560,28 @@ export default function MedalRecommendationClient({
       operationTitle: normalizedOperationTitle,
       location: location.trim(),
       date: formattedDate,
-      recipientRank,
-      recipientCitationName,
+      recipientSubject: resolveRecommendationRecipientSubject(
+        recommendationRecipients,
+      ),
     };
-
-    const openingSentence = selectedMedal.buildOpening(citationContext);
-
-    const closingSentence = selectedMedal.buildClosing(citationContext);
-
+    const systemOpening =
+      selectedMedal.buildNarrativeOpening?.(citationContext);
+    const analysis = analyzeRecommendationNarrative(
+      narrative,
+      recommendationRecipients,
+      systemOpening,
+      selectedMedal,
+      rankEntries,
+      narrativeField,
+    );
     setRecommendation({
-      recipient: `${recipientRank} ${recipientCitationName}`,
-      openingSentence,
-      narrative: narrativeAnalysis.text,
-      highlightRanges: narrativeAnalysis.highlightRanges,
-      narrativeWarnings: narrativeAnalysis.warnings,
-      closingSentence,
+      medal: selectedMedal,
+      recipients: recommendationRecipients,
+      openingSentence: selectedMedal.buildOpening(citationContext),
+      narrative: analysis.text,
+      highlightRanges: analysis.highlightRanges,
+      narrativeWarnings: analysis.warnings,
+      closingSentence: selectedMedal.buildClosing(citationContext),
     });
   }
 
@@ -629,81 +708,44 @@ export default function MedalRecommendationClient({
                   )}
                 </section>
 
-                <div className="flex flex-col gap-2">
-                  <label
-                    htmlFor="recipient"
-                    className="pb-1 text-sm font-semibold text-foreground"
-                  >
-                    Recipient
-                  </label>
-
-                  <Input
-                    id="recipient"
-                    type="text"
-                    value={recipientQuery}
-                    autoComplete="off"
-                    placeholder="Start typing a last name"
-                    aria-invalid={recipientIsInvalid ? "true" : undefined}
-                    aria-describedby={
-                      recipientIsInvalid ? "recipient-required" : undefined
+                <RecipientManager
+                  entries={recipientEntries}
+                  selected={recipients}
+                  recommendationRecipients={recommendationRecipients}
+                  roster={rosterMembers}
+                  organizations={organizations}
+                  policy={recipientPolicy}
+                  errors={
+                    hasAttemptedGenerate ? recipientValidation.errors : []
+                  }
+                  onAdd={() => {
+                    if (recipientEntries.length < RECIPIENT_INLINE_LIMIT) {
+                      updateRecipientEntries([
+                        ...recipientEntries,
+                        {
+                          slotId: nextSlotId.current++,
+                          query: "",
+                          member: null,
+                        },
+                      ]);
                     }
-                    className={
-                      recipientIsInvalid
-                        ? "border-destructive focus-visible:ring-destructive"
-                        : undefined
-                    }
-                    onChange={handleRecipientQueryChange}
-                  />
-
-                  {recipientIsInvalid && (
-                    <p
-                      id="recipient-required"
-                      className="text-sm font-medium text-destructive"
-                    >
-                      Required
-                    </p>
-                  )}
-
-                  {suggestions.length > 0 && (
-                    <div className="flex flex-col gap-2">
-                      {suggestions.map((member) => (
-                        <Button
-                          key={member.user.userId}
-                          type="button"
-                          variant="outline"
-                          onClick={() => selectRecipient(member)}
-                        >
-                          {member.user.username}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-
-                  {selectedRecipient && (
-                    <div className="space-y-2">
-                      <div className="space-y-1">
-                        <p>
-                          Selected recipient: {selectedRecipient.user.username}
-                        </p>
-
-                        <p className="font-medium">
-                          {selectedRecipient.rank?.rankFull}{" "}
-                          {selectedRecipient.realName}
-                        </p>
-                      </div>
-
-                      {requiresEligibilityWarning(selectedRecipient) && (
-                        <div
-                          role="status"
-                          className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm"
-                        >
-                          This member is not an active member, please confirm
-                          eligibility.
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
+                  }}
+                  onRemove={() => {
+                    if (recipientEntries.length > recipientPolicy.minimum)
+                      updateRecipientEntries(recipientEntries.slice(0, -1));
+                  }}
+                  onQueryChange={(slotId, query) =>
+                    updateRecipientEntries(
+                      recipientEntries.map((entry) =>
+                        entry.slotId === slotId
+                          ? { ...entry, query, member: null }
+                          : entry,
+                      ),
+                    )
+                  }
+                  onSelect={selectRecipient}
+                  onConfirm={confirmRecipients}
+                />
 
                 {selectedWorksheet?.fieldOrder.map((fieldName) => {
                   const field = selectedWorksheet.fields[fieldName];
@@ -780,7 +822,9 @@ export default function MedalRecommendationClient({
                   className="text-sm leading-6 text-muted-foreground"
                 >
                   {recommendation
-                    ? "Recommendation generated. Review the citation below."
+                    ? recommendation.recipients.length > 1
+                      ? `Recommendation generated for ${recommendation.recipients.length} recipients. Review the shared citation below.`
+                      : "Recommendation generated. Review the citation below."
                     : isComplete
                       ? "The worksheet is complete. Generate the recommendation when ready."
                       : "Complete the worksheet to generate a recommendation."}
@@ -799,16 +843,25 @@ export default function MedalRecommendationClient({
                     className="space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center"
                   >
                     <h4 className="text-xl font-semibold text-foreground">
-                      {selectedMedal.name}
+                      {recommendation.medal.name}
                     </h4>
 
                     <img
-                      src={selectedMedal.ribbonUrl}
-                      alt={`${selectedMedal.name} ribbon`}
+                      src={recommendation.medal.ribbonUrl}
+                      alt={`${recommendation.medal.name} ribbon`}
                       className="mx-auto"
                     />
 
-                    <p className="font-medium">{recommendation.recipient}</p>
+                    <ul
+                      aria-label="Recommendation recipients"
+                      className="space-y-1 font-medium"
+                    >
+                      {recommendation.recipients.map((member) => (
+                        <li key={getRecipientId(member)}>
+                          {getRecipientDisplayName(member)}
+                        </li>
+                      ))}
+                    </ul>
 
                     <p
                       aria-label="Citation Narrative"

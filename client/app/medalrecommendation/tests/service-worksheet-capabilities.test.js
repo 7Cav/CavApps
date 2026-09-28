@@ -1,4 +1,8 @@
-import { formatServiceMonth } from "../lib/citation-builders.js";
+import {
+  formatServiceMonth,
+  resolveRecommendationRecipientSubject,
+} from "../lib/citation-builders.js";
+import { makeRecipient } from "./test-helpers.js";
 import {
   getServiceMedalById,
   SERVICE_MEDALS,
@@ -104,8 +108,11 @@ describe("Service worksheet capabilities", () => {
       expect(validateWorksheet(worksheet, values).isComplete).toBe(true);
       const context = {
         ...getActiveWorksheetValues(worksheet, values),
-        recipientRank: "Corporal",
-        recipientCitationName: "John Smith",
+        recipientSubject: resolveRecommendationRecipientSubject([
+          makeRecipient({
+            rank: { rankId: 19, rankShort: "CPL", rankFull: "Corporal" },
+          }),
+        ]),
       };
       expect(medal.buildOpening(context)).toBe(opening);
       expect(medal.buildClosing(context)).toBe(closing);
@@ -144,9 +151,14 @@ describe("Service worksheet capabilities", () => {
           ? [medal.buildNarrativeOpening]
           : [medal.buildOpening, medal.buildClosing];
       for (const build of builders) {
-        expect(() => build({ [fieldName]: "unsupported" })).toThrow(
-          /Unsupported/,
-        );
+        expect(() =>
+          build({
+            [fieldName]: "unsupported",
+            recipientSubject: resolveRecommendationRecipientSubject([
+              makeRecipient(),
+            ]),
+          }),
+        ).toThrow(/Unsupported/);
       }
     },
   );
@@ -258,8 +270,11 @@ describe("Service worksheet capabilities", () => {
       expect(
         medal.buildNarrativeOpening({
           narrativeOpening: "",
-          recipientRank: "Corporal",
-          recipientCitationName: "John Smith",
+          recipientSubject: resolveRecommendationRecipientSubject([
+            makeRecipient({
+              rank: { rankId: 19, rankShort: "CPL", rankFull: "Corporal" },
+            }),
+          ]),
         }),
       ).toBe("");
       expect(

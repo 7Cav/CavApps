@@ -8,6 +8,7 @@ import {
 import { resolveMedalWorksheet } from "../lib/worksheet-profiles.js";
 import {
   makeRecipient,
+  mockMedalPageFetch,
   renderServiceClient,
   selectRecipient,
   selectServiceAward,
@@ -15,18 +16,18 @@ import {
 } from "./test-helpers.js";
 
 const serviceRecipient = makeRecipient({
-  rank: { rankShort: "CPL", rankFull: "Corporal" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "19" },
   realName: "John Smith",
 });
 
 const secondServiceRecipient = makeRecipient({
   user: { userId: "1002", username: "Jones.A" },
-  rank: { rankShort: "SGT", rankFull: "Sergeant" },
+  rank: { rankShort: "SGT", rankFull: "Sergeant", rankId: "18" },
   realName: "Alex Jones",
 });
 
 const multiPartNameServiceRecipient = makeRecipient({
-  rank: { rankShort: "CPL", rankFull: "Corporal" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "19" },
   realName: "John Michael Smith",
 });
 
@@ -94,12 +95,7 @@ describe("Service Medal Recommendation Aid", () => {
   });
 
   test("loads directly with the server roster and exposes AAM", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        profiles: { [serviceRecipient.user.userId]: serviceRecipient },
-      }),
-    });
+    mockMedalPageFetch({ roster: [serviceRecipient] });
 
     render(await ServiceMedalRecommendationPage());
 
@@ -111,14 +107,14 @@ describe("Service Medal Recommendation Aid", () => {
     await selectServiceAward(user);
     await selectServiceRecipient(user);
 
-    expect(screen.getByText("Selected recipient: Smith.J")).toBeVisible();
+    expect(
+      screen.getByRole("textbox", { name: "Recipient", exact: true }),
+    ).toHaveValue("Smith.J");
     expect(screen.getByText("Corporal John Smith")).toBeVisible();
   });
 
   test("shows a graceful unavailable state when the Service roster cannot be loaded", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
-      new TypeError("fetch failed"),
-    );
+    mockMedalPageFetch({ rosterError: new TypeError("fetch failed") });
 
     render(await ServiceMedalRecommendationPage());
 

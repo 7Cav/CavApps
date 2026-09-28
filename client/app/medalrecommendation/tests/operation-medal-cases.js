@@ -3,6 +3,7 @@ import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 export const OPERATION_MEDAL_CASES = [
   {
     id: "army-commendation-medal",
+    groupClosingAction: "skillful actions",
     name: "Army Commendation Medal",
     criteriaPattern:
       /awarded for skillful or heroic actions over an entire operation/i,
@@ -20,6 +21,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "army-commendation-medal-with-valor",
+    groupClosingAction: "heroism and skill",
     name: "Army Commendation Medal With Valor",
     criteriaPattern: /awarded for a single act of heroism or skill under fire/i,
     guidancePattern:
@@ -35,6 +37,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "air-medal",
+    groupClosingAction: "skillful actions",
     name: "Air Medal",
     criteriaPattern: /awarded to any member of an aircrew, including pilots/i,
     guidancePattern:
@@ -53,6 +56,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "purple-heart",
+    groupClosingAction: "heroism and sacrifice",
     name: "Purple Heart",
     criteriaPattern:
       /awarded for a single or multiple heroic actions while under enemy fire/i,
@@ -71,6 +75,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "bronze-star-medal",
+    groupClosingAction: "skillful actions",
     name: "Bronze Star Medal",
     criteriaPattern:
       /awarded for skillful or heroic actions over the entire operation/i,
@@ -88,6 +93,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "bronze-star-medal-with-valor",
+    groupClosingAction: "skills and heroic actions",
     name: "Bronze Star Medal With Valor",
     criteriaPattern:
       /awarded for a single act demonstrating extraordinary heroism and skill while under enemy fire/i,
@@ -106,6 +112,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "distinguished-flying-cross",
+    groupClosingAction: "skills and heroic actions",
     name: "Distinguished Flying Cross",
     criteriaPattern:
       /awarded to pilots for a single act demonstrating extraordinary heroism and skill while under enemy fire/i,
@@ -127,6 +134,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "silver-star",
+    groupClosingAction: "heroism, skill and devotion to duty",
     name: "Silver Star",
     criteriaPattern:
       /awarded for actions demonstrating extraordinary heroism, skill, and leadership under fire/i,
@@ -146,6 +154,7 @@ export const OPERATION_MEDAL_CASES = [
   },
   {
     id: "distinguished-service-cross",
+    groupClosingAction: "heroism, skill and devotion to duty",
     name: "Distinguished Service Cross",
     criteriaPattern:
       /awarded for actions, or a single act, demonstrating extraordinary heroism and skill under fire/i,

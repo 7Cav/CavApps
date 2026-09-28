@@ -7,7 +7,7 @@ import OperationMedalRecommendationPage from "../operation/page";
 export function makeRecipient(overrides = {}) {
   const recipient = {
     user: { userId: "1001", username: "Smith.J" },
-    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "5" },
+    rank: { rankShort: "SPC", rankFull: "Specialist", rankId: "20" },
     realName: "John Smith",
     roster: "ROSTER_TYPE_COMBAT",
     primary: { positionTitle: "Trooper", positionId: "100" },
@@ -24,6 +24,24 @@ export function makeRecipient(overrides = {}) {
   };
 }
 
+export const kentonRecipient = makeRecipient({
+  user: { userId: "1002", username: "Kenton.W" },
+  rank: { rankShort: "SSG", rankFull: "Staff Sergeant", rankId: "17" },
+  realName: "Wade Kenton",
+  primary: { positionId: "dev", positionTitle: "Development Lead" },
+});
+
+export const janeRecipient = makeRecipient({
+  user: { userId: "j", username: "Doe.J" },
+  realName: "Jane Doe",
+  primary: { positionId: "intel", positionTitle: "Analyst" },
+});
+
+export const developmentRecipientGroup = {
+  groupTitle: "Development",
+  positions: [{ positionId: "dev" }],
+};
+
 export const activeRecipient = makeRecipient({
   user: { userId: "2000", username: "Combat.C" },
   realName: "Casey Combat",
@@ -32,7 +50,7 @@ export const activeRecipient = makeRecipient({
 
 export const reserveRecipient = makeRecipient({
   user: { userId: "2001", username: "Reserve.R" },
-  rank: { rankShort: "SGT", rankFull: "Sergeant", rankId: "6" },
+  rank: { rankShort: "SGT", rankFull: "Sergeant", rankId: "18" },
   realName: "Riley Reserve",
   roster: "ROSTER_TYPE_RESERVE",
   primary: { positionTitle: "Reservist", positionId: "200" },
@@ -40,7 +58,7 @@ export const reserveRecipient = makeRecipient({
 
 export const eloaRecipient = makeRecipient({
   user: { userId: "2002", username: "Eloa.E" },
-  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "4" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "19" },
   realName: "Elliot Eloa",
   roster: "ROSTER_TYPE_ELOA",
   primary: { positionTitle: "ELOA", positionId: "201" },
@@ -48,7 +66,7 @@ export const eloaRecipient = makeRecipient({
 
 export const wallOfHonorRecipient = makeRecipient({
   user: { userId: "2003", username: "Honor.H" },
-  rank: { rankShort: "1SG", rankFull: "First Sergeant", rankId: "8" },
+  rank: { rankShort: "1SG", rankFull: "First Sergeant", rankId: "14" },
   realName: "Harper Honor",
   roster: "ROSTER_TYPE_WALL_OF_HONOR",
   primary: { positionTitle: "Wall of Honor", positionId: "202" },
@@ -56,7 +74,7 @@ export const wallOfHonorRecipient = makeRecipient({
 
 export const retiredRecipient = makeRecipient({
   user: { userId: "2004", username: "Retired.R" },
-  rank: { rankShort: "MAJ", rankFull: "Major", rankId: "10" },
+  rank: { rankShort: "MAJ", rankFull: "Major", rankId: "8" },
   realName: "Robin Retired",
   roster: "ROSTER_TYPE_PAST_MEMBERS",
   primary: { positionTitle: "Retired", positionId: "203" },
@@ -107,13 +125,13 @@ export const combatRoster = {
   }),
   1009: makeRecipient({
     user: { userId: "1009", username: "Kenton.W" },
-    rank: { rankShort: "Cpl", rankFull: "Corporal", rankId: "6" },
+    rank: { rankShort: "Cpl", rankFull: "Corporal", rankId: "19" },
     realName: "Wade Kenton",
     primary: { positionId: "108" },
   }),
   1010: makeRecipient({
     user: { userId: "1010", username: "General.M" },
-    rank: { rankShort: "MG", rankFull: "Major General", rankId: "12" },
+    rank: { rankShort: "MG", rankFull: "Major General", rankId: "4" },
     realName: "Morgan General",
     primary: { positionId: "109" },
   }),
@@ -122,11 +140,13 @@ export const combatRoster = {
 export function renderClient({
   roster = Object.values(combatRoster),
   medalFamily = MEDAL_FAMILY_IDS.OPERATION,
+  rosterGroups = [],
 } = {}) {
   return render(
     createElement(MedalRecommendationClient, {
       recipientRoster: roster,
       medalFamily,
+      rosterGroups,
     }),
   );
 }
@@ -135,18 +155,36 @@ export function renderServiceClient(options = {}) {
   return renderClient({ ...options, medalFamily: MEDAL_FAMILY_IDS.SERVICE });
 }
 
-export async function renderPageWithRoster(roster = combatRoster) {
+export function mockMedalPageFetch({
+  roster = combatRoster,
+  groups = [],
+  rosterError,
+  groupError,
+} = {}) {
   const profiles = Array.isArray(roster)
     ? Object.fromEntries(
         roster.map((recipient) => [recipient.user.userId, recipient]),
       )
     : roster;
 
-  vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-    ok: true,
-    json: async () => ({ profiles }),
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    if (url === process.env.MEDAL_RECIPIENT_API_URL) {
+      if (rosterError) throw rosterError;
+      return { ok: true, json: async () => ({ profiles }) };
+    }
+    if (url === process.env.GROUP_API_URL) {
+      if (groupError) throw groupError;
+      return { ok: true, json: async () => ({ groups }) };
+    }
+    throw new Error(`Unexpected page request: ${url}`);
   });
+}
 
+export async function renderPageWithRoster(
+  roster = combatRoster,
+  options = {},
+) {
+  mockMedalPageFetch({ roster, ...options });
   return render(await OperationMedalRecommendationPage());
 }
 

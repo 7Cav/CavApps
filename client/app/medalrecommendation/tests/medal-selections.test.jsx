@@ -4,6 +4,7 @@ import OperationMedalRecommendationPage from "../operation/page";
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import {
   makeRecipient,
+  mockMedalPageFetch,
   renderClient,
   selectAward,
   selectRecipient,
@@ -154,9 +155,7 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
   });
 
   test("shows a graceful unavailable state when the medal recipient roster cannot be loaded", async () => {
-    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
-      new TypeError("fetch failed"),
-    );
+    mockMedalPageFetch({ rosterError: new TypeError("fetch failed") });
 
     render(await OperationMedalRecommendationPage());
 
@@ -186,8 +185,11 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     await user.click(await screen.findByRole("button", { name: "Smith.J" }));
 
     expect(recipientField).toHaveValue("Smith.J");
-    expect(screen.getByText("Selected recipient: Smith.J")).toBeVisible();
+    expect(
+      screen.queryByText("Smith.J", { exact: true }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("Specialist John Smith")).toBeVisible();
+    expect(screen.queryByText(/Selected recipient:/)).not.toBeInTheDocument();
     expect(
       screen.queryByRole("textbox", { name: "Recipient Rank" }),
     ).not.toBeInTheDocument();

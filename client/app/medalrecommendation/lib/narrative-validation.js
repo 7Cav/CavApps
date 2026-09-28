@@ -1,3 +1,8 @@
+import {
+  EXPLICIT_RECIPIENT_LIMIT,
+  getRecipientIdentity,
+} from "./recipient-utils";
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -75,8 +80,14 @@ export function getRankEntries(rosterMembers) {
   const rankEntriesByShortName = new Map();
 
   for (const member of rosterMembers) {
-    const rankShort = member?.rank?.rankShort?.trim() ?? "";
-    const rankFull = member?.rank?.rankFull?.trim() ?? "";
+    const rankShort =
+      typeof member?.rank?.rankShort === "string"
+        ? member.rank.rankShort.trim()
+        : "";
+    const rankFull =
+      typeof member?.rank?.rankFull === "string"
+        ? member.rank.rankFull.trim()
+        : "";
 
     if (
       !rankShort ||
@@ -99,6 +110,48 @@ export function getRankEntries(rosterMembers) {
   return Array.from(rankEntriesByShortName.values());
 }
 
+export function hasRecipientIdentity(
+  text,
+  recipientRank,
+  recipientCitationName,
+) {
+  const fullIdentityPattern = new RegExp(
+    `${buildFlexiblePhrasePattern(recipientRank)}\\s+${buildFlexiblePhrasePattern(recipientCitationName)}`,
+    "i",
+  );
+  return fullIdentityPattern.test(text);
+}
+
+export function getGroupRecipientWarning(
+  narrative,
+  recipients,
+  narrativeField,
+) {
+  if (
+    narrativeField?.systemOwnedNarrativeOpening ||
+    recipients.length < 2 ||
+    recipients.length > EXPLICIT_RECIPIENT_LIMIT
+  )
+    return null;
+
+  const missing = recipients.filter((member) => {
+    const { recipientRank, recipientCitationName } =
+      getRecipientIdentity(member);
+    return !hasRecipientIdentity(
+      narrative,
+      recipientRank,
+      recipientCitationName,
+    );
+  }).length;
+
+  return missing
+    ? {
+        key: "recipient-mention",
+        message: `${missing} of ${recipients.length} recipients ${missing === 1 ? "is" : "are"} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
+      }
+    : null;
+}
+
 export function analyzeNarrative(
   narrative,
   {
@@ -113,14 +166,7 @@ export function analyzeNarrative(
   const highlightRanges = [];
 
   if (recipientRank && recipientCitationName) {
-    const fullIdentityPattern = new RegExp(
-      `${buildFlexiblePhrasePattern(
-        recipientRank,
-      )}\\s+${buildFlexiblePhrasePattern(recipientCitationName)}`,
-      "i",
-    );
-
-    if (!fullIdentityPattern.test(text)) {
+    if (!hasRecipientIdentity(text, recipientRank, recipientCitationName)) {
       addWarning(
         warnings,
         "recipient-mention",
