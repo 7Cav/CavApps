@@ -1,4 +1,4 @@
-const INDIVIDUAL_RECIPIENT_POLICY = { minimum: 1, allowMultiple: true };
+const INDIVIDUAL_RECIPIENT_POLICY = { minimum: 1 };
 
 const SERVICE_NARRATIVE = {
   type: "textarea",
@@ -320,7 +320,7 @@ export function resolveMedalWorksheet(medal) {
 
   return {
     recipientType: profile.recipientType,
-    recipientPolicy: { ...profile.recipientPolicy, ...medal.recipientPolicy },
+    recipientPolicy: { ...profile.recipientPolicy },
     fieldOrder,
     fields,
   };

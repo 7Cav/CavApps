@@ -55,7 +55,7 @@ export async function renderMedalRecommendationWorksheetPage(medalFamily) {
       username: profile.user?.username ?? "",
     },
     rank: {
-      rankId: profile.rank?.rankId ?? "",
+      rankId: profile.rank?.rankId,
       rankShort: profile.rank?.rankShort ?? "",
       rankFull: profile.rank?.rankFull ?? "",
     },

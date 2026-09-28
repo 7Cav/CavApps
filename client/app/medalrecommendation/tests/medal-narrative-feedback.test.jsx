@@ -354,7 +354,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
         makeRecipient({
           user: { username: "Kenton.W" },
           realName: "Wade Kenton",
-          rank: { rankFull: "Staff Sergeant", rankShort: "SSG" },
+          rank: { rankFull: "Staff Sergeant", rankShort: "SSG", rankId: "17" },
         }),
       ],
     });

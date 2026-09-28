@@ -9,9 +9,16 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from "./MedalDialog";
+} from "@/components/ui/dialog";
 import {
-  PASTE_CHARACTER_LIMIT,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  getRecipientPasteError,
   clearShownRecipients,
   filterRecipients,
   getRecipientDisplayName,
@@ -54,16 +61,15 @@ function BulkRecipientDraft({
     policy,
   ).isComplete;
 
-  function rejectOversizedInput() {
+  function rejectOversizedInput(message) {
     setPasteResults([]);
-    setPasteError(
-      "Recipient list is too large. Reduce the pasted text to 100,000 characters or fewer.",
-    );
+    setPasteError(message);
   }
 
   function changePaste(value) {
-    if (value.length > PASTE_CHARACTER_LIMIT) {
-      rejectOversizedInput();
+    const error = getRecipientPasteError(value.length);
+    if (error) {
+      rejectOversizedInput(error);
       return;
     }
     setPaste(value);
@@ -78,9 +84,10 @@ function BulkRecipientDraft({
       field.value.length -
       (field.selectionEnd - field.selectionStart) +
       clipboardText.length;
-    if (proposedLength > PASTE_CHARACTER_LIMIT) {
+    const error = getRecipientPasteError(proposedLength);
+    if (error) {
       event.preventDefault();
-      rejectOversizedInput();
+      rejectOversizedInput(error);
     }
   }
 
@@ -121,19 +128,24 @@ function BulkRecipientDraft({
           >
             Organization
           </label>
-          <select
-            id="bulk-organization"
-            value={organizationId}
-            onChange={(event) => setOrganizationId(event.target.value)}
-            className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:ring-2 focus-visible:ring-ring"
+          <Select
+            value={organizationId || "all"}
+            onValueChange={(value) =>
+              setOrganizationId(value === "all" ? "" : value)
+            }
           >
-            <option value="">All organizations</option>
-            {organizations.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger id="bulk-organization">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All organizations</SelectItem>
+              {organizations.map((option) => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -311,6 +323,7 @@ export default function BulkRecipientDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        closeLabel="Close bulk recipient selection"
         className="max-w-[90rem]"
         onCloseAutoFocus={onCloseAutoFocus}
       >

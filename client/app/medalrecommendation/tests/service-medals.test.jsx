@@ -16,18 +16,18 @@ import {
 } from "./test-helpers.js";
 
 const serviceRecipient = makeRecipient({
-  rank: { rankShort: "CPL", rankFull: "Corporal" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "19" },
   realName: "John Smith",
 });
 
 const secondServiceRecipient = makeRecipient({
   user: { userId: "1002", username: "Jones.A" },
-  rank: { rankShort: "SGT", rankFull: "Sergeant" },
+  rank: { rankShort: "SGT", rankFull: "Sergeant", rankId: "18" },
   realName: "Alex Jones",
 });
 
 const multiPartNameServiceRecipient = makeRecipient({
-  rank: { rankShort: "CPL", rankFull: "Corporal" },
+  rank: { rankShort: "CPL", rankFull: "Corporal", rankId: "19" },
   realName: "John Michael Smith",
 });
 

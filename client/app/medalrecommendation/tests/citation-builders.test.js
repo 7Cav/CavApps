@@ -1,7 +1,9 @@
-import { combineNarrative } from "../lib/citation-builders.js";
+import {
+  combineNarrative,
+  resolveRecommendationRecipientSubject,
+} from "../lib/citation-builders.js";
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
 import { SERVICE_MEDALS } from "../lib/service-medal-definitions.js";
-import { resolveRecommendationRecipientSubject } from "../lib/recipient-utils.js";
 import {
   applyAwardChange,
   getActiveWorksheetValues,
@@ -9,6 +11,7 @@ import {
 } from "../lib/worksheet-profiles.js";
 import { makeRecipient } from "./test-helpers.js";
 import { SERVICE_CITATION_CASES } from "./service-medal-cases.js";
+import { OPERATION_MEDAL_CASES } from "./operation-medal-cases.js";
 
 describe("Narrative composition", () => {
   test.each([
@@ -22,6 +25,33 @@ describe("Narrative composition", () => {
       expect(combineNarrative(opening, continuation)).toBe(expected);
     },
   );
+});
+
+describe("required recipient citation subject", () => {
+  test.each([
+    ["missing subject", {}],
+    [
+      "legacy identity fields only",
+      { recipientRank: "Specialist", recipientCitationName: "John Smith" },
+    ],
+    ["blank subject", { recipientSubject: { subject: " " } }],
+  ])("rejects %s instead of manufacturing citation text", (_label, context) => {
+    const medal = SERVICE_MEDALS.find(
+      (entry) => entry.name === "Humanitarian Service Medal",
+    );
+    expect(() => medal.buildNarrativeOpening(context)).toThrow(
+      "Missing recipient citation subject",
+    );
+    expect(() => medal.buildClosing(context)).toThrow(
+      "Missing recipient citation subject",
+    );
+  });
+
+  test("does not resolve an empty recipient collection into a citation subject", () => {
+    expect(() => resolveRecommendationRecipientSubject([])).toThrow(
+      "Missing recipient citation subject",
+    );
+  });
 });
 
 const subjectCases = [
@@ -46,19 +76,9 @@ const subjectCases = [
 ];
 
 describe("collective award wording", () => {
-  test.each([
-    ["Army Commendation Medal", "skillful actions"],
-    ["Army Commendation Medal With Valor", "heroism and skill"],
-    ["Air Medal", "skillful actions"],
-    ["Purple Heart", "heroism and sacrifice"],
-    ["Bronze Star Medal", "skillful actions"],
-    ["Bronze Star Medal With Valor", "skills and heroic actions"],
-    ["Distinguished Flying Cross", "skills and heroic actions"],
-    ["Silver Star", "heroism, skill and devotion to duty"],
-    ["Distinguished Service Cross", "heroism, skill and devotion to duty"],
-  ])(
-    "%s retains its award-specific closing for explicit and large groups",
-    (name, action) => {
+  test.each(OPERATION_MEDAL_CASES)(
+    "$name retains its award-specific closing for explicit and large groups",
+    ({ name, groupClosingAction }) => {
       const medal = OPERATION_MEDALS.find((entry) => entry.name === name);
       for (const [members, , possessive] of subjectCases) {
         expect(
@@ -67,7 +87,7 @@ describe("collective award wording", () => {
             actionCharacter: "skillful",
           }),
         ).toBe(
-          `${possessive} ${action} reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.`,
+          `${possessive} ${groupClosingAction} reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.`,
         );
       }
     },
@@ -114,9 +134,13 @@ describe("collective award wording", () => {
           `${subject} ${narrativeVerb} themselves by`,
         );
         // The independent single-recipient oracle supplies only the unchanged award wording.
+        const apostrophe = closing.match(/^Corporal John Smith(['’])s/)[1];
         expect(medal.buildClosing(context)).toBe(
           closing
-            .replace(/^Corporal John Smith['’]s/, possessive)
+            .replace(
+              /^Corporal John Smith['’]s/,
+              possessive.replace("'", apostrophe),
+            )
             .replace(/\bthemself\b/g, "themselves"),
         );
       }

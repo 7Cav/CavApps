@@ -1,15 +1,43 @@
+import {
+  EXPLICIT_RECIPIENT_LIMIT,
+  getRecipientIdentity,
+} from "./recipient-utils";
+
+// Recipients arrive in recommendation order; editing collections stay untouched.
+export function resolveRecommendationRecipientSubject(recipients) {
+  if (recipients.length === 0) {
+    throw new Error("Missing recipient citation subject");
+  }
+  const isPlural = recipients.length > 1;
+  const isCollective = recipients.length > EXPLICIT_RECIPIENT_LIMIT;
+  if (isCollective)
+    return { subject: "The recipients", isPlural, isCollective };
+
+  const names = recipients.map((member) => {
+    const { recipientRank, recipientCitationName } =
+      getRecipientIdentity(member);
+    return `${recipientRank} ${recipientCitationName}`;
+  });
+  const subject =
+    names.length === 1
+      ? names[0]
+      : names.length === 2
+        ? names.join(" and ")
+        : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
+  return { subject, isPlural, isCollective };
+}
+
 function getSubject(context) {
-  return (
-    context.recipientSubject?.subject ??
-    `${context.recipientRank} ${context.recipientCitationName}`
-  );
+  const subject = context?.recipientSubject?.subject;
+  if (typeof subject !== "string" || !subject.trim()) {
+    throw new Error("Missing recipient citation subject");
+  }
+  return subject;
 }
 
 function getPossessiveSubject(context, apostrophe = "'") {
-  if (context.recipientSubject?.isPlural)
-    return context.recipientSubject.possessiveSubject;
-  // Preserve the approved individual punctuation of each award.
-  return `${getSubject(context)}${apostrophe}s`;
+  const subject = getSubject(context);
+  return `${subject}${apostrophe}${context.recipientSubject.isCollective ? "" : "s"}`;
 }
 
 export function combineNarrative(requiredOpening, continuation) {

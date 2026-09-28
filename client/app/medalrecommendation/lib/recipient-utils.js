@@ -1,14 +1,58 @@
-import { MEDAL_FAMILY_IDS } from "./medal-families";
-import { hasRecipientIdentity } from "./narrative-validation";
-
 // Browser input protection, not a limit on the number of award recipients.
 export const PASTE_CHARACTER_LIMIT = 100_000;
+export const PASTE_CHARACTER_LIMIT_MESSAGE =
+  "Recipient list is too large. Reduce the pasted text to 100,000 characters or fewer.";
 export const RECIPIENT_INLINE_LIMIT = 8;
+// Application convention pending S1 guidance, shared with identity warnings.
+export const EXPLICIT_RECIPIENT_LIMIT = 6;
+
+// API IDs identify ranks; their numeric order does not describe seniority.
+const RECOMMENDATION_RANK_PRECEDENCE = [
+  [1, "GA"],
+  [2, "GEN"],
+  [3, "LTG"],
+  [4, "MG"],
+  [5, "BG"],
+  [6, "COL"],
+  [7, "LTC"],
+  [8, "MAJ"],
+  [9, "CPT"],
+  [10, "1LT"],
+  [11, "2LT"],
+  [26, "CW5"],
+  [27, "CW4"],
+  [28, "CW3"],
+  [29, "CW2"],
+  [30, "WO1"],
+  [12, "CSM"],
+  [13, "SGM"],
+  [14, "1SG"],
+  [15, "MSG"],
+  [16, "SFC"],
+  [17, "SSG"],
+  [18, "SGT"],
+  [19, "CPL"],
+  [20, "SPC"],
+  [21, "PFC"],
+  [22, "PVT"],
+  [23, "RCT"],
+  [31, "AR"],
+];
+const recommendationRanks = new Map(
+  RECOMMENDATION_RANK_PRECEDENCE.map(([id, abbreviation], order) => [
+    id,
+    { abbreviation, order },
+  ]),
+);
 
 function normalize(value) {
   return typeof value === "string"
     ? value.trim().replace(/\s+/g, " ").toLowerCase()
     : "";
+}
+
+function trimText(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 
 export function getRecipientId(member) {
@@ -18,10 +62,15 @@ export function getRecipientId(member) {
 function getRankOrder(member) {
   const value = member?.rank?.rankId;
   const rankId =
-    typeof value === "number" || (typeof value === "string" && value.trim())
+    typeof value === "number" ||
+    (typeof value === "string" && /^\d+$/.test(value.trim()))
       ? Number(value)
       : NaN;
-  return Number.isInteger(rankId) && rankId > 0 ? rankId : Infinity;
+  const rank = recommendationRanks.get(rankId);
+  const abbreviation = normalize(member?.rank?.rankShort).toUpperCase();
+  // CavApps uses GA; the roster API spells the same rank GOA.
+  const canonicalAbbreviation = abbreviation === "GOA" ? "GA" : abbreviation;
+  return rank?.abbreviation === canonicalAbbreviation ? rank.order : Infinity;
 }
 
 // Recommendation order is separate from the user's editable selection order.
@@ -29,9 +78,12 @@ export function orderRecipientsForRecommendation(recipients) {
   return [...recipients].sort(
     (left, right) =>
       getRankOrder(left) - getRankOrder(right) ||
-      normalize(left.realName).localeCompare(normalize(right.realName), "en") ||
-      normalize(left.user?.username).localeCompare(
-        normalize(right.user?.username),
+      normalize(left?.realName).localeCompare(
+        normalize(right?.realName),
+        "en",
+      ) ||
+      normalize(left?.user?.username).localeCompare(
+        normalize(right?.user?.username),
         "en",
       ) ||
       getRecipientId(left).localeCompare(getRecipientId(right), "en"),
@@ -39,82 +91,30 @@ export function orderRecipientsForRecommendation(recipients) {
 }
 
 export function getCitationName(fullName) {
-  const nameParts = fullName.trim().split(/\s+/).filter(Boolean);
+  const name = trimText(fullName);
+  const nameParts = name.split(/\s+/).filter(Boolean);
   return nameParts.length < 2
-    ? fullName.trim()
+    ? name
     : `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
 }
 
 export function getRecipientIdentity(member) {
   return {
-    recipientRank: member?.rank?.rankFull?.trim() ?? "",
+    recipientRank: trimText(member?.rank?.rankFull),
     recipientCitationName: getCitationName(member?.realName ?? ""),
   };
 }
 
-export function getOperationGroupRecipientWarning(
-  narrative,
-  recipients,
-  medalFamily,
-) {
-  if (
-    medalFamily !== MEDAL_FAMILY_IDS.OPERATION ||
-    recipients.length < 2 ||
-    recipients.length > 6
-  )
-    return null;
-
-  const missing = recipients.filter((member) => {
-    const { recipientRank, recipientCitationName } =
-      getRecipientIdentity(member);
-    return !hasRecipientIdentity(
-      narrative,
-      recipientRank,
-      recipientCitationName,
-    );
-  }).length;
-
-  return missing
-    ? {
-        key: "recipient-mention",
-        message: `${missing} of ${recipients.length} recipients ${missing === 1 ? "is" : "are"} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
-      }
-    : null;
-}
-
-// Recipients arrive in recommendation order; editing collections stay untouched.
-export function resolveRecommendationRecipientSubject(recipients) {
-  const isPlural = recipients.length > 1;
-  if (recipients.length >= 7) {
-    return {
-      subject: "The recipients",
-      possessiveSubject: "The recipients'",
-      isPlural,
-    };
-  }
-  const names = recipients.map((member) => {
-    const { recipientRank, recipientCitationName } =
-      getRecipientIdentity(member);
-    return `${recipientRank} ${recipientCitationName}`;
-  });
-  const subject =
-    names.length < 2
-      ? (names[0] ?? "")
-      : names.length === 2
-        ? names.join(" and ")
-        : `${names.slice(0, -1).join(", ")}, and ${names.at(-1)}`;
-  return { subject, possessiveSubject: `${subject}'s`, isPlural };
-}
-
 export function getRecipientDisplayName(member) {
-  return `${member.rank?.rankFull?.trim() ?? ""} ${member.realName?.trim() ?? ""}`.trim();
+  return `${trimText(member?.rank?.rankFull)} ${trimText(member?.realName)}`.trim();
 }
 
 export function isValidRecipient(member) {
   return Boolean(
     getRecipientId(member) &&
-    member?.rank?.rankFull?.trim() &&
-    member?.realName?.trim(),
+    trimText(member?.rank?.rankFull) &&
+    trimText(member?.realName) &&
+    getRankOrder(member) !== Infinity,
   );
 }
 
@@ -134,7 +134,10 @@ export function validateRecipientEntries(entries, policy) {
     counts.set(id, (counts.get(id) ?? 0) + 1);
   }
   const errors = entries.map(({ member }) => {
-    if (!isValidRecipient(member)) return "Required";
+    if (!isValidRecipient(member))
+      return member && getRankOrder(member) === Infinity
+        ? "Recipient rank information is missing or unsupported."
+        : "Required";
     return counts.get(getRecipientId(member)) > 1
       ? "Select each recipient only once."
       : "";
@@ -142,9 +145,7 @@ export function validateRecipientEntries(entries, policy) {
   return {
     errors,
     isComplete:
-      entries.length >= policy.minimum &&
-      (policy.allowMultiple || entries.length === 1) &&
-      errors.every((error) => !error),
+      entries.length >= policy.minimum && errors.every((error) => !error),
   };
 }
 
@@ -206,12 +207,15 @@ export function clearShownRecipients(selected, shown) {
   return selected.filter((member) => !shownIds.has(getRecipientId(member)));
 }
 
+export function getRecipientPasteError(characterCount) {
+  return characterCount > PASTE_CHARACTER_LIMIT
+    ? PASTE_CHARACTER_LIMIT_MESSAGE
+    : "";
+}
+
 export function matchPastedRecipients(text, roster, selected) {
-  if (text.length > PASTE_CHARACTER_LIMIT) {
-    throw new Error(
-      "Paste is too large. Please use 100,000 characters or fewer.",
-    );
-  }
+  const error = getRecipientPasteError(text.length);
+  if (error) throw new Error(error);
   const aliases = new Map();
   for (const member of uniqueRecipients(roster)) {
     const fullName = member.realName;

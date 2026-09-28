@@ -5,32 +5,31 @@ import {
   getCitationName,
   getRecipientDisplayName,
   getRecipientIdentity,
-  getOperationGroupRecipientWarning,
   matchPastedRecipients,
   orderRecipientsForRecommendation,
-  resolveRecommendationRecipientSubject,
   selectShownRecipients,
   uniqueRecipients,
   validateRecipientEntries,
 } from "../lib/recipient-utils";
-import { hasRecipientIdentity } from "../lib/narrative-validation";
+import {
+  getGroupRecipientWarning,
+  hasRecipientIdentity,
+} from "../lib/narrative-validation";
+import { resolveRecommendationRecipientSubject } from "../lib/citation-builders";
 import { resolveMedalWorksheet } from "../lib/worksheet-profiles";
 import { OPERATION_MEDALS } from "../lib/medal-definitions";
 import { SERVICE_MEDALS } from "../lib/service-medal-definitions";
-import { makeRecipient } from "./test-helpers";
+import {
+  developmentRecipientGroup,
+  janeRecipient as jane,
+  kentonRecipient,
+  makeRecipient,
+} from "./test-helpers";
 
-const kenton = makeRecipient({
-  user: { userId: "k", username: "Kenton.W" },
-  rank: { rankFull: "Staff Sergeant", rankShort: "SSG" },
-  realName: "Wade Kenton",
-  primary: { positionId: "dev", positionTitle: "Development Lead" },
+const kenton = {
+  ...kentonRecipient,
   secondaries: [{ positionId: "intel", positionTitle: "Intelligence Clerk" }],
-});
-const jane = makeRecipient({
-  user: { userId: "j", username: "Doe.J" },
-  realName: "Jane Doe",
-  primary: { positionId: "intel", positionTitle: "Analyst" },
-});
+};
 const otherJane = makeRecipient({
   user: { userId: "j2", username: "Doe.J2" },
   realName: "Jane Doe",
@@ -38,7 +37,7 @@ const otherJane = makeRecipient({
 const roster = [kenton, jane, otherJane];
 const groups = [
   { groupTitle: "Intelligence", positions: [{ positionId: "intel" }] },
-  { groupTitle: "Development", positions: [{ positionId: "dev" }] },
+  developmentRecipientGroup,
   { groupTitle: "Empty", positions: [{ positionId: "elsewhere" }] },
 ];
 const currentPolicy = resolveMedalWorksheet(
@@ -47,22 +46,22 @@ const currentPolicy = resolveMedalWorksheet(
 const entries = (members) => members.map((member) => ({ member }));
 
 describe("recommendation recipient ordering", () => {
-  test("orders numeric and string rank IDs by seniority without mutating the input or recipients", () => {
+  test("orders Cav ranks without mutating the input or recipients", () => {
     const specialist = makeRecipient({
       realName: "Tim Rhone",
       rank: { rankId: "20", rankFull: "Specialist" },
     });
     const captain = makeRecipient({
       realName: "Brent Swanson",
-      rank: { rankId: "9", rankFull: "Captain" },
+      rank: { rankId: "9", rankFull: "Captain", rankShort: "CPT" },
     });
     const sergeant = makeRecipient({
       realName: "Wade Kenton",
-      rank: { rankId: 17, rankFull: "Staff Sergeant" },
+      rank: { rankId: 17, rankFull: "Staff Sergeant", rankShort: "SSG" },
     });
     const lieutenant = makeRecipient({
       realName: "Darek Hazen",
-      rank: { rankId: 10, rankFull: "First Lieutenant" },
+      rank: { rankId: 10, rankFull: "First Lieutenant", rankShort: "1LT" },
     });
     const members = [specialist, captain, sergeant, lieutenant];
     for (const member of members) {
@@ -86,7 +85,12 @@ describe("recommendation recipient ordering", () => {
       "Eli Belmont",
       "Ryan Beauchamp",
       "Jim Rhoden",
-    ].map((realName) => makeRecipient({ realName, rank: { rankId: "17" } }));
+    ].map((realName) =>
+      makeRecipient({
+        realName,
+        rank: { rankId: "17", rankShort: "SSG", rankFull: "Staff Sergeant" },
+      }),
+    );
     expect(
       orderRecipientsForRecommendation(members).map(
         (member) => member.realName,
@@ -99,22 +103,22 @@ describe("recommendation recipient ordering", () => {
       makeRecipient({
         user: { userId: "c", username: " beta.USER " },
         realName: " Jane   Doe ",
-        rank: { rankId: "17" },
+        rank: { rankId: "17", rankShort: "SSG", rankFull: "Staff Sergeant" },
       }),
       makeRecipient({
         user: { userId: "b", username: "ALPHA.User" },
         realName: "jane doe",
-        rank: { rankId: 17 },
+        rank: { rankId: 17, rankShort: "SSG", rankFull: "Staff Sergeant" },
       }),
       makeRecipient({
         user: { userId: "a", username: "  alpha.USER " },
         realName: "JANE DOE",
-        rank: { rankId: "17" },
+        rank: { rankId: "17", rankShort: "SSG", rankFull: "Staff Sergeant" },
       }),
       makeRecipient({
         user: { userId: "d", username: "Zed.Z" },
         realName: "  adam  Jarvis ",
-        rank: { rankId: 17 },
+        rank: { rankId: 17, rankShort: "SSG", rankFull: "Staff Sergeant" },
       }),
     ];
     const ordered = orderRecipientsForRecommendation(members);
@@ -128,7 +132,7 @@ describe("recommendation recipient ordering", () => {
     expect(ordered[1].user.username).toBe("  alpha.USER ");
   });
 
-  test("retains malformed or missing ranks after valid ranks and orders them by name", () => {
+  test("safely orders malformed or missing ranks last but rejects them for recommendations", () => {
     const members = [
       makeRecipient({ realName: "Zulu Missing", rank: { rankId: undefined } }),
       makeRecipient({ realName: "Beta Blank", rank: { rankId: " " } }),
@@ -138,7 +142,10 @@ describe("recommendation recipient ordering", () => {
       }),
       makeRecipient({ realName: "Gamma Empty", rank: { rankId: "" } }),
       makeRecipient({ realName: "Zed Junior", rank: { rankId: 20 } }),
-      makeRecipient({ realName: "Zed Senior", rank: { rankId: "9" } }),
+      makeRecipient({
+        realName: "Zed Senior",
+        rank: { rankId: "9", rankShort: "CPT", rankFull: "Captain" },
+      }),
       makeRecipient({
         realName: "Delta Nonfinite",
         rank: { rankId: Infinity },
@@ -155,7 +162,62 @@ describe("recommendation recipient ordering", () => {
       members[3],
       members[0],
     ]);
+    for (const member of members.filter(
+      (_, index) => ![4, 5].includes(index),
+    )) {
+      expect(
+        validateRecipientEntries(entries([member]), currentPolicy).isComplete,
+      ).toBe(false);
+    }
   });
+
+  test("places every warrant grade between Second Lieutenant and Command Sergeant Major despite their larger API IDs", () => {
+    const ranks = [
+      [23, "RCT", "Recruit"],
+      [29, "CW2", "Chief Warrant Officer 2"],
+      [12, "CSM", "Command Sergeant Major"],
+      ["11", "2LT", "Second Lieutenant"],
+      [30, "WO1", "Warrant Officer 1"],
+      [27, "CW4", "Chief Warrant Officer 4"],
+      [26, "CW5", "Chief Warrant Officer 5"],
+      [28, "CW3", "Chief Warrant Officer 3"],
+    ];
+    const members = ranks.map(([rankId, rankShort, rankFull]) =>
+      makeRecipient({
+        user: { userId: String(rankId) },
+        rank: { rankId, rankShort, rankFull },
+      }),
+    );
+    expect(
+      validateRecipientEntries(entries(members), currentPolicy).isComplete,
+    ).toBe(true);
+    expect(
+      orderRecipientsForRecommendation(members).map(
+        (member) => member.rank.rankShort,
+      ),
+    ).toEqual(["2LT", "CW5", "CW4", "CW3", "CW2", "WO1", "CSM", "RCT"]);
+  });
+
+  test.each(["GA", "GOA"])(
+    "recognizes the current %s abbreviation for General of the Army",
+    (rankShort) => {
+      const generalOfTheArmy = makeRecipient({
+        user: { userId: "army" },
+        rank: { rankId: "1", rankShort, rankFull: "General of the Army" },
+      });
+      const general = makeRecipient({
+        user: { userId: "general" },
+        rank: { rankId: 2, rankShort: "GEN", rankFull: "General" },
+      });
+      expect(
+        validateRecipientEntries(entries([generalOfTheArmy]), currentPolicy)
+          .isComplete,
+      ).toBe(true);
+      expect(
+        orderRecipientsForRecommendation([general, generalOfTheArmy]),
+      ).toEqual([generalOfTheArmy, general]);
+    },
+  );
 });
 
 describe("recommendation prose subjects", () => {
@@ -201,8 +263,12 @@ describe("recommendation prose subjects", () => {
       const before = [...members];
       const resolved = resolveRecommendationRecipientSubject(members);
       expect(resolved.subject).toBe(subject);
-      expect(resolved.possessiveSubject).toBe(possessiveSubject);
-      expect(resolved.isPlural).toBe(count > 1);
+      const medal = SERVICE_MEDALS.find(
+        (entry) => entry.name === "Humanitarian Service Medal",
+      );
+      expect(medal.buildClosing({ recipientSubject: resolved })).toBe(
+        `${possessiveSubject} dedication to duty and commitment is in great credit to themselves and the 7th Cavalry Gaming Regiment.`,
+      );
       expect(members).toEqual(before);
     },
   );
@@ -234,7 +300,7 @@ describe("recommendation prose subjects", () => {
   });
 });
 
-describe("Operation group identity warnings", () => {
+describe("recipient group identity warnings", () => {
   const members = [
     "Alpha One",
     "Bravo Two",
@@ -248,50 +314,55 @@ describe("Operation group identity warnings", () => {
   );
   test.each([
     [
-      "operation",
+      false,
       3,
       "one missing",
       "Specialist Alpha One and Specialist Bravo Two acted.",
       "1 of 3 recipients is",
     ],
     [
-      "operation",
+      false,
       4,
       "two missing",
       "Specialist Alpha One and Specialist Bravo Two acted.",
       "2 of 4 recipients are",
     ],
     [
-      "operation",
+      false,
       6,
       "one missing at the explicit-subject boundary",
       "Specialist Alpha One, Specialist Bravo Two, Specialist Charlie Three, Specialist Delta Four and Specialist Echo Five acted.",
       "1 of 6 recipients is",
     ],
     [
-      "operation",
+      false,
       3,
       "all present",
       "specialist  ALPHA ONE, Specialist Bravo Two and Specialist Charlie Three acted.",
       null,
     ],
-    ["operation", 7, "collective subject is exempt", "The team acted.", null],
+    [false, 7, "collective subject is exempt", "The team acted.", null],
     [
-      "service",
+      true,
       4,
-      "family is exempt within counts 2–6",
+      "system-owned opening supplies recipient identities",
       "The team acted.",
       null,
     ],
-  ])("%s / %i recipients / %s", (family, count, _case, text, expected) => {
-    const selected = members.slice(0, count);
-    const warning = getOperationGroupRecipientWarning(text, selected, family);
-    if (expected)
-      expect(warning?.message).toBe(
-        `${expected} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
-      );
-    else expect(warning).toBeNull();
-  });
+  ])(
+    "system-owned opening %s / %i recipients / %s",
+    (systemOwnedNarrativeOpening, count, _case, text, expected) => {
+      const selected = members.slice(0, count);
+      const warning = getGroupRecipientWarning(text, selected, {
+        systemOwnedNarrativeOpening,
+      });
+      if (expected)
+        expect(warning?.message).toBe(
+          `${expected} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
+        );
+      else expect(warning).toBeNull();
+    },
+  );
 });
 
 describe("recipient collection and identity", () => {
@@ -333,47 +404,6 @@ describe("recipient collection and identity", () => {
     },
   );
 
-  test("honors a medal policy override without changing the default profile", () => {
-    const policy = resolveMedalWorksheet({
-      ...OPERATION_MEDALS[0],
-      recipientPolicy: { minimum: 1, allowMultiple: false },
-    }).recipientPolicy;
-    expect(validateRecipientEntries(entries([kenton]), policy).isComplete).toBe(
-      true,
-    );
-    expect(validateRecipientEntries(entries(roster), policy).isComplete).toBe(
-      false,
-    );
-    expect(
-      validateRecipientEntries(entries(roster), currentPolicy).isComplete,
-    ).toBe(true);
-  });
-
-  test.each([
-    ["complete override", { minimum: 2, allowMultiple: true }],
-    ["partial override", { minimum: 2 }],
-  ])(
-    "requires two recipients with a %s while permitting multiple recipients",
-    (_name, override) => {
-      const policy = resolveMedalWorksheet({
-        ...OPERATION_MEDALS[0],
-        recipientPolicy: override,
-      }).recipientPolicy;
-      expect(
-        validateRecipientEntries(entries([kenton]), policy).isComplete,
-      ).toBe(false);
-      expect(
-        validateRecipientEntries(entries([kenton, jane]), policy).isComplete,
-      ).toBe(true);
-      expect(validateRecipientEntries(entries(roster), policy).isComplete).toBe(
-        true,
-      );
-      expect(
-        validateRecipientEntries(entries([kenton]), currentPolicy).isComplete,
-      ).toBe(true);
-    },
-  );
-
   test.each([
     ["unresolved/null recipient", null],
     ["blank userId", makeRecipient({ user: { userId: " " } })],
@@ -384,6 +414,24 @@ describe("recipient collection and identity", () => {
       validateRecipientEntries(entries([kenton, member]), currentPolicy)
         .isComplete,
     ).toBe(false);
+  });
+
+  test.each([
+    ["missing rankId", { rankId: undefined }],
+    ["unknown rankId", { rankId: 999 }],
+    ["fractional rankId", { rankId: 20.5 }],
+    ["missing abbreviation", { rankShort: "" }],
+    ["unsupported abbreviation", { rankShort: "UNKNOWN" }],
+    ["inconsistent rank ID and abbreviation", { rankId: 11, rankShort: "SPC" }],
+    ["non-text abbreviation", { rankShort: {} }],
+    ["non-text full rank", { rankFull: 20 }],
+  ])("rejects recipient rank metadata: %s", (_condition, rank) => {
+    const validation = validateRecipientEntries(
+      entries([makeRecipient({ rank })]),
+      currentPolicy,
+    );
+    expect(validation.isComplete).toBe(false);
+    expect(validation.errors[0]).not.toBe("");
   });
 
   test("rejects duplicate IDs even when invalid state is supplied directly", () => {
@@ -674,6 +722,8 @@ describe("exact pasted-list matching", () => {
     ).not.toThrow();
     expect(() =>
       matchPastedRecipients(" ".repeat(100_001), roster, []),
-    ).toThrow("100,000 characters");
+    ).toThrow(
+      "Recipient list is too large. Reduce the pasted text to 100,000 characters or fewer.",
+    );
   });
 });

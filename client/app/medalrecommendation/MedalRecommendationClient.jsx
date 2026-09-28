@@ -14,11 +14,15 @@ import {
 } from "@/components/ui/select";
 import {
   analyzeNarrative,
+  getGroupRecipientWarning,
   getRankEntries,
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
-import { combineNarrative } from "./lib/citation-builders";
-import { getMedalFamily, MEDAL_FAMILY_IDS } from "./lib/medal-families";
+import {
+  combineNarrative,
+  resolveRecommendationRecipientSubject,
+} from "./lib/citation-builders";
+import { getMedalFamily } from "./lib/medal-families";
 import {
   applyAwardChange,
   getActiveWorksheetValues,
@@ -35,9 +39,7 @@ import {
   getRecipientDisplayName,
   getRecipientId,
   getRecipientIdentity,
-  getOperationGroupRecipientWarning,
   orderRecipientsForRecommendation,
-  resolveRecommendationRecipientSubject,
   uniqueRecipients,
   validateRecipientEntries,
 } from "./lib/recipient-utils";
@@ -95,25 +97,26 @@ function analyzeRecommendationNarrative(
   systemOpening,
   medal,
   rankEntries,
-  medalFamily,
+  narrativeField,
 ) {
-  const isOperation = medalFamily === MEDAL_FAMILY_IDS.OPERATION;
+  const systemOwnedNarrativeOpening =
+    narrativeField?.systemOwnedNarrativeOpening;
   const text =
-    !isOperation && systemOpening
+    systemOwnedNarrativeOpening && systemOpening
       ? combineNarrative(systemOpening, narrative)
       : narrative;
   const analysis = analyzeNarrative(text, {
-    ...(isOperation && recipients.length === 1
+    ...(!systemOwnedNarrativeOpening && recipients.length === 1
       ? getRecipientIdentity(recipients[0])
       : {}),
     rankEntries,
     minimumNarrativeSentences: medal.minimumNarrativeSentences,
   });
-  // Operation identity checks use the author's narrative, never generated prose.
-  const groupWarning = getOperationGroupRecipientWarning(
+  // User-owned identity checks inspect authored narrative, never generated prose.
+  const groupWarning = getGroupRecipientWarning(
     narrative,
     recipients,
-    medalFamily,
+    narrativeField,
   );
   if (groupWarning) analysis.warnings.unshift(groupWarning);
   return analysis;
@@ -444,7 +447,7 @@ export default function MedalRecommendationClient({
       requiredNarrativeOpening,
       selectedMedal,
       rankEntries,
-      family.id,
+      narrativeField,
     );
   }, [
     narrative,
@@ -454,7 +457,7 @@ export default function MedalRecommendationClient({
     rankEntries,
     recipientValidation.isComplete,
     supportsLiveNarrativeWarnings,
-    family.id,
+    narrativeField,
   ]);
 
   function updateRecipientEntries(entries) {
@@ -569,7 +572,7 @@ export default function MedalRecommendationClient({
       systemOpening,
       selectedMedal,
       rankEntries,
-      family.id,
+      narrativeField,
     );
     setRecommendation({
       medal: selectedMedal,
@@ -716,10 +719,7 @@ export default function MedalRecommendationClient({
                     hasAttemptedGenerate ? recipientValidation.errors : []
                   }
                   onAdd={() => {
-                    if (
-                      recipientPolicy.allowMultiple &&
-                      recipientEntries.length < RECIPIENT_INLINE_LIMIT
-                    ) {
+                    if (recipientEntries.length < RECIPIENT_INLINE_LIMIT) {
                       updateRecipientEntries([
                         ...recipientEntries,
                         {

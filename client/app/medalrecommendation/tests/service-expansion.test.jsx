@@ -22,11 +22,11 @@ import {
 } from "./service-medal-cases.js";
 
 const recipient = makeRecipient({
-  rank: { rankFull: "Corporal", rankShort: "CPL" },
+  rank: { rankFull: "Corporal", rankShort: "CPL", rankId: "19" },
 });
 const secondRecipient = makeRecipient({
   user: { userId: "2002", username: "Jones.A" },
-  rank: { rankFull: "Sergeant", rankShort: "SGT" },
+  rank: { rankFull: "Sergeant", rankShort: "SGT", rankId: "18" },
   realName: "Alex Jones",
 });
 const fixedOpening = "Corporal John Smith distinguished themselves by";

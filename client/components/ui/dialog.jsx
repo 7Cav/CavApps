@@ -9,7 +9,12 @@ export const DialogTitle = DialogPrimitive.Title;
 export const DialogDescription = DialogPrimitive.Description;
 export const DialogClose = DialogPrimitive.Close;
 
-export function DialogContent({ className, children, ...props }) {
+export function DialogContent({
+  className,
+  children,
+  closeLabel = "Close dialog",
+  ...props
+}) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/70" />
@@ -22,7 +27,7 @@ export function DialogContent({ className, children, ...props }) {
       >
         {children}
         <DialogPrimitive.Close
-          aria-label="Close bulk recipient selection"
+          aria-label={closeLabel}
           className="absolute top-4 right-4 rounded-sm p-1 hover:bg-muted focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X aria-hidden="true" className="size-5" />

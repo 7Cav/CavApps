@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import BulkRecipientDialog from "./BulkRecipientDialog";
 import {
   RECIPIENT_INLINE_LIMIT,
+  filterRecipients,
   getRecipientDisplayName,
   getRecipientId,
   requiresEligibilityWarning,
@@ -93,7 +94,6 @@ export default function RecipientManager({
             <Button
               type="button"
               variant="outline"
-              disabled={!policy.allowMultiple}
               onClick={
                 entries.length === RECIPIENT_INLINE_LIMIT ? openBulk : onAdd
               }
@@ -108,16 +108,14 @@ export default function RecipientManager({
             >
               Remove Recipient
             </Button>
-            {policy.allowMultiple && (
-              <Button
-                ref={bulkButtonRef}
-                type="button"
-                variant="outline"
-                onClick={openBulk}
-              >
-                Bulk Add Recipients
-              </Button>
-            )}
+            <Button
+              ref={bulkButtonRef}
+              type="button"
+              variant="outline"
+              onClick={openBulk}
+            >
+              Bulk Add Recipients
+            </Button>
           </div>
           <div
             className={
@@ -131,11 +129,9 @@ export default function RecipientManager({
               const suggestions =
                 query.length < 3 || entry.member?.user?.username === entry.query
                   ? []
-                  : roster
+                  : filterRecipients(roster, query)
                       .filter(
-                        (member) =>
-                          !selectedIds.has(getRecipientId(member)) &&
-                          member.user?.username?.toLowerCase().includes(query),
+                        (member) => !selectedIds.has(getRecipientId(member)),
                       )
                       .slice(0, 10);
               return (
@@ -153,7 +149,7 @@ export default function RecipientManager({
                     type="text"
                     value={entry.query}
                     autoComplete="off"
-                    placeholder="Start typing a last name"
+                    placeholder="Search by name, username, rank, or billet"
                     aria-invalid={error ? "true" : undefined}
                     aria-describedby={error ? `${id}-required` : undefined}
                     className={

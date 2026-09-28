@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import {
   fillOperationWorksheet,
   getCitationText,
+  makeRecipient,
   renderClient,
   selectAward,
   selectRecipient,
@@ -12,6 +13,7 @@ import {
   getOperationMedal,
   OPERATION_MEDAL_CASES,
 } from "./operation-medal-cases.js";
+import { resolveRecommendationRecipientSubject } from "../lib/citation-builders.js";
 
 const BASE_OPENING_VALUES = {
   actionCharacter: "skillful",
@@ -22,8 +24,7 @@ const BASE_OPENING_VALUES = {
 };
 
 const BASE_CLOSING_VALUES = {
-  recipientRank: "Specialist",
-  recipientCitationName: "John Smith",
+  recipientSubject: resolveRecommendationRecipientSubject([makeRecipient()]),
   actionCharacter: "skillful",
 };
 

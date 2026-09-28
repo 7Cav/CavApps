@@ -10,6 +10,7 @@ import {
   reserveRecipient,
   retiredRecipient,
   selectAward,
+  selectComboboxOption,
   selectRecipient,
   submitRecommendation,
   wallOfHonorRecipient,
@@ -36,9 +37,19 @@ describe("Medal Recommendation recipient roster", () => {
       realName: "Zara Captain",
       rank: { rankId: "9", rankShort: "CPT", rankFull: "Captain" },
     });
+    const warrant = makeRecipient({
+      user: { userId: "warrant", username: "Warrant.W" },
+      realName: "Wade Warrant",
+      rank: {
+        rankId: "29",
+        rankShort: "CW2",
+        rankFull: "Chief Warrant Officer 2",
+      },
+    });
     await renderPageWithRoster([
       { ...reserveRecipient, rank: { ...reserveRecipient.rank, rankId: 18 } },
       senior,
+      warrant,
     ]);
 
     expect(
@@ -66,6 +77,11 @@ describe("Medal Recommendation recipient roster", () => {
       screen.getByRole("checkbox", { name: "Captain Zara Captain" }),
     );
     await user.click(
+      screen.getByRole("checkbox", {
+        name: "Chief Warrant Officer 2 Wade Warrant",
+      }),
+    );
+    await user.click(
       screen.getByRole("button", { name: "Confirm Recipients" }),
     );
     await fillOperationWorksheet(user, {
@@ -85,11 +101,62 @@ describe("Medal Recommendation recipient roster", () => {
       within(recipients)
         .getAllByRole("listitem")
         .map((item) => item.textContent),
-    ).toEqual(["Captain Zara Captain", "Sergeant Riley Reserve"]);
+    ).toEqual([
+      "Captain Zara Captain",
+      "Chief Warrant Officer 2 Wade Warrant",
+      "Sergeant Riley Reserve",
+    ]);
     expect(screen.getByLabelText("Citation Narrative")).toHaveTextContent(
       "Captain Zara Captain",
     );
   });
+
+  test.each([
+    ["missing rank ID", { rankId: undefined }],
+    ["unsupported rank", { rankShort: "UNKNOWN" }],
+    ["malformed rank text", { rankShort: {}, rankFull: 20 }],
+  ])(
+    "page-loaded %s blocks generation without crashing and permits a valid replacement",
+    async (_condition, rank) => {
+      const user = userEvent.setup();
+      await renderPageWithRoster([
+        makeRecipient({
+          user: { userId: "broken", username: "Broken.R" },
+          rank,
+        }),
+        activeRecipient,
+      ]);
+      await selectAward(user);
+      await selectRecipient(user, "Bro", "Broken.R");
+      await fillOperationWorksheet(user, {
+        actionCharacter: "Skillful",
+        combatElement: "rifleman",
+        operationTitle: "Exfor",
+        location: "Remagen",
+        operationDate: "2026-08-11",
+        narrative:
+          "The team held the line. The troopers secured the bridge. The mission succeeded.",
+      });
+      await submitRecommendation(user);
+      expect(
+        screen.getByRole("textbox", { name: "Recipient" }),
+      ).toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.getByText(
+          "Recipient rank information is missing or unsupported.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("region", { name: "Recommendation Preview" }),
+      ).not.toBeInTheDocument();
+      await user.clear(screen.getByRole("textbox", { name: "Recipient" }));
+      await selectRecipient(user, "Com", "Combat.C");
+      await submitRecommendation(user);
+      expect(
+        screen.getByRole("region", { name: "Recommendation Preview" }),
+      ).toBeVisible();
+    },
+  );
 
   test("page-sourced organizations include primary and secondary members but omit empty groups", async () => {
     const user = userEvent.setup();
@@ -113,13 +180,13 @@ describe("Medal Recommendation recipient roster", () => {
     const organization = screen.getByRole("combobox", {
       name: "Organization",
     });
+    await user.click(organization);
     expect(
-      within(organization)
-        .getAllByRole("option")
-        .map((option) => option.textContent),
+      screen.getAllByRole("option").map((option) => option.textContent),
     ).toEqual(["All organizations", "Developers", "Troopers"]);
+    await user.keyboard("{Escape}");
     for (const name of ["Developers", "Troopers"]) {
-      await user.selectOptions(organization, name);
+      await selectComboboxOption(user, "Organization", name);
       expect(screen.getAllByRole("checkbox")).toHaveLength(1);
       expect(
         screen.getByRole("checkbox", { name: "Specialist John Smith" }),
@@ -159,12 +226,12 @@ describe("Medal Recommendation recipient roster", () => {
     const organization = screen.getByRole("combobox", {
       name: "Organization",
     });
+    await user.click(organization);
     expect(
-      within(organization)
-        .getAllByRole("option")
-        .map((option) => option.textContent),
+      screen.getAllByRole("option").map((option) => option.textContent),
     ).toEqual(["All organizations"]);
-    expect(organization).toHaveDisplayValue("All organizations");
+    await user.click(screen.getByRole("option", { name: "All organizations" }));
+    expect(organization).toHaveTextContent("All organizations");
     const search = screen.getByRole("textbox", { name: "Search Roster" });
     await user.type(search, "signal");
     expect(screen.getAllByRole("checkbox")).toHaveLength(1);
