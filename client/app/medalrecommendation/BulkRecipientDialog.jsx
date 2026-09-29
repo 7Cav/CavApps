@@ -31,13 +31,7 @@ import {
 } from "./lib/recipient-utils";
 
 // Mounted afresh for each opening: cancelling discards all draft edits.
-function BulkRecipientDraft({
-  roster,
-  organizations,
-  selected,
-  policy,
-  onConfirm,
-}) {
+function BulkRecipientDraft({ roster, organizations, selected, onConfirm }) {
   const [draft, setDraft] = useState(() => uniqueRecipients(selected));
   const [query, setQuery] = useState("");
   const [organizationId, setOrganizationId] = useState("");
@@ -214,13 +208,6 @@ function BulkRecipientDraft({
           <p aria-live="polite" className="font-semibold">
             {draft.length} recipients selected
           </p>
-          {policy.minimum > 1 && (
-            <p className="text-sm text-muted-foreground">
-              You can confirm a smaller selection and continue editing. At least{" "}
-              {policy.minimum} valid recipients are required to generate this
-              recommendation.
-            </p>
-          )}
           <ul
             aria-label="Draft recipients"
             className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2"

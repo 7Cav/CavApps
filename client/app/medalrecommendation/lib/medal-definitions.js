@@ -284,7 +284,6 @@ export const OPERATION_MEDALS = [
 
     buildClosing: buildHeroismSkillDevotionClosing,
   },
-  // Source: https://wiki.7cav.us/index.php?title=Awards_and_Decorations&oldid=17782#Unit_Award_Citations
   {
     id: "army-valorous-unit-award",
     name: "Army Valorous Unit Award",
@@ -295,9 +294,10 @@ export const OPERATION_MEDALS = [
     criteria:
       "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and the unit’s contribution was critical to the successful outcome of the operation. Must have won all official match(es) played or achieved total mission success (PVE). Must be an official organized event. This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
     narrativeGuidance:
-      "Describe the unit’s actions in at least four professionally written sentences. Explain the lead-up, use two sentences for the event itself, and describe the outcome of the event and mission. Show how the unit’s heroism, skill, or leadership under fire was critical to success.",
+      "Describe how the unit demonstrated extraordinary heroism and skill/leadership under fire in the operation in a minimum of four professionally written sentences containing the explanation leading up to the event, two sentences of the event itself, and the outcome of the event and mission.",
     minimumNarrativeSentences: 4,
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
       "The unit’s contribution must have been critical to the operation’s success.",
     ],
@@ -314,7 +314,7 @@ export const OPERATION_MEDALS = [
     criteria:
       "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and competitions. Must have won all official match(es) played in the competition, or achieved total mission success (PVE). Must be an official organized event. Each Battalion may award one per month. This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
     narrativeGuidance:
-      "Describe the unit’s actions over the entire operation in at least three professionally written sentences. Explain the lead-up, the events, and the outcome. Show how the unit’s exceptional skill or heroism contributed to the successful result.",
+      "Describe how the unit demonstrated exceptional skill/heroism over the entire duration of the operation that was critical to the successful outcome in a minimum of three professionally written sentences containing the explanation leading up to the events, the events themselves, and the outcome of the events.",
     minimumNarrativeSentences: 3,
     fields: {
       actionCharacter: {
@@ -323,6 +323,7 @@ export const OPERATION_MEDALS = [
       },
     },
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
       "Each Battalion may award one MUC per month.",
     ],

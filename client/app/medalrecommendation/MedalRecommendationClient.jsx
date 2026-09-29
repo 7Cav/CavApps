@@ -25,7 +25,10 @@ import {
   combineNarrative,
   resolveRecommendationRecipientSubject,
 } from "./lib/citation-builders";
-import { getMedalFamily } from "./lib/medal-families";
+import {
+  getMedalFamily,
+  groupMedalsByAwardCategory,
+} from "./lib/medal-families";
 import {
   applyAwardChange,
   getActiveWorksheetValues,
@@ -344,6 +347,10 @@ export default function MedalRecommendationClient({
 
   const { medals, getMedalById, awardPlaceholder, pageTitle, pageDescription } =
     family;
+  const awardGroups = useMemo(
+    () => groupMedalsByAwardCategory(medals),
+    [medals],
+  );
 
   const [selectedMedalId, setSelectedMedalId] = useState("");
 
@@ -376,8 +383,6 @@ export default function MedalRecommendationClient({
   );
 
   const selectedMedal = getMedalById(selectedMedalId);
-  const isUnitAward = selectedMedal?.awardCategory === "unit";
-  const GuidanceHeading = isUnitAward ? "h4" : "h5";
 
   const displayedEligibilityNotes = selectedMedal?.eligibilityNotes ?? [];
 
@@ -426,18 +431,20 @@ export default function MedalRecommendationClient({
 
   const requiredNarrativeOpening = useMemo(() => {
     if (!selectedMedal?.buildNarrativeOpening) return "";
-    if (isUnitAward)
-      return selectedMedal.buildNarrativeOpening(activeWorksheetValues);
-    if (!recipientValidation.isComplete) return "";
+    if (
+      narrativeField?.systemOpeningRequiresCompleteRecipients &&
+      !recipientValidation.isComplete
+    )
+      return "";
     return selectedMedal.buildNarrativeOpening({
       ...activeWorksheetValues,
-      recipientSubject: resolveRecommendationRecipientSubject(
-        recommendationRecipients,
-      ),
+      recipientSubject: recommendationRecipients.length
+        ? resolveRecommendationRecipientSubject(recommendationRecipients)
+        : undefined,
     });
   }, [
     activeWorksheetValues,
-    isUnitAward,
+    narrativeField,
     recommendationRecipients,
     recipientValidation.isComplete,
     selectedMedal,
@@ -446,7 +453,8 @@ export default function MedalRecommendationClient({
   const liveNarrativeAnalysis = useMemo(() => {
     if (
       !supportsLiveNarrativeWarnings ||
-      (!isUnitAward && !recipientValidation.isComplete) ||
+      (narrativeField?.liveWarningsRequireCompleteRecipients &&
+        !recipientValidation.isComplete) ||
       !narrative.trim()
     )
       return null;
@@ -460,7 +468,6 @@ export default function MedalRecommendationClient({
     );
   }, [
     narrative,
-    isUnitAward,
     recommendationRecipients,
     requiredNarrativeOpening,
     selectedMedal,
@@ -659,23 +666,18 @@ export default function MedalRecommendationClient({
                 </SelectTrigger>
 
                 <SelectContent>
-                  {[
-                    { id: "individual", label: "Individual" },
-                    { id: "unit", label: "Unit" },
-                  ].map((category) => (
+                  {awardGroups.map((category) => (
                     <SelectGroup key={category.id}>
                       <SelectLabel>{category.label}</SelectLabel>
-                      {medals
-                        .filter((medal) => medal.awardCategory === category.id)
-                        .map((medal) => (
-                          <SelectItem
-                            key={medal.id}
-                            value={medal.id}
-                            className="pl-12"
-                          >
-                            {medal.name}
-                          </SelectItem>
-                        ))}
+                      {category.medals.map((medal) => (
+                        <SelectItem
+                          key={medal.id}
+                          value={medal.id}
+                          className="pl-12"
+                        >
+                          {medal.name}
+                        </SelectItem>
+                      ))}
                     </SelectGroup>
                   ))}
                 </SelectContent>
@@ -695,35 +697,31 @@ export default function MedalRecommendationClient({
                     Award Guidance
                   </h3>
 
-                  {!isUnitAward && (
-                    <div>
-                      <h4 className="text-lg font-semibold text-foreground">
-                        {selectedMedal.name}
-                      </h4>
-                    </div>
-                  )}
+                  <h4 className="text-lg font-semibold text-foreground">
+                    {selectedMedal.name}
+                  </h4>
 
                   <div className="space-y-2">
-                    <GuidanceHeading className="font-semibold text-foreground">
+                    <h5 className="font-semibold text-foreground">
                       {selectedMedal.criteriaHeading ?? "Criteria"}
-                    </GuidanceHeading>
+                    </h5>
 
                     <p>{selectedMedal.criteria}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <GuidanceHeading className="font-semibold text-foreground">
+                    <h5 className="font-semibold text-foreground">
                       Narrative Guidance
-                    </GuidanceHeading>
+                    </h5>
 
                     <p>{selectedMedal.narrativeGuidance}</p>
                   </div>
 
                   {displayedEligibilityNotes.length > 0 && (
                     <div className="space-y-2">
-                      <GuidanceHeading className="font-semibold text-foreground">
+                      <h5 className="font-semibold text-foreground">
                         Eligibility Guidance
-                      </GuidanceHeading>
+                      </h5>
 
                       <ul className="list-disc space-y-1 pl-5">
                         {displayedEligibilityNotes.map((note) => (
@@ -740,14 +738,9 @@ export default function MedalRecommendationClient({
                   recommendationRecipients={recommendationRecipients}
                   roster={rosterMembers}
                   organizations={organizations}
-                  policy={recipientPolicy}
-                  validCount={recipientValidation.validCount}
                   minimumError={
-                    hasAttemptedGenerate &&
-                    isUnitAward &&
-                    recipientPolicy.minimum > 1 &&
-                    recipientValidation.validCount < recipientPolicy.minimum
-                      ? `At least ${recipientPolicy.minimum} recipients are required for this Unit Award.`
+                    hasAttemptedGenerate
+                      ? recipientValidation.minimumError
                       : undefined
                   }
                   errors={
@@ -801,7 +794,7 @@ export default function MedalRecommendationClient({
                       : field.feedback === "achievementPhrase"
                         ? getAchievementPhraseWarnings(
                             worksheetValues[fieldName],
-                            worksheetValues.benefittedUnit,
+                            worksheetValues[field.feedbackRelatedField],
                           )
                         : [];
 

@@ -24,6 +24,19 @@ export function makeRecipient(overrides = {}) {
   };
 }
 
+export function makeRecipientRoster(count) {
+  return Array.from({ length: count }, (_, index) =>
+    makeRecipient({
+      user: { userId: String(index + 1), username: `Member.${index + 1}` },
+      realName: `Test Member${index + 1}`,
+    }),
+  );
+}
+
+export function makeRecipientEntries(members) {
+  return members.map((member) => ({ member }));
+}
+
 export const kentonRecipient = makeRecipient({
   user: { userId: "1002", username: "Kenton.W" },
   rank: { rankShort: "SSG", rankFull: "Staff Sergeant", rankId: "17" },

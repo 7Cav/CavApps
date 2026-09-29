@@ -147,10 +147,15 @@ export function validateRecipientEntries(entries, policy) {
   const validCount = uniqueRecipients(
     entries.map(({ member }) => member),
   ).filter(isValidRecipient).length;
+  const meetsMinimum = validCount >= policy.minimum;
   return {
     errors,
     validCount,
-    isComplete: validCount >= policy.minimum && errors.every((error) => !error),
+    meetsMinimum,
+    minimumError: meetsMinimum
+      ? undefined
+      : policy.minimumMessage?.(policy.minimum),
+    isComplete: meetsMinimum && errors.every((error) => !error),
   };
 }
 

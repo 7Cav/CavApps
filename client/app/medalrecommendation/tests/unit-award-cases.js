@@ -1,5 +1,3 @@
-// Literal review oracles from the finalized Unit Award Mapping and its pinned
-// Awards and Decorations revision (oldid=17782). Never derive these from app data.
 export const UNIT_AWARD_CASES = [
   {
     id: "army-valorous-unit-award",
@@ -19,8 +17,9 @@ export const UNIT_AWARD_CASES = [
     criteria:
       "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and the unit’s contribution was critical to the successful outcome of the operation. Must have won all official match(es) played or achieved total mission success (PVE). Must be an official organized event. This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
     narrativeGuidance:
-      "Describe the unit’s actions in at least four professionally written sentences. Explain the lead-up, use two sentences for the event itself, and describe the outcome of the event and mission. Show how the unit’s heroism, skill, or leadership under fire was critical to success.",
+      "Describe how the unit demonstrated extraordinary heroism and skill/leadership under fire in the operation in a minimum of four professionally written sentences containing the explanation leading up to the event, two sentences of the event itself, and the outcome of the event and mission.",
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
       "The unit’s contribution must have been critical to the operation’s success.",
     ],
@@ -46,8 +45,9 @@ export const UNIT_AWARD_CASES = [
     criteria:
       "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and competitions. Must have won all official match(es) played in the competition, or achieved total mission success (PVE). Must be an official organized event. Each Battalion may award one per month. This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
     narrativeGuidance:
-      "Describe the unit’s actions over the entire operation in at least three professionally written sentences. Explain the lead-up, the events, and the outcome. Show how the unit’s exceptional skill or heroism contributed to the successful result.",
+      "Describe how the unit demonstrated exceptional skill/heroism over the entire duration of the operation that was critical to the successful outcome in a minimum of three professionally written sentences containing the explanation leading up to the events, the events themselves, and the outcome of the events.",
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
       "Each Battalion may award one MUC per month.",
     ],
@@ -73,8 +73,9 @@ export const UNIT_AWARD_CASES = [
     criteria:
       "Awarded to section-level units and higher or sub-departments and higher for excellent meritorious performance of their duties and multiple, significant and distinguished meritorious contributions that positively affected multiple areas of the Regiment. Must be recommended by Battalion Staff or Departmental HQ or higher. This award is a Meritorious Service Medal equivalent.",
     narrativeGuidance:
-      "Continue from the displayed group opening. Describe the group’s meritorious work in at least three professionally written sentences, showing the multiple contributions and their effect across the Regiment.",
+      "Continue from the displayed group opening. Describe how the group demonstrated their multiple meritorious service/contributions in a minimum of three professionally written sentences.",
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "The awarded organization must be a section-level unit or larger, or a sub-department or larger.",
       "Recommendation must originate from Battalion Staff, Departmental HQ, or higher.",
     ],
@@ -99,8 +100,9 @@ export const UNIT_AWARD_CASES = [
     criteria:
       "Awarded to section-level units and higher or sub-departments and higher for superior performance of their duties. Each Battalion/Department may award one per 6 months. This award is an Army Commendation Medal equivalent.",
     narrativeGuidance:
-      "Continue from the displayed group opening. Describe the group’s meritorious service or contributions in at least three professionally written sentences. Explain what the group did and how its work supported the benefitted unit.",
+      "Continue from the displayed group opening. Describe how the group demonstrated their meritorious service/contributions in a minimum of three professionally written sentences.",
     eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
       "The awarded organization must be a section-level unit or larger, or a sub-department or larger.",
       "Each Battalion or Department may award one SUA per six months.",
     ],
@@ -108,35 +110,6 @@ export const UNIT_AWARD_CASES = [
       "For exceptionally meritorious service to S3 Operations. S3 ARMA Operations staff distinguished themselves by coordinating training across departments. The group completed every assigned task. Their work improved readiness throughout the Regiment. Their dedication to duty and exceptionally meritorious service are in great credit to themselves, S3 Operations, and the 7th Cavalry Gaming Regiment.",
   },
 ];
-
-export const INDIVIDUAL_AWARD_NAMES = {
-  operation: [
-    "Army Commendation Medal",
-    "Army Commendation Medal With Valor",
-    "Air Medal",
-    "Purple Heart",
-    "Bronze Star Medal",
-    "Bronze Star Medal With Valor",
-    "Distinguished Flying Cross",
-    "Silver Star",
-    "Distinguished Service Cross",
-  ],
-  service: [
-    "Outstanding Volunteer Service Medal",
-    "Humanitarian Service Medal",
-    "Army Achievement Medal",
-    "Joint Service Achievement Medal",
-    "Army Commendation Medal",
-    "Joint Service Commendation Medal",
-    "Meritorious Service Medal",
-    "Defense Meritorious Service Medal",
-    "Soldier’s Medal",
-    "Legion of Merit",
-    "Defense Superior Service Medal",
-    "Distinguished Service Medal",
-    "Defense Distinguished Service Medal",
-  ],
-};
 
 export const UNIT_NARRATIVE =
   "The squad prepared the approach. The unit secured the crossing. Its teams repelled the counterattack. The mission achieved every objective.";

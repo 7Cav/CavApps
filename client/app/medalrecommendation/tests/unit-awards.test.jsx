@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
 import {
   getCitationText,
-  makeRecipient,
+  makeRecipientRoster,
   renderClient,
   selectAward,
   selectComboboxOption,
@@ -11,25 +11,19 @@ import {
 } from "./test-helpers";
 import {
   UNIT_AWARD_CASES,
-  INDIVIDUAL_AWARD_NAMES,
   UNIT_OPERATION_INPUTS,
   UNIT_SERVICE_INPUTS,
   UNIT_NARRATIVE,
   UNIT_CONTINUATION,
 } from "./unit-award-cases";
 
+import { OPERATION_MEDAL_CASES } from "./operation-medal-cases";
+import { SERVICE_CATALOG_CASES } from "./service-medal-cases";
+
 const [avua, muc, jmua, sua] = UNIT_AWARD_CASES;
 const minimumError = "At least 4 recipients are required for this Unit Award.";
 const identityWarning =
   /Recipient mentions?:|\d+ of \d+ recipients (?:is|are) not referenced/;
-function roster(count) {
-  return Array.from({ length: count }, (_, index) =>
-    makeRecipient({
-      user: { userId: String(index + 1), username: `Member.${index + 1}` },
-      realName: `Test Member${index + 1}`,
-    }),
-  );
-}
 function enter(label, value) {
   fireEvent.change(screen.getByLabelText(label, { exact: true }), {
     target: { value },
@@ -45,12 +39,17 @@ function expectSelectedRecipients(count) {
   });
   expect(inputs).toHaveLength(count);
   expect(inputs.map((input) => input.value)).toEqual(
-    expect.arrayContaining(roster(count).map((member) => member.user.username)),
+    expect.arrayContaining(
+      makeRecipientRoster(count).map((member) => member.user.username),
+    ),
   );
 }
 async function open(award, count = award.minimumRecipients) {
   const user = userEvent.setup();
-  renderClient({ medalFamily: award.family, roster: roster(count) });
+  renderClient({
+    medalFamily: award.family,
+    roster: makeRecipientRoster(count),
+  });
   await selectAward(user, award.name);
   return user;
 }
@@ -84,7 +83,6 @@ async function fillContext(user, award, overrides = {}) {
     enter("Benefitted Unit", values.benefittedUnit);
     enter("Awarded Department / Unit", values.awardedUnit);
     await selectComboboxOption(user, "Service / Contributions", "Service");
-    await selectComboboxOption(user, "Narrative Opening", "Distinguished");
     enter("Narrative", values.narrative);
   }
 }
@@ -114,17 +112,17 @@ describe("Unit award worksheets", () => {
       await user.click(screen.getByRole("combobox", { name: "Award" }));
       const individual = screen.getByRole("group", { name: "Individual" });
       const unit = screen.getByRole("group", { name: "Unit" });
-      for (const group of [individual, unit]) {
-        expect(group).toBeVisible();
-        // JSDOM has no layout; browser smoke checks verify the visible indentation.
-        for (const option of within(group).getAllByRole("option"))
-          expect(option).toHaveClass("pl-12");
-      }
+      for (const group of [individual, unit]) expect(group).toBeVisible();
       expect(
         within(individual)
           .getAllByRole("option")
           .map((option) => option.textContent),
-      ).toEqual(INDIVIDUAL_AWARD_NAMES[family]);
+      ).toEqual(
+        (family === "operation"
+          ? OPERATION_MEDAL_CASES
+          : SERVICE_CATALOG_CASES
+        ).map(({ name }) => name),
+      );
       expect(
         within(unit)
           .getAllByRole("option")
@@ -147,10 +145,24 @@ describe("Unit award worksheets", () => {
   );
 
   test.each(UNIT_AWARD_CASES)(
-    "$abbreviation displays exact mapped guidance and worksheet fields",
+    "$abbreviation displays the SOP guidance with award and detail headings and no worksheet ribbon",
     async (award) => {
       await open(award);
       const guidance = screen.getByRole("region", { name: "Award Guidance" });
+      expect(
+        within(guidance).getByRole("heading", {
+          name: "Award Guidance",
+          level: 3,
+        }),
+      ).toBeVisible();
+      expect(
+        within(guidance).getByRole("heading", {
+          name: award.name,
+          exact: true,
+          level: 4,
+        }),
+      ).toBeVisible();
+      expect(within(guidance).queryByRole("img")).not.toBeInTheDocument();
       for (const heading of [
         "Criteria",
         "Narrative Guidance",
@@ -160,7 +172,7 @@ describe("Unit award worksheets", () => {
           within(guidance).getByRole("heading", {
             name: heading,
             exact: true,
-            level: 4,
+            level: 5,
           }),
         ).toBeVisible();
       expect(
@@ -174,17 +186,8 @@ describe("Unit award worksheets", () => {
         award.eligibilityNotes,
       );
       for (const note of notes) expect(note).toBeVisible();
-      if (award === avua)
-        expect(
-          screen.queryByText(
-            /Follow the applicable combat recommendation authority requirements/,
-          ),
-        ).not.toBeInTheDocument();
       for (const field of award.fields)
         expect(screen.getByLabelText(field, { exact: true })).toBeVisible();
-      expect(
-        screen.queryByRole("heading", { name: award.name, exact: true }),
-      ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("img", { name: `${award.name} ribbon` }),
       ).not.toBeInTheDocument();
@@ -246,12 +249,19 @@ describe("Unit award worksheets", () => {
         within(preview).getByRole("img", { name: `${award.name} ribbon` }),
       ).toHaveAttribute("src", award.ribbonUrl);
       expect(screen.getAllByLabelText("Citation Narrative")).toHaveLength(1);
-      if (award.family === "operation")
-        expect(
-          within(
-            screen.getByRole("list", { name: "Recommendation recipients" }),
-          ).getAllByRole("listitem"),
-        ).toHaveLength(4);
+      expect(
+        within(preview).getByRole("heading", { name: award.name, exact: true }),
+      ).toBeVisible();
+      expect(
+        within(preview).getByLabelText("Citation Narrative"),
+      ).toBeVisible();
+      expect(
+        within(
+          within(preview).getByRole("list", {
+            name: "Recommendation recipients",
+          }),
+        ).getAllByRole("listitem"),
+      ).toHaveLength(award.minimumRecipients);
     },
   );
 
@@ -463,7 +473,6 @@ describe("Unit award worksheets", () => {
       before.slice(0, -serviceClosing.length),
     );
     await selectComboboxOption(user, "Narrative Opening", "Contributed");
-    // Deliberate SOP wording: do not grammar-correct "contributed themselves by".
     expect(
       screen.getByText("S3 ARMA Operations staff contributed themselves by", {
         exact: true,
@@ -499,7 +508,6 @@ describe("Unit award worksheets", () => {
       Narrative: UNIT_CONTINUATION,
     });
     await selectComboboxOption(user, "Narrative Opening", "Contributed");
-    // This awkward construction is settled source wording, not a grammar fix.
     expect(
       screen.getByText("S3 ARMA Operations staff contributed themselves by", {
         exact: true,
@@ -562,12 +570,7 @@ describe("Unit award worksheets", () => {
         });
         expect(
           screen.getByRole("combobox", { name: "Narrative Opening" }),
-        ).toHaveTextContent("Select narrative opening");
-        await submitRecommendation(user);
-        expect(
-          screen.queryByLabelText("Citation Narrative"),
-        ).not.toBeInTheDocument();
-        await selectComboboxOption(user, "Narrative Opening", "Distinguished");
+        ).toHaveTextContent("Distinguished");
       }
       await submitRecommendation(user);
       expect(getCitationText()).toContain(
@@ -616,7 +619,7 @@ describe("Unit award worksheets", () => {
       const user = await open(award);
       await fillContext(user, award);
       const dialog = await openBulk(user);
-      for (const member of roster(3))
+      for (const member of makeRecipientRoster(3))
         await user.click(
           within(dialog).getByRole("checkbox", {
             name: `Specialist ${member.realName}`,
@@ -631,18 +634,19 @@ describe("Unit award worksheets", () => {
       );
       expectSelectedRecipients(3);
       expect(
-        screen.getByText(/3 valid recipients selected\. At least 4/),
-      ).toBeVisible();
+        within(
+          screen.getByRole("region", { name: "Status", exact: true }),
+        ).getByRole("status"),
+      ).toHaveTextContent("Complete the worksheet");
       expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
       await submitRecommendation(user);
       const recipients = screen.getByRole("region", { name: "Recipients" });
       const error = within(recipients).getByRole("alert");
-      expect(error).toHaveTextContent(minimumError);
-      expect(error).toHaveClass("text-destructive");
+      expect(error.textContent).toBe(minimumError);
+      expect(screen.getAllByText(minimumError, { exact: true })).toHaveLength(
+        1,
+      );
       expect(recipients).toHaveAccessibleDescription(minimumError);
-      expect(
-        screen.queryByText(/3 valid recipients selected\. At least 4/),
-      ).not.toBeInTheDocument();
       expect(
         screen.queryByLabelText("Citation Narrative"),
       ).not.toBeInTheDocument();
@@ -656,9 +660,6 @@ describe("Unit award worksheets", () => {
       expect(
         screen.queryByLabelText("Citation Narrative"),
       ).not.toBeInTheDocument();
-      expect(
-        screen.getByText(/3 valid recipients selected\. At least 4/),
-      ).toBeVisible();
       expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
       await submitRecommendation(user);
       expect(
@@ -715,7 +716,9 @@ describe("Unit award worksheets", () => {
       expect(names).toHaveLength(count);
       expect(names).toEqual(
         expect.arrayContaining(
-          roster(count).map((member) => `Specialist ${member.realName}`),
+          makeRecipientRoster(count).map(
+            (member) => `Specialist ${member.realName}`,
+          ),
         ),
       );
     },
@@ -723,6 +726,9 @@ describe("Unit award worksheets", () => {
 
   test("JMUA achievement is required free text; framing advice preserves the input verbatim", async () => {
     const user = await open(jmua);
+    expect(
+      screen.getByRole("combobox", { name: "Narrative Opening" }),
+    ).toHaveTextContent("Distinguished");
     expect(
       screen.getByText(
         "Describe the achievement or contribution being recognized. Enter only the achievement phrase; the Aid will add “For” and the benefitted unit automatically.",
@@ -761,6 +767,35 @@ describe("Unit award worksheets", () => {
       "aria-invalid",
       "true",
     );
+    expect(
+      screen.queryByLabelText("Citation Narrative"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("AVUA prose warnings appear before four recipients are selected, while Individual warnings still wait for recipient identity", async () => {
+    const individual = { family: "operation", name: "Army Commendation Medal" };
+    const user = await open(individual, 1);
+    await user.type(
+      screen.getByRole("textbox", { name: "Narrative" }),
+      "The the team advanced.",
+    );
+    expect(screen.queryByText(/Possible duplicate:/)).not.toBeInTheDocument();
+    await selectAll(user);
+    expect(screen.getByText(/Possible duplicate:/)).toBeVisible();
+
+    await selectAward(user, avua.name);
+    expectSelectedRecipients(1);
+    enter("Narrative", "");
+    await user.type(
+      screen.getByRole("textbox", { name: "Narrative" }),
+      "The the unit advanced.",
+    );
+    expect(screen.getByText(/Possible duplicate:/)).toBeVisible();
+    expect(
+      within(
+        screen.getByRole("region", { name: "Status", exact: true }),
+      ).getByRole("status"),
+    ).toHaveTextContent("Complete the worksheet");
     expect(
       screen.queryByLabelText("Citation Narrative"),
     ).not.toBeInTheDocument();

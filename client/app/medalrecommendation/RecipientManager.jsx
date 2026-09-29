@@ -19,8 +19,6 @@ export default function RecipientManager({
   recommendationRecipients,
   roster,
   organizations,
-  policy,
-  validCount,
   minimumError,
   errors,
   onAdd,
@@ -54,7 +52,7 @@ export default function RecipientManager({
       <h3 id="recipients-heading" className="font-semibold">
         Recipients
       </h3>
-      {minimumError ? (
+      {minimumError && (
         <p
           id="recipients-minimum-error"
           role="alert"
@@ -62,17 +60,6 @@ export default function RecipientManager({
         >
           {minimumError}
         </p>
-      ) : (
-        policy.minimum > 1 && (
-          <p
-            role="status"
-            aria-live="polite"
-            className="text-sm text-muted-foreground"
-          >
-            {validCount} valid recipients selected. At least {policy.minimum}{" "}
-            are required to generate this recommendation.
-          </p>
-        )
       )}
       {compact ? (
         <>
@@ -247,7 +234,6 @@ export default function RecipientManager({
         roster={roster}
         organizations={organizations}
         selected={selected}
-        policy={policy}
         onConfirm={(members) => {
           onConfirm(members);
           setExpanded(false);

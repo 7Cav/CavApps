@@ -1,8 +1,16 @@
 import { getMedalFamily } from "../lib/medal-families";
-import { resolveMedalWorksheet } from "../lib/worksheet-profiles";
+import {
+  resolveMedalWorksheet,
+  getActiveWorksheetValues,
+  getCitationChoiceText,
+} from "../lib/worksheet-profiles";
 import { validateWorksheet } from "../lib/worksheet-validation";
 import { validateRecipientEntries } from "../lib/recipient-utils";
-import { makeRecipient } from "./test-helpers";
+import { makeRecipientRoster, makeRecipientEntries } from "./test-helpers";
+import {
+  combineNarrative,
+  resolveRecommendationRecipientSubject,
+} from "../lib/citation-builders";
 import {
   UNIT_AWARD_CASES,
   UNIT_OPERATION_INPUTS,
@@ -18,18 +26,35 @@ const serviceAwards = UNIT_AWARD_CASES.filter(
 function medalFor(award) {
   return getMedalFamily(award.family).getMedalById(award.id);
 }
-function entries(count) {
-  return Array.from({ length: count }, (_, index) => ({
-    member: makeRecipient({
-      user: { userId: String(index + 1) },
-      realName: `Test Member${index + 1}`,
-    }),
-  }));
-}
 function completeValues(award) {
   return award.family === "operation"
     ? { ...UNIT_OPERATION_INPUTS, actionCharacter: "skillful" }
     : { ...UNIT_SERVICE_INPUTS };
+}
+
+// Exercise the generation sequence as a whole; no individual builder owns rejection.
+function generateCitation(medal, worksheet, values) {
+  const context = {
+    ...getActiveWorksheetValues(worksheet, values),
+    date: "11 August 2026",
+    recipientSubject: resolveRecommendationRecipientSubject(
+      makeRecipientRoster(4),
+    ),
+  };
+  for (const [key, field] of Object.entries(worksheet.fields)) {
+    if (field.type === "citationChoice") {
+      context[key] = getCitationChoiceText(field, context[key]);
+    }
+  }
+  const narrative = combineNarrative(
+    medal.buildNarrativeOpening?.(context) ?? "",
+    context.narrative,
+  );
+  return [
+    medal.buildOpening(context),
+    narrative,
+    medal.buildClosing(context),
+  ].join(" ");
 }
 
 // UI tests own wording, field display, choices and transitions. This layer owns
@@ -65,12 +90,22 @@ describe("Unit award validation contracts", () => {
     (award) => {
       const policy = resolveMedalWorksheet(medalFor(award)).recipientPolicy;
       for (const count of [0, 1, 3, 4]) {
-        expect(validateRecipientEntries(entries(count), policy)).toMatchObject({
+        expect(
+          validateRecipientEntries(
+            makeRecipientEntries(makeRecipientRoster(count)),
+            policy,
+          ),
+        ).toMatchObject({
           validCount: count,
+          meetsMinimum: count === 4,
+          minimumError:
+            count < 4
+              ? "At least 4 recipients are required for this Unit Award."
+              : undefined,
           isComplete: count === 4,
         });
       }
-      const three = entries(3);
+      const three = makeRecipientEntries(makeRecipientRoster(3));
       for (const fourth of [
         three[0],
         { member: null, query: "Typed but unselected" },
@@ -87,15 +122,18 @@ describe("Unit award validation contracts", () => {
     (award) => {
       const policy = resolveMedalWorksheet(medalFor(award)).recipientPolicy;
       expect(validateRecipientEntries([], policy).isComplete).toBe(false);
-      expect(validateRecipientEntries(entries(1), policy).isComplete).toBe(
-        true,
-      );
+      expect(
+        validateRecipientEntries(
+          makeRecipientEntries(makeRecipientRoster(1)),
+          policy,
+        ).isComplete,
+      ).toBe(true);
     },
   );
 
   // The shared recipient suite owns the 1,500-person stress case.
   test("all four Unit Awards accept a 30-person recipient collection without truncation", () => {
-    const selected = entries(30);
+    const selected = makeRecipientEntries(makeRecipientRoster(30));
     for (const award of UNIT_AWARD_CASES) {
       expect(
         validateRecipientEntries(
@@ -114,6 +152,7 @@ describe("Unit award validation contracts", () => {
       const medal = medalFor(award);
       const worksheet = resolveMedalWorksheet(medal);
       const values = completeValues(award);
+      expect(generateCitation(medal, worksheet, values)).toMatch(/^For /);
       for (const key of [
         "actionCharacter",
         "serviceType",
@@ -123,14 +162,7 @@ describe("Unit award validation contracts", () => {
         expect(validateWorksheet(worksheet, unsupported).isComplete).toBe(
           false,
         );
-        const builders =
-          key === "narrativeOpening"
-            ? [medal.buildNarrativeOpening]
-            : award.abbreviation === "JMUA"
-              ? [medal.buildClosing]
-              : [medal.buildOpening, medal.buildClosing];
-        for (const builder of builders)
-          expect(() => builder(unsupported)).toThrow(/Unsupported/);
+        expect(() => generateCitation(medal, worksheet, unsupported)).toThrow();
       }
     },
   );

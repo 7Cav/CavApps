@@ -19,11 +19,15 @@ import { resolveRecommendationRecipientSubject } from "../lib/citation-builders"
 import { resolveMedalWorksheet } from "../lib/worksheet-profiles";
 import { OPERATION_MEDALS } from "../lib/medal-definitions";
 import { SERVICE_MEDALS } from "../lib/service-medal-definitions";
+import { getMedalFamily } from "../lib/medal-families";
+import { OPERATION_MEDAL_CASES } from "./operation-medal-cases";
+import { SERVICE_CATALOG_CASES } from "./service-medal-cases";
 import {
   developmentRecipientGroup,
   janeRecipient as jane,
   kentonRecipient,
   makeRecipient,
+  makeRecipientEntries,
 } from "./test-helpers";
 
 const kenton = {
@@ -43,7 +47,6 @@ const groups = [
 const currentPolicy = resolveMedalWorksheet(
   OPERATION_MEDALS[0],
 ).recipientPolicy;
-const entries = (members) => members.map((member) => ({ member }));
 
 describe("recommendation recipient ordering", () => {
   test("orders Cav ranks without mutating the input or recipients", () => {
@@ -166,7 +169,8 @@ describe("recommendation recipient ordering", () => {
       (_, index) => ![4, 5].includes(index),
     )) {
       expect(
-        validateRecipientEntries(entries([member]), currentPolicy).isComplete,
+        validateRecipientEntries(makeRecipientEntries([member]), currentPolicy)
+          .isComplete,
       ).toBe(false);
     }
   });
@@ -189,7 +193,8 @@ describe("recommendation recipient ordering", () => {
       }),
     );
     expect(
-      validateRecipientEntries(entries(members), currentPolicy).isComplete,
+      validateRecipientEntries(makeRecipientEntries(members), currentPolicy)
+        .isComplete,
     ).toBe(true);
     expect(
       orderRecipientsForRecommendation(members).map(
@@ -210,8 +215,10 @@ describe("recommendation recipient ordering", () => {
         rank: { rankId: 2, rankShort: "GEN", rankFull: "General" },
       });
       expect(
-        validateRecipientEntries(entries([generalOfTheArmy]), currentPolicy)
-          .isComplete,
+        validateRecipientEntries(
+          makeRecipientEntries([generalOfTheArmy]),
+          currentPolicy,
+        ).isComplete,
       ).toBe(true);
       expect(
         orderRecipientsForRecommendation([general, generalOfTheArmy]),
@@ -388,25 +395,20 @@ describe("recipient collection and identity", () => {
   });
 
   test.each([
-    ...OPERATION_MEDALS.filter(
-      (medal) => medal.awardCategory === "individual",
-    ).map((medal) => ["Operation", medal.name, medal]),
-    ...SERVICE_MEDALS.filter(
-      (medal) => medal.awardCategory === "individual",
-    ).map((medal) => ["Service", medal.name, medal]),
-  ])(
-    "%s / %s requires one recipient but permits many",
-    (_family, _name, medal) => {
-      const policy = resolveMedalWorksheet(medal).recipientPolicy;
-      expect(validateRecipientEntries([], policy).isComplete).toBe(false);
-      expect(
-        validateRecipientEntries(entries([kenton]), policy).isComplete,
-      ).toBe(true);
-      expect(validateRecipientEntries(entries(roster), policy).isComplete).toBe(
-        true,
-      );
-    },
-  );
+    ...OPERATION_MEDAL_CASES.map(({ id, name }) => ["operation", name, id]),
+    ...SERVICE_CATALOG_CASES.map(({ id, name }) => ["service", name, id]),
+  ])("%s / %s requires one recipient but permits many", (family, _name, id) => {
+    const medal = getMedalFamily(family).getMedalById(id);
+    const policy = resolveMedalWorksheet(medal).recipientPolicy;
+    expect(validateRecipientEntries([], policy).isComplete).toBe(false);
+    expect(
+      validateRecipientEntries(makeRecipientEntries([kenton]), policy)
+        .isComplete,
+    ).toBe(true);
+    expect(
+      validateRecipientEntries(makeRecipientEntries(roster), policy).isComplete,
+    ).toBe(true);
+  });
 
   test.each([
     ["unresolved/null recipient", null],
@@ -415,8 +417,10 @@ describe("recipient collection and identity", () => {
     ["blank real name", makeRecipient({ realName: " " })],
   ])("rejects incomplete citation identity: %s", (_condition, member) => {
     expect(
-      validateRecipientEntries(entries([kenton, member]), currentPolicy)
-        .isComplete,
+      validateRecipientEntries(
+        makeRecipientEntries([kenton, member]),
+        currentPolicy,
+      ).isComplete,
     ).toBe(false);
   });
 
@@ -431,7 +435,7 @@ describe("recipient collection and identity", () => {
     ["non-text full rank", { rankFull: 20 }],
   ])("rejects recipient rank metadata: %s", (_condition, rank) => {
     const validation = validateRecipientEntries(
-      entries([makeRecipient({ rank })]),
+      makeRecipientEntries([makeRecipient({ rank })]),
       currentPolicy,
     );
     expect(validation.isComplete).toBe(false);
@@ -441,13 +445,18 @@ describe("recipient collection and identity", () => {
   test("rejects duplicate IDs even when invalid state is supplied directly", () => {
     expect(
       validateRecipientEntries(
-        entries([kenton, { ...kenton, realName: "Different Display" }]),
+        makeRecipientEntries([
+          kenton,
+          { ...kenton, realName: "Different Display" },
+        ]),
         currentPolicy,
       ).isComplete,
     ).toBe(false);
     expect(
-      validateRecipientEntries(entries([jane, otherJane]), currentPolicy)
-        .isComplete,
+      validateRecipientEntries(
+        makeRecipientEntries([jane, otherJane]),
+        currentPolicy,
+      ).isComplete,
     ).toBe(true);
   });
 
@@ -632,7 +641,8 @@ describe("bulk filtering and ordered selection", () => {
     expect(selection[0]).toEqual(largeRoster[20]);
     expect(selection.at(-1)).toEqual(largeRoster.at(-1));
     expect(
-      validateRecipientEntries(entries(selection), currentPolicy).isComplete,
+      validateRecipientEntries(makeRecipientEntries(selection), currentPolicy)
+        .isComplete,
     ).toBe(true);
     const pasteOrder = [...largeRoster].reverse();
     const pasted = matchPastedRecipients(
@@ -646,8 +656,10 @@ describe("bulk filtering and ordered selection", () => {
       new Set(pasted.selection.map((member) => member.user.userId)).size,
     ).toBe(1500);
     expect(
-      validateRecipientEntries(entries(pasted.selection), currentPolicy)
-        .isComplete,
+      validateRecipientEntries(
+        makeRecipientEntries(pasted.selection),
+        currentPolicy,
+      ).isComplete,
     ).toBe(true);
   });
 });
