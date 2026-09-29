@@ -86,6 +86,24 @@ function serviceWorksheet(contextFields = {}) {
   };
 }
 
+function serviceUnitAwardWorksheet(contextFields) {
+  const worksheet = serviceWorksheet(contextFields);
+  worksheet.fields.narrative = {
+    ...SERVICE_NARRATIVE,
+    recipientIdentityChecks: false,
+    placeholder: "Continue the group's recommendation narrative...",
+    helperText:
+      "Continue from the displayed group opening. Changes to the awarded group or Narrative Opening preserve your continuation.",
+  };
+  return worksheet;
+}
+
+const BENEFITTED_UNIT = serviceText("Benefitted Unit", "S3 Operations");
+const AWARDED_UNIT = serviceText(
+  "Awarded Department / Unit",
+  "S3 ARMA Operations staff",
+);
+
 export const WORKSHEET_PROFILES = {
   operationIndividual: {
     recipientType: "individual",
@@ -150,6 +168,75 @@ export const WORKSHEET_PROFILES = {
       },
     },
   },
+
+  operationUnitAward: {
+    // Unit awards still select individual roster records.
+    recipientType: "individual",
+    recipientPolicy: { minimum: 4 },
+    fieldOrder: [
+      "actionCharacter",
+      "combatUnit",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ],
+    fields: {
+      combatUnit: {
+        ...serviceText("Combat Unit", "Alpha Squad"),
+        helperText: "Enter the combat unit whose actions are being recognized.",
+      },
+      operationTitle: serviceText("Operation Title", "Overlord"),
+      location: serviceText("Location", "Omaha Beach"),
+      operationDate: {
+        type: "date",
+        required: true,
+        defaultValue: "",
+        label: "Operation Date",
+        invalidMessage: "Date must be today or earlier",
+        awardChange: "preserve",
+      },
+      narrative: {
+        type: "textarea",
+        required: true,
+        defaultValue: "",
+        label: "Narrative",
+        placeholder: "Explain the unit's lead-up, actions, and outcome...",
+        rows: 8,
+        feedback: "narrativeWarnings",
+        recipientIdentityChecks: false,
+        awardChange: "preserve",
+      },
+    },
+  },
+  serviceJointUnitAward: serviceUnitAwardWorksheet({
+    achievementContribution: {
+      ...serviceText(
+        "Achievement / Contribution",
+        "exceptionally meritorious performance and distinguished contributions",
+      ),
+      helperText:
+        "Describe the achievement or contribution being recognized. Enter only the achievement phrase; the Aid will add “For” and the benefitted unit automatically.",
+      feedback: "achievementPhrase",
+    },
+    benefittedUnit: BENEFITTED_UNIT,
+    awardedUnit: AWARDED_UNIT,
+    serviceType: {
+      ...SERVICE_CONTRIBUTIONS,
+      helperText:
+        "Controls the closing only. Achievement / Contribution supplies the opening.",
+    },
+    narrativeOpening: { ...NARRATIVE_OPENING, defaultValue: "" },
+  }),
+  serviceSuperiorUnitAward: serviceUnitAwardWorksheet({
+    serviceType: {
+      ...SERVICE_CONTRIBUTIONS,
+      helperText: "Controls the generated opening and closing together.",
+    },
+    benefittedUnit: BENEFITTED_UNIT,
+    awardedUnit: AWARDED_UNIT,
+    narrativeOpening: NARRATIVE_OPENING,
+  }),
 
   serviceIndividual: serviceWorksheet({
     affectedArea: serviceText(

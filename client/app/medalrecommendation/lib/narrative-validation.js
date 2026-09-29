@@ -128,6 +128,7 @@ export function getGroupRecipientWarning(
   narrativeField,
 ) {
   if (
+    narrativeField?.recipientIdentityChecks === false ||
     narrativeField?.systemOwnedNarrativeOpening ||
     recipients.length < 2 ||
     recipients.length > EXPLICIT_RECIPIENT_LIMIT
@@ -331,4 +332,25 @@ export function mergeHighlightRanges(highlightRanges) {
   }
 
   return mergedRanges;
+}
+
+export function getAchievementPhraseWarnings(value = "", benefittedUnit = "") {
+  const phrase = value.trim();
+  const beneficiary = benefittedUnit.trim();
+  if (!phrase) return [];
+  if (
+    /^for\b/i.test(phrase) ||
+    /[.!?]$/.test(phrase) ||
+    (beneficiary &&
+      phrase.toLowerCase().endsWith(` to ${beneficiary.toLowerCase()}`))
+  ) {
+    return [
+      {
+        key: "achievement-framing",
+        message:
+          "Check the achievement phrase: the Aid supplies ‘For’, ‘to [Benefitted Unit]’, and the final period. Your text has been preserved; review the generated opening.",
+      },
+    ];
+  }
+  return [];
 }

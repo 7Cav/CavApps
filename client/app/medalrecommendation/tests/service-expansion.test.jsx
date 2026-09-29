@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ServiceMonthYearField from "../ServiceMonthYearField.jsx";
 import { getMedalFamily, MEDAL_FAMILY_IDS } from "../lib/medal-families.js";
+import { UNIT_AWARD_CASES } from "./unit-award-cases";
 import { SERVICE_MEDALS } from "../lib/service-medal-definitions.js";
 import {
   fillOperationWorksheet,
@@ -109,15 +110,23 @@ describe("Expanded Service Medal family", () => {
     vi.useRealTimers();
   });
 
-  test("offers exactly the thirteen mapped Service Medals", async () => {
+  test("offers the thirteen individual Service Medals followed by the two Unit awards", async () => {
     const user = userEvent.setup();
     renderServiceClient();
     await user.click(screen.getByRole("combobox", { name: "Award" }));
     expect(
       screen.getAllByRole("option").map((option) => option.textContent),
-    ).toEqual(SERVICE_CATALOG_CASES.map(({ name }) => name));
+    ).toEqual(
+      [
+        ...SERVICE_CATALOG_CASES,
+        ...UNIT_AWARD_CASES.filter(({ family }) => family === "service"),
+      ].map(({ name }) => name),
+    );
     expect(SERVICE_MEDALS.map(({ id, name }) => ({ id, name }))).toEqual(
-      SERVICE_CATALOG_CASES.map(({ id, name }) => ({ id, name })),
+      [
+        ...SERVICE_CATALOG_CASES,
+        ...UNIT_AWARD_CASES.filter(({ family }) => family === "service"),
+      ].map(({ id, name }) => ({ id, name })),
     );
   });
 

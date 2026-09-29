@@ -371,3 +371,73 @@ export function buildDefenseDistinguishedServiceClosing(context) {
   const { element } = context;
   return `${getPossessiveSubject(context)} exemplary leadership demonstrates their commitment to their troopers and reflects great credit upon themselves, ${element}, and the 7th Cavalry Gaming Regiment.`;
 }
+
+// Unit templates: Awards and Decorations, pinned revision 17782.
+// Their collective prose is independent of individual recipient subjects.
+function buildUnitOperationContext({
+  combatUnit,
+  operationTitle,
+  location,
+  date,
+}) {
+  return (
+    `${combatUnit} in the 7th Cavalry Regiment during combat in ` +
+    buildOperationLocationDateTail({ operationTitle, location, date })
+  );
+}
+
+export function buildValorousUnitOpening(context) {
+  return (
+    "For conspicuous gallantry and intrepidity under direct enemy fire while serving as " +
+    buildUnitOperationContext(context)
+  );
+}
+
+export function buildValorousUnitClosing() {
+  return `Their heroism, skill and devotion to duty reflect ${GREAT_CREDIT_CLOSING}`;
+}
+
+function resolveUnitActionCharacter(value) {
+  if (!["skillful", "heroic"].includes(value)) {
+    throw new Error(`Unsupported Skillful / Heroic: ${value}`);
+  }
+  return value;
+}
+
+export function buildMeritoriousUnitOpening(context) {
+  return (
+    `For ${resolveUnitActionCharacter(context.actionCharacter)} actions over an entire operation while serving as ` +
+    buildUnitOperationContext(context)
+  );
+}
+
+export function buildMeritoriousUnitClosing({ actionCharacter }) {
+  return `Their ${resolveUnitActionCharacter(actionCharacter)} actions reflect ${GREAT_CREDIT_CLOSING}`;
+}
+
+export function buildJointUnitOpening({
+  achievementContribution,
+  benefittedUnit,
+}) {
+  return `For ${achievementContribution} to ${benefittedUnit}.`;
+}
+
+export function buildSuperiorUnitOpening({ serviceType, benefittedUnit }) {
+  return `For exceptionally meritorious ${resolveServiceType(serviceType)} to ${benefittedUnit}.`;
+}
+
+export function buildUnitNarrativeOpening({ awardedUnit, narrativeOpening }) {
+  if (
+    narrativeOpening &&
+    !["distinguished", "contributed"].includes(narrativeOpening)
+  ) {
+    throw new Error(`Unsupported Narrative Opening: ${narrativeOpening}`);
+  }
+  if (!awardedUnit?.trim() || !narrativeOpening) return "";
+  // Preserve the settled SOP construction, including "contributed themselves by".
+  return `${awardedUnit.trim()} ${narrativeOpening} themselves by`;
+}
+
+export function buildServiceUnitClosing({ serviceType, benefittedUnit }) {
+  return `Their dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to themselves, ${benefittedUnit}, and the 7th Cavalry Gaming Regiment.`;
+}

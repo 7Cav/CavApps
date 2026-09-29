@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  RECIPIENT_SELECTION_POLICY,
   getRecipientPasteError,
   clearShownRecipients,
   filterRecipients,
@@ -58,7 +59,7 @@ function BulkRecipientDraft({
   );
   const canConfirm = validateRecipientEntries(
     draft.map((member) => ({ member })),
-    policy,
+    RECIPIENT_SELECTION_POLICY,
   ).isComplete;
 
   function rejectOversizedInput(message) {
@@ -213,6 +214,13 @@ function BulkRecipientDraft({
           <p aria-live="polite" className="font-semibold">
             {draft.length} recipients selected
           </p>
+          {policy.minimum > 1 && (
+            <p className="text-sm text-muted-foreground">
+              You can confirm a smaller selection and continue editing. At least{" "}
+              {policy.minimum} valid recipients are required to generate this
+              recommendation.
+            </p>
+          )}
           <ul
             aria-label="Draft recipients"
             className="max-h-52 space-y-1 overflow-y-auto rounded-md border p-2"

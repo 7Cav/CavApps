@@ -1,4 +1,8 @@
 import {
+  buildValorousUnitOpening,
+  buildValorousUnitClosing,
+  buildMeritoriousUnitOpening,
+  buildMeritoriousUnitClosing,
   buildActionCharacterCreditClosing,
   buildEntireOperationActionOpening,
   buildExtraordinaryHeroismOpening,
@@ -280,7 +284,52 @@ export const OPERATION_MEDALS = [
 
     buildClosing: buildHeroismSkillDevotionClosing,
   },
-];
+  // Source: https://wiki.7cav.us/index.php?title=Awards_and_Decorations&oldid=17782#Unit_Award_Citations
+  {
+    id: "army-valorous-unit-award",
+    name: "Army Valorous Unit Award",
+    abbreviation: "AVUA",
+    awardCategory: "unit",
+    worksheetProfile: "operationUnitAward",
+    ribbonUrl: "https://wiki.7cav.us/images/8/8e/VUA.jpg",
+    criteria:
+      "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and the unit’s contribution was critical to the successful outcome of the operation. Must have won all official match(es) played or achieved total mission success (PVE). Must be an official organized event. This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
+    narrativeGuidance:
+      "Describe the unit’s actions in at least four professionally written sentences. Explain the lead-up, use two sentences for the event itself, and describe the outcome of the event and mission. Show how the unit’s heroism, skill, or leadership under fire was critical to success.",
+    minimumNarrativeSentences: 4,
+    eligibilityNotes: [
+      "This award is a Silver Star equivalent and is to be used for applicable scenarios with 4 or more people.",
+      "The unit’s contribution must have been critical to the operation’s success.",
+    ],
+    buildOpening: buildValorousUnitOpening,
+    buildClosing: buildValorousUnitClosing,
+  },
+  {
+    id: "meritorious-unit-commendation",
+    name: "Meritorious Unit Commendation",
+    abbreviation: "MUC",
+    awardCategory: "unit",
+    worksheetProfile: "operationUnitAward",
+    ribbonUrl: "https://wiki.7cav.us/images/c/cc/MUC.jpg",
+    criteria:
+      "Awarded to squad-sized units and up that display outstanding and exceptional skill as a whole during combat operations and competitions. Must have won all official match(es) played in the competition, or achieved total mission success (PVE). Must be an official organized event. Each Battalion may award one per month. This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
+    narrativeGuidance:
+      "Describe the unit’s actions over the entire operation in at least three professionally written sentences. Explain the lead-up, the events, and the outcome. Show how the unit’s exceptional skill or heroism contributed to the successful result.",
+    minimumNarrativeSentences: 3,
+    fields: {
+      actionCharacter: {
+        ...ACTION_CHARACTER_FIELD,
+        label: "Skillful / Heroic",
+      },
+    },
+    eligibilityNotes: [
+      "This award is a Bronze Star equivalent and is to be used for applicable scenarios with 4 or more people.",
+      "Each Battalion may award one MUC per month.",
+    ],
+    buildOpening: buildMeritoriousUnitOpening,
+    buildClosing: buildMeritoriousUnitClosing,
+  },
+].map((medal) => ({ awardCategory: "individual", ...medal }));
 
 export function getOperationMedalById(medalId) {
   return OPERATION_MEDALS.find((medal) => medal.id === medalId) ?? null;

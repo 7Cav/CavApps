@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import BulkRecipientDialog from "./BulkRecipientDialog";
 import {
   RECIPIENT_INLINE_LIMIT,
+  RECIPIENT_SELECTION_POLICY,
   filterRecipients,
   getRecipientDisplayName,
   getRecipientId,
@@ -19,6 +20,8 @@ export default function RecipientManager({
   roster,
   organizations,
   policy,
+  validCount,
+  minimumError,
   errors,
   onAdd,
   onRemove,
@@ -43,10 +46,34 @@ export default function RecipientManager({
   }
 
   return (
-    <section aria-labelledby="recipients-heading" className="space-y-4">
+    <section
+      aria-labelledby="recipients-heading"
+      aria-describedby={minimumError ? "recipients-minimum-error" : undefined}
+      className="space-y-4"
+    >
       <h3 id="recipients-heading" className="font-semibold">
         Recipients
       </h3>
+      {minimumError ? (
+        <p
+          id="recipients-minimum-error"
+          role="alert"
+          className="text-sm font-medium text-destructive"
+        >
+          {minimumError}
+        </p>
+      ) : (
+        policy.minimum > 1 && (
+          <p
+            role="status"
+            aria-live="polite"
+            className="text-sm text-muted-foreground"
+          >
+            {validCount} valid recipients selected. At least {policy.minimum}{" "}
+            are required to generate this recommendation.
+          </p>
+        )
+      )}
       {compact ? (
         <>
           <Button
@@ -103,7 +130,7 @@ export default function RecipientManager({
             <Button
               type="button"
               variant="outline"
-              disabled={entries.length <= policy.minimum}
+              disabled={entries.length <= RECIPIENT_SELECTION_POLICY.minimum}
               onClick={onRemove}
             >
               Remove Recipient

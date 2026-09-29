@@ -388,8 +388,12 @@ describe("recipient collection and identity", () => {
   });
 
   test.each([
-    ...OPERATION_MEDALS.map((medal) => ["Operation", medal.name, medal]),
-    ...SERVICE_MEDALS.map((medal) => ["Service", medal.name, medal]),
+    ...OPERATION_MEDALS.filter(
+      (medal) => medal.awardCategory === "individual",
+    ).map((medal) => ["Operation", medal.name, medal]),
+    ...SERVICE_MEDALS.filter(
+      (medal) => medal.awardCategory === "individual",
+    ).map((medal) => ["Service", medal.name, medal]),
   ])(
     "%s / %s requires one recipient but permits many",
     (_family, _name, medal) => {

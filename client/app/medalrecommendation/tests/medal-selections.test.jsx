@@ -27,14 +27,16 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     }
   });
 
-  test("the rendered medal cases cover every Operation Medal exactly once", () => {
+  test("the existing rendered cases cover every individual Operation Medal exactly once", () => {
     const caseIdentities = OPERATION_MEDAL_CASES.map(({ id, name }) => ({
       id,
       name,
     }));
 
     expect(caseIdentities).toEqual(
-      OPERATION_MEDALS.map(({ id, name }) => ({ id, name })),
+      OPERATION_MEDALS.filter(
+        (medal) => medal.awardCategory === "individual",
+      ).map(({ id, name }) => ({ id, name })),
     );
     expect(new Set(caseIdentities.map(({ id }) => id)).size).toBe(
       caseIdentities.length,
