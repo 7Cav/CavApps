@@ -170,6 +170,7 @@ describe("recommendation generation", () => {
       },
     };
     const medal = {
+      recommendationTitleContext: { type: "none" },
       minimumNarrativeSentences: 1,
       buildOpening: ({ recognition, inactive }) =>
         inactive === undefined
