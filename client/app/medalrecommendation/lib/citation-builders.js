@@ -372,11 +372,8 @@ export function buildMeritoriousUnitClosing({ actionCharacter }) {
   return buildActionCharacterCredit("Their", actionCharacter);
 }
 
-export function buildJointUnitOpening({
-  achievementContribution,
-  benefittedUnit,
-}) {
-  return `For ${achievementContribution} to ${benefittedUnit}.`;
+export function buildJointUnitOpening({ benefittedUnit }) {
+  return `For exceptionally meritorious performance and distinguished contributions to ${benefittedUnit}.`;
 }
 
 export function buildSuperiorUnitOpening({ serviceType, benefittedUnit }) {

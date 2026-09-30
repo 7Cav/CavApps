@@ -1,16 +1,9 @@
 import { getMedalFamily } from "../lib/medal-families";
-import {
-  resolveMedalWorksheet,
-  getActiveWorksheetValues,
-  getCitationChoiceText,
-} from "../lib/worksheet-profiles";
+import { resolveMedalWorksheet } from "../lib/worksheet-profiles";
+import { generateRecommendation } from "../lib/recommendation-generation";
 import { validateWorksheet } from "../lib/worksheet-validation";
 import { validateRecipientEntries } from "../lib/recipient-utils";
 import { makeRecipientRoster, makeRecipientEntries } from "./test-helpers";
-import {
-  combineNarrative,
-  resolveRecommendationRecipientSubject,
-} from "../lib/citation-builders";
 import {
   UNIT_AWARD_CASES,
   UNIT_OPERATION_INPUTS,
@@ -30,31 +23,6 @@ function completeValues(award) {
   return award.family === "operation"
     ? { ...UNIT_OPERATION_INPUTS, actionCharacter: "skillful" }
     : { ...UNIT_SERVICE_INPUTS };
-}
-
-// Exercise the generation sequence as a whole; no individual builder owns rejection.
-function generateCitation(medal, worksheet, values) {
-  const context = {
-    ...getActiveWorksheetValues(worksheet, values),
-    date: "11 August 2026",
-    recipientSubject: resolveRecommendationRecipientSubject(
-      makeRecipientRoster(4),
-    ),
-  };
-  for (const [key, field] of Object.entries(worksheet.fields)) {
-    if (field.type === "citationChoice") {
-      context[key] = getCitationChoiceText(field, context[key]);
-    }
-  }
-  const narrative = combineNarrative(
-    medal.buildNarrativeOpening?.(context) ?? "",
-    context.narrative,
-  );
-  return [
-    medal.buildOpening(context),
-    narrative,
-    medal.buildClosing(context),
-  ].join(" ");
 }
 
 // UI tests own wording, field display, choices and transitions. This layer owns
@@ -152,7 +120,13 @@ describe("Unit award validation contracts", () => {
       const medal = medalFor(award);
       const worksheet = resolveMedalWorksheet(medal);
       const values = completeValues(award);
-      expect(generateCitation(medal, worksheet, values)).toMatch(/^For /);
+      const input = {
+        medal,
+        worksheet,
+        values,
+        recipients: makeRecipientRoster(4),
+      };
+      expect(generateRecommendation(input).openingSentence).toMatch(/^For /);
       for (const key of [
         "actionCharacter",
         "serviceType",
@@ -162,7 +136,9 @@ describe("Unit award validation contracts", () => {
         expect(validateWorksheet(worksheet, unsupported).isComplete).toBe(
           false,
         );
-        expect(() => generateCitation(medal, worksheet, unsupported)).toThrow();
+        expect(() =>
+          generateRecommendation({ ...input, values: unsupported }),
+        ).toThrow();
       }
     },
   );

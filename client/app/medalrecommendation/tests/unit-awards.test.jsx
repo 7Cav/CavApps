@@ -78,8 +78,6 @@ async function fillContext(user, award, overrides = {}) {
     enter("Narrative", values.narrative);
   } else {
     const values = { ...UNIT_SERVICE_INPUTS, ...overrides };
-    if (award === jmua)
-      enter("Achievement / Contribution", values.achievementContribution);
     enter("Benefitted Unit", values.benefittedUnit);
     enter("Awarded Department / Unit", values.awardedUnit);
     await selectComboboxOption(user, "Service / Contributions", "Service");
@@ -221,7 +219,13 @@ describe("Unit award worksheets", () => {
         award,
         award === avua ? { operationTitle: "  oPeRaTiOn Overlord  " } : {},
       );
-      expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
+      if (award.family === "operation")
+        expect(
+          within(screen.getByRole("region", { name: "Recipients" })).getByRole(
+            "status",
+          ),
+        ).toHaveTextContent(minimumError);
+      else expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
       await submitRecommendation(user);
       expect(
         screen.queryByLabelText("Citation Narrative"),
@@ -348,7 +352,6 @@ describe("Unit award worksheets", () => {
     await fillContext(user, jmua, {
       awardedUnit: "Sentinel S6 Development",
       benefittedUnit: "Sentinel 2/B/2-7",
-      achievementContribution: "sentinel interdepartmental support",
     });
     expect(screen.getByLabelText("Awarded Department / Unit")).toBeVisible();
     await selectComboboxOption(
@@ -442,19 +445,28 @@ describe("Unit award worksheets", () => {
     expectValues({ Narrative: UNIT_NARRATIVE });
   });
 
-  test("JMUA Contributions changes only the closing; Contributed deliberately preserves the literal SOP starter", async () => {
+  test("JMUA keeps its fixed opening when choices change and updates only its benefitted unit", async () => {
     const user = await open(jmua);
+    expect(
+      screen.queryByLabelText("Achievement / Contribution"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Narrative Opening" }),
+    ).toHaveTextContent("Distinguished");
     await selectAll(user);
     await fillContext(user, jmua);
     await submitRecommendation(user);
+    const opening =
+      "For exceptionally meritorious performance and distinguished contributions to S3 Operations.";
     const before = getCitationText();
+    expect(before.startsWith(opening)).toBe(true);
+    expect(before.split(opening)).toHaveLength(2);
     await selectComboboxOption(
       user,
       "Service / Contributions",
       "Contributions",
     );
     expectValues({
-      "Achievement / Contribution": UNIT_SERVICE_INPUTS.achievementContribution,
       "Benefitted Unit": "S3 Operations",
       "Awarded Department / Unit": "S3 ARMA Operations staff",
       Narrative: UNIT_CONTINUATION,
@@ -483,6 +495,21 @@ describe("Unit award worksheets", () => {
     expect(getCitationText()).toContain(
       "S3 ARMA Operations staff contributed themselves by coordinating training across departments.",
     );
+    expect(getCitationText().startsWith(opening)).toBe(true);
+    expect(getCitationText().split(opening)).toHaveLength(2);
+    enter("Benefitted Unit", "S6");
+    await submitRecommendation(user);
+    expect(
+      getCitationText().startsWith(
+        "For exceptionally meritorious performance and distinguished contributions to S6.",
+      ),
+    ).toBe(true);
+    expect(getCitationText()).not.toContain("S3 Operations");
+    expect(
+      getCitationText().match(
+        /For exceptionally meritorious performance and distinguished contributions to/g,
+      ),
+    ).toHaveLength(1);
   });
 
   test("SUA Contributions updates opening and closing together; Contributed preserves the literal SOP starter", async () => {
@@ -529,22 +556,18 @@ describe("Unit award worksheets", () => {
       }),
     ).toBeVisible();
     await selectAll(user);
-    enter("Achievement / Contribution", "exceptional technical support");
     enter("Benefitted Unit", "S7 Training");
     enter("Awarded Department / Unit", "Technical Support staff");
     await selectComboboxOption(user, "Narrative Opening", "Contributed");
     await submitRecommendation(user);
     expect(getCitationText()).toContain(
-      "For exceptional technical support to S7 Training.",
+      "For exceptionally meritorious performance and distinguished contributions to S7 Training.",
     );
     expect(getCitationText()).toContain(
       "Technical Support staff contributed themselves by",
     );
     expect(getCitationText()).toContain("themselves, S7 Training, and");
     await selectAward(user, sua.name);
-    expect(
-      screen.queryByLabelText("Achievement / Contribution"),
-    ).not.toBeInTheDocument();
     expect(
       screen.getByRole("combobox", { name: "Narrative Opening" }),
     ).toHaveTextContent("Distinguished");
@@ -565,9 +588,6 @@ describe("Unit award worksheets", () => {
       ).not.toBeInTheDocument();
       await selectComboboxOption(user, "Service / Contributions", "Service");
       if (awardName === jmua.name) {
-        expectValues({
-          "Achievement / Contribution": "exceptional technical support",
-        });
         expect(
           screen.getByRole("combobox", { name: "Narrative Opening" }),
         ).toHaveTextContent("Distinguished");
@@ -579,9 +599,6 @@ describe("Unit award worksheets", () => {
       if (awardName === sua.name) {
         expect(getCitationText()).toContain(
           "For exceptionally meritorious service to S7 Training.",
-        );
-        expect(getCitationText()).not.toContain(
-          "exceptional technical support",
         );
       }
     }
@@ -619,6 +636,9 @@ describe("Unit award worksheets", () => {
       const user = await open(award);
       await fillContext(user, award);
       const dialog = await openBulk(user);
+      expect(
+        within(dialog).queryByText(/At least 4|required to generate/i),
+      ).not.toBeInTheDocument();
       for (const member of makeRecipientRoster(3))
         await user.click(
           within(dialog).getByRole("checkbox", {
@@ -633,15 +653,17 @@ describe("Unit award worksheets", () => {
         within(dialog).getByRole("button", { name: "Confirm Recipients" }),
       );
       expectSelectedRecipients(3);
-      expect(
-        within(
-          screen.getByRole("region", { name: "Status", exact: true }),
-        ).getByRole("status"),
-      ).toHaveTextContent("Complete the worksheet");
-      expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
-      await submitRecommendation(user);
       const recipients = screen.getByRole("region", { name: "Recipients" });
+      const hint = within(recipients).getByRole("status");
+      expect(hint.textContent).toBe(minimumError);
+      expect(screen.getAllByText(minimumError, { exact: true })).toHaveLength(
+        1,
+      );
+      expect(recipients).toHaveAccessibleDescription(minimumError);
+      await submitRecommendation(user);
       const error = within(recipients).getByRole("alert");
+      expect(error).toBe(hint);
+      expect(within(recipients).queryByRole("status")).not.toBeInTheDocument();
       expect(error.textContent).toBe(minimumError);
       expect(screen.getAllByText(minimumError, { exact: true })).toHaveLength(
         1,
@@ -660,13 +682,16 @@ describe("Unit award worksheets", () => {
       expect(
         screen.queryByLabelText("Citation Narrative"),
       ).not.toBeInTheDocument();
-      expect(screen.queryByText(minimumError)).not.toBeInTheDocument();
+      expect(within(recipients).getByRole("status").textContent).toBe(
+        minimumError,
+      );
+      expect(screen.getAllByText(minimumError, { exact: true })).toHaveLength(
+        1,
+      );
       await submitRecommendation(user);
-      expect(
-        within(screen.getByRole("region", { name: "Recipients" })).getByRole(
-          "alert",
-        ),
-      ).toHaveTextContent(minimumError);
+      expect(within(recipients).getByRole("alert").textContent).toBe(
+        minimumError,
+      );
       expect(
         screen.queryByLabelText("Citation Narrative"),
       ).not.toBeInTheDocument();
@@ -724,53 +749,62 @@ describe("Unit award worksheets", () => {
     },
   );
 
-  test("JMUA achievement is required free text; framing advice preserves the input verbatim", async () => {
-    const user = await open(jmua);
-    expect(
-      screen.getByRole("combobox", { name: "Narrative Opening" }),
-    ).toHaveTextContent("Distinguished");
-    expect(
-      screen.getByText(
-        "Describe the achievement or contribution being recognized. Enter only the achievement phrase; the Aid will add “For” and the benefitted unit automatically.",
-        { exact: true },
-      ),
-    ).toBeVisible();
-    expect(screen.getByLabelText("Achievement / Contribution")).toHaveAttribute(
-      "placeholder",
-      "exceptionally meritorious performance and distinguished contributions",
+  test("Individual Service opening and live warnings wait for complete recipients when worksheet flags are omitted", async () => {
+    const user = await open(
+      { family: "service", name: "Army Achievement Medal" },
+      1,
     );
+    enter("Affected Area of the Cav", "S7 Training");
+    await user.type(
+      screen.getByRole("textbox", { name: "Narrative" }),
+      "The the team improved readiness.",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Recipient", exact: true }),
+    ).toHaveValue("");
+    expect(
+      screen.queryByText(/distinguished themselves by/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("status", { name: "Narrative Warnings" }),
+    ).not.toBeInTheDocument();
     await selectAll(user);
-    await fillContext(user, jmua);
     expect(
-      screen.queryByText(/Check the achievement phrase:/),
-    ).not.toBeInTheDocument();
-    for (const [input, opening] of [
-      [
-        "For outstanding support",
-        "For For outstanding support to S3 Operations.",
-      ],
-      ["outstanding support.", "For outstanding support. to S3 Operations."],
-      [
-        "outstanding support to S3 Operations",
-        "For outstanding support to S3 Operations to S3 Operations.",
-      ],
-    ]) {
-      enter("Achievement / Contribution", input);
-      expect(screen.getByText(/Check the achievement phrase:/)).toBeVisible();
-      expectValues({ "Achievement / Contribution": input });
-      await submitRecommendation(user);
-      expect(getCitationText()).toContain(opening);
-    }
-    enter("Achievement / Contribution", "   ");
-    await submitRecommendation(user);
-    expect(screen.getByLabelText("Achievement / Contribution")).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
+      screen.getByText("Specialist Test Member1 distinguished themselves by", {
+        exact: true,
+      }),
+    ).toBeVisible();
     expect(
-      screen.queryByLabelText("Citation Narrative"),
-    ).not.toBeInTheDocument();
+      screen.getByRole("status", { name: "Narrative Warnings" }),
+    ).toHaveTextContent("Possible duplicate:");
   });
+
+  test.each([jmua, sua])(
+    "$abbreviation shows its group starter and live prose warnings with no confirmed recipient",
+    async (award) => {
+      const user = await open(award);
+      await fillContext(user, award, { narrative: "" });
+      await user.type(
+        screen.getByRole("textbox", { name: "Narrative" }),
+        "The the group improved readiness.",
+      );
+      expect(
+        screen.getByRole("textbox", { name: "Recipient", exact: true }),
+      ).toHaveValue("");
+      expect(
+        screen.getByText(
+          "S3 ARMA Operations staff distinguished themselves by",
+          { exact: true },
+        ),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("status", { name: "Narrative Warnings" }),
+      ).toHaveTextContent("Possible duplicate:");
+      expect(
+        screen.queryByLabelText("Citation Narrative"),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   test("AVUA prose warnings appear before four recipients are selected, while Individual warnings still wait for recipient identity", async () => {
     const individual = { family: "operation", name: "Army Commendation Medal" };

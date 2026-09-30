@@ -20,6 +20,7 @@ export default function RecipientManager({
   roster,
   organizations,
   minimumError,
+  hasAttemptedGenerate,
   errors,
   onAdd,
   onRemove,
@@ -55,8 +56,8 @@ export default function RecipientManager({
       {minimumError && (
         <p
           id="recipients-minimum-error"
-          role="alert"
-          className="text-sm font-medium text-destructive"
+          role={hasAttemptedGenerate ? "alert" : "status"}
+          className={`text-sm font-medium ${hasAttemptedGenerate ? "text-destructive" : "text-muted-foreground"}`}
         >
           {minimumError}
         </p>

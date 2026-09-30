@@ -1,3 +1,4 @@
+import { combineNarrative } from "./citation-builders";
 import {
   EXPLICIT_RECIPIENT_LIMIT,
   getRecipientIdentity,
@@ -334,23 +335,35 @@ export function mergeHighlightRanges(highlightRanges) {
   return mergedRanges;
 }
 
-export function getAchievementPhraseWarnings(value = "", benefittedUnit = "") {
-  const phrase = value.trim();
-  const beneficiary = benefittedUnit.trim();
-  if (!phrase) return [];
-  if (
-    /^for\b/i.test(phrase) ||
-    /[.!?]$/.test(phrase) ||
-    (beneficiary &&
-      phrase.toLowerCase().endsWith(` to ${beneficiary.toLowerCase()}`))
-  ) {
-    return [
-      {
-        key: "achievement-framing",
-        message:
-          "Check the achievement phrase: the Aid supplies ‘For’, ‘to [Benefitted Unit]’, and the final period. Your text has been preserved; review the generated opening.",
-      },
-    ];
-  }
-  return [];
+export function analyzeRecommendationNarrative(
+  narrative,
+  recipients,
+  systemOpening,
+  medal,
+  rankEntries,
+  narrativeField,
+) {
+  const systemOwnedNarrativeOpening =
+    narrativeField?.systemOwnedNarrativeOpening;
+  const text =
+    systemOwnedNarrativeOpening && systemOpening
+      ? combineNarrative(systemOpening, narrative)
+      : narrative;
+  const analysis = analyzeNarrative(text, {
+    ...(narrativeField?.recipientIdentityChecks !== false &&
+    !systemOwnedNarrativeOpening &&
+    recipients.length === 1
+      ? getRecipientIdentity(recipients[0])
+      : {}),
+    rankEntries,
+    minimumNarrativeSentences: medal.minimumNarrativeSentences,
+  });
+  // User-owned identity checks inspect authored narrative, never generated prose.
+  const groupWarning = getGroupRecipientWarning(
+    narrative,
+    recipients,
+    narrativeField,
+  );
+  if (groupWarning) analysis.warnings.unshift(groupWarning);
+  return analysis;
 }

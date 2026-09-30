@@ -1,3 +1,5 @@
+// Literal Unit Award review oracles from Awards and Decorations,
+// pinned revision oldid=17782. Keep independent from production definitions/builders.
 export const UNIT_AWARD_CASES = [
   {
     id: "army-valorous-unit-award",
@@ -63,7 +65,6 @@ export const UNIT_AWARD_CASES = [
     minimumSentences: 3,
     ribbonUrl: "https://wiki.7cav.us/images/0/00/JMUA.jpg",
     fields: [
-      "Achievement / Contribution",
       "Benefitted Unit",
       "Awarded Department / Unit",
       "Service / Contributions",
@@ -80,7 +81,7 @@ export const UNIT_AWARD_CASES = [
       "Recommendation must originate from Battalion Staff, Departmental HQ, or higher.",
     ],
     citation:
-      "For outstanding interdepartmental coordination and technical contributions to S3 Operations. S3 ARMA Operations staff distinguished themselves by coordinating training across departments. The group completed every assigned task. Their work improved readiness throughout the Regiment. Their dedication to duty and exceptionally meritorious service are in great credit to themselves, S3 Operations, and the 7th Cavalry Gaming Regiment.",
+      "For exceptionally meritorious performance and distinguished contributions to S3 Operations. S3 ARMA Operations staff distinguished themselves by coordinating training across departments. The group completed every assigned task. Their work improved readiness throughout the Regiment. Their dedication to duty and exceptionally meritorious service are in great credit to themselves, S3 Operations, and the 7th Cavalry Gaming Regiment.",
   },
   {
     id: "superior-unit-award",
@@ -123,8 +124,6 @@ export const UNIT_OPERATION_INPUTS = {
   narrative: UNIT_NARRATIVE,
 };
 export const UNIT_SERVICE_INPUTS = {
-  achievementContribution:
-    "outstanding interdepartmental coordination and technical contributions",
   benefittedUnit: "S3 Operations",
   awardedUnit: "S3 ARMA Operations staff",
   serviceType: "service",

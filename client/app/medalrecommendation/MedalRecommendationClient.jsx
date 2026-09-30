@@ -15,16 +15,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  analyzeNarrative,
-  getAchievementPhraseWarnings,
-  getGroupRecipientWarning,
+  analyzeRecommendationNarrative,
   getRankEntries,
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
-import {
-  combineNarrative,
-  resolveRecommendationRecipientSubject,
-} from "./lib/citation-builders";
+import { resolveRecommendationRecipientSubject } from "./lib/citation-builders";
 import {
   getMedalFamily,
   groupMedalsByAwardCategory,
@@ -32,11 +27,11 @@ import {
 import {
   applyAwardChange,
   getActiveWorksheetValues,
-  getCitationChoiceText,
   isWorksheetFieldActive,
   resolveMedalWorksheet,
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
+import { generateRecommendation } from "./lib/recommendation-generation";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
 import {
@@ -45,24 +40,10 @@ import {
   buildRecipientOrganizations,
   getRecipientDisplayName,
   getRecipientId,
-  getRecipientIdentity,
   orderRecipientsForRecommendation,
   uniqueRecipients,
   validateRecipientEntries,
 } from "./lib/recipient-utils";
-
-function formatOperationDate(value) {
-  const [year, month, day] = value.split("-").map(Number);
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
 
 function renderNarrativeWithHighlights(text, highlightRanges) {
   const ranges = mergeHighlightRanges(highlightRanges);
@@ -96,39 +77,6 @@ function renderNarrativeWithHighlights(text, highlightRanges) {
   }
 
   return parts;
-}
-
-function analyzeRecommendationNarrative(
-  narrative,
-  recipients,
-  systemOpening,
-  medal,
-  rankEntries,
-  narrativeField,
-) {
-  const systemOwnedNarrativeOpening =
-    narrativeField?.systemOwnedNarrativeOpening;
-  const text =
-    systemOwnedNarrativeOpening && systemOpening
-      ? combineNarrative(systemOpening, narrative)
-      : narrative;
-  const analysis = analyzeNarrative(text, {
-    ...(narrativeField?.recipientIdentityChecks !== false &&
-    !systemOwnedNarrativeOpening &&
-    recipients.length === 1
-      ? getRecipientIdentity(recipients[0])
-      : {}),
-    rankEntries,
-    minimumNarrativeSentences: medal.minimumNarrativeSentences,
-  });
-  // User-owned identity checks inspect authored narrative, never generated prose.
-  const groupWarning = getGroupRecipientWarning(
-    narrative,
-    recipients,
-    narrativeField,
-  );
-  if (groupWarning) analysis.warnings.unshift(groupWarning);
-  return analysis;
 }
 
 function renderCitationNarrative(recommendation) {
@@ -419,20 +367,12 @@ export default function MedalRecommendationClient({
     [selectedWorksheet, worksheetValues],
   );
 
-  const {
-    actionCharacter = "",
-    combatElement = "",
-    operationTitle = "",
-    location = "",
-    operationDate = "",
-  } = activeWorksheetValues;
-
   const narrative = worksheetValues.narrative ?? "";
 
   const requiredNarrativeOpening = useMemo(() => {
     if (!selectedMedal?.buildNarrativeOpening) return "";
     if (
-      narrativeField?.systemOpeningRequiresCompleteRecipients &&
+      narrativeField?.systemOpeningRequiresCompleteRecipients !== false &&
       !recipientValidation.isComplete
     )
       return "";
@@ -453,7 +393,7 @@ export default function MedalRecommendationClient({
   const liveNarrativeAnalysis = useMemo(() => {
     if (
       !supportsLiveNarrativeWarnings ||
-      (narrativeField?.liveWarningsRequireCompleteRecipients &&
+      (narrativeField?.liveWarningsRequireCompleteRecipients !== false &&
         !recipientValidation.isComplete) ||
       !narrative.trim()
     )
@@ -550,56 +490,20 @@ export default function MedalRecommendationClient({
 
     setHasAttemptedGenerate(false);
 
-    const formattedDate = operationDate
-      ? formatOperationDate(operationDate)
-      : "";
-
-    const normalizedOperationTitle = operationTitle
-      .trim()
-      .replace(/^operation\s+/i, "");
-
-    const citationActionCharacter = selectedWorksheet?.fields.actionCharacter
-      ? getCitationChoiceText(
-          selectedWorksheet.fields.actionCharacter,
-          actionCharacter,
-        )
-      : "";
-
     if (!selectedMedal?.buildOpening || !selectedMedal?.buildClosing) {
       setRecommendation(null);
       return;
     }
 
-    const citationContext = {
-      ...activeWorksheetValues,
-      actionCharacter: citationActionCharacter,
-      combatElement: combatElement.trim(),
-      operationTitle: normalizedOperationTitle,
-      location: location.trim(),
-      date: formattedDate,
-      recipientSubject: resolveRecommendationRecipientSubject(
-        recommendationRecipients,
-      ),
-    };
-    const systemOpening =
-      selectedMedal.buildNarrativeOpening?.(citationContext);
-    const analysis = analyzeRecommendationNarrative(
-      narrative,
-      recommendationRecipients,
-      systemOpening,
-      selectedMedal,
-      rankEntries,
-      narrativeField,
+    setRecommendation(
+      generateRecommendation({
+        medal: selectedMedal,
+        worksheet: selectedWorksheet,
+        values: worksheetValues,
+        recipients: recommendationRecipients,
+        rankEntries,
+      }),
     );
-    setRecommendation({
-      medal: selectedMedal,
-      recipients: recommendationRecipients,
-      openingSentence: selectedMedal.buildOpening(citationContext),
-      narrative: analysis.text,
-      highlightRanges: analysis.highlightRanges,
-      narrativeWarnings: analysis.warnings,
-      closingSentence: selectedMedal.buildClosing(citationContext),
-    });
   }
 
   return (
@@ -738,11 +642,8 @@ export default function MedalRecommendationClient({
                   recommendationRecipients={recommendationRecipients}
                   roster={rosterMembers}
                   organizations={organizations}
-                  minimumError={
-                    hasAttemptedGenerate
-                      ? recipientValidation.minimumError
-                      : undefined
-                  }
+                  minimumError={recipientValidation.minimumError}
+                  hasAttemptedGenerate={hasAttemptedGenerate}
                   errors={
                     hasAttemptedGenerate ? recipientValidation.errors : []
                   }
@@ -791,12 +692,7 @@ export default function MedalRecommendationClient({
                       ? (recommendation?.narrativeWarnings ??
                         liveNarrativeAnalysis?.warnings ??
                         [])
-                      : field.feedback === "achievementPhrase"
-                        ? getAchievementPhraseWarnings(
-                            worksheetValues[fieldName],
-                            worksheetValues[field.feedbackRelatedField],
-                          )
-                        : [];
+                      : [];
 
                   return (
                     <WorksheetField

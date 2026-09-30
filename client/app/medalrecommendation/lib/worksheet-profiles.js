@@ -7,8 +7,6 @@ const SERVICE_NARRATIVE = {
   label: "Narrative",
   placeholder: "Continue the recipient's recommendation narrative...",
   systemOwnedNarrativeOpening: true,
-  systemOpeningRequiresCompleteRecipients: true,
-  liveWarningsRequireCompleteRecipients: true,
   helperText:
     "The SOP requires the narrative to begin with the displayed recipient opening. Continue from the sentence starter below.",
   rows: 8,
@@ -33,7 +31,6 @@ const OPERATION_NARRATIVE_FIELD = {
   placeholder: "Explain the lead-up, actions, and outcome...",
   rows: 8,
   feedback: "narrativeWarnings",
-  liveWarningsRequireCompleteRecipients: true,
   awardChange: "preserve",
 };
 
@@ -211,22 +208,12 @@ export const WORKSHEET_PROFILES = {
     },
   },
   serviceJointUnitAward: serviceUnitAwardWorksheet({
-    achievementContribution: {
-      ...requiredText(
-        "Achievement / Contribution",
-        "exceptionally meritorious performance and distinguished contributions",
-      ),
-      helperText:
-        "Describe the achievement or contribution being recognized. Enter only the achievement phrase; the Aid will add “For” and the benefitted unit automatically.",
-      feedback: "achievementPhrase",
-      feedbackRelatedField: "benefittedUnit",
-    },
     benefittedUnit: BENEFITTED_UNIT,
     awardedUnit: AWARDED_UNIT,
     serviceType: {
       ...SERVICE_CONTRIBUTIONS,
       helperText:
-        "Controls the closing only. Achievement / Contribution supplies the opening.",
+        "Controls the closing only. The opening uses the fixed SOP wording.",
     },
     narrativeOpening: NARRATIVE_OPENING,
   }),
