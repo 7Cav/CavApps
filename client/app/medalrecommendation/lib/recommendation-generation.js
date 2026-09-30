@@ -19,6 +19,41 @@ function formatOperationDate(value) {
   }).format(date);
 }
 
+function resolveTitleContext(configuration, context) {
+  let field;
+  switch (configuration?.type) {
+    case "none":
+      return null;
+    case "operation":
+      if (context.operationTitle) return `Operation ${context.operationTitle}`;
+      break;
+    case "field":
+      field = configuration.field;
+      break;
+    case "activeField": {
+      if (!Array.isArray(configuration.fields)) break;
+      const active = configuration.fields.filter((name) =>
+        Object.hasOwn(context, name),
+      );
+      if (active.length === 1) field = active[0];
+      break;
+    }
+    default:
+      throw new Error(
+        "Missing or unsupported Recommendation Title context configuration",
+      );
+  }
+  if (
+    typeof field === "string" &&
+    typeof context[field] === "string" &&
+    context[field]
+  )
+    return context[field];
+  throw new Error(
+    "Recommendation Title context must resolve to one active, nonempty value",
+  );
+}
+
 export function generateRecommendation({
   medal,
   worksheet,
@@ -53,13 +88,20 @@ export function generateRecommendation({
     rankEntries,
     worksheet.fields.narrative,
   );
+  const openingSentence = medal.buildOpening(context);
+  const closingSentence = medal.buildClosing(context);
   return {
     medal,
     recipients,
-    openingSentence: medal.buildOpening(context),
+    openingSentence,
     narrative: analysis.text,
     highlightRanges: analysis.highlightRanges,
     narrativeWarnings: analysis.warnings,
-    closingSentence: medal.buildClosing(context),
+    closingSentence,
+    titleContext: resolveTitleContext(
+      medal.recommendationTitleContext,
+      context,
+    ),
+    citationText: [openingSentence, analysis.text, closingSentence].join(" "),
   };
 }

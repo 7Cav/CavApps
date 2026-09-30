@@ -47,9 +47,11 @@ export async function renderMedalRecommendationWorksheetPage(medalFamily) {
     );
   }
 
-  const profiles = Object.values(rosterResponse?.profiles ?? {});
+  const profiles = Object.entries(rosterResponse?.profiles ?? {});
 
-  const medalRecipientRoster = profiles.map((profile) => ({
+  const medalRecipientRoster = profiles.map(([profileId, profile]) => ({
+    // Roster keys identify MILPACS profiles; user.userId identifies forum users.
+    profileId,
     user: {
       userId: profile.user?.userId ?? "",
       username: profile.user?.username ?? "",
