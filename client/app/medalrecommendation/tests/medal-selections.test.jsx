@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import OperationMedalRecommendationPage from "../operation/page";
 import { OPERATION_MEDALS } from "../lib/medal-definitions.js";
+import { groupMedalsByAwardCategory } from "../lib/medal-families.js";
 import {
   makeRecipient,
   mockMedalPageFetch,
@@ -22,26 +23,23 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
 
     await user.click(screen.getByRole("combobox", { name: "Award" }));
 
+    expect(
+      within(screen.getByRole("group", { name: "Individual" }))
+        .getAllByRole("option")
+        .map((option) => option.textContent),
+    ).toEqual(OPERATION_MEDAL_CASES.map(({ name }) => name));
     for (const { name: medalName } of OPERATION_MEDAL_CASES) {
       expect(screen.getByRole("option", { name: medalName })).toBeVisible();
     }
   });
 
-  test("the rendered medal cases cover every Operation Medal exactly once", () => {
-    const caseIdentities = OPERATION_MEDAL_CASES.map(({ id, name }) => ({
-      id,
-      name,
-    }));
-
-    expect(caseIdentities).toEqual(
-      OPERATION_MEDALS.map(({ id, name }) => ({ id, name })),
-    );
-    expect(new Set(caseIdentities.map(({ id }) => id)).size).toBe(
-      caseIdentities.length,
-    );
-    expect(new Set(caseIdentities.map(({ name }) => name)).size).toBe(
-      caseIdentities.length,
-    );
+  test("an award with an unsupported category fails loudly instead of disappearing", () => {
+    expect(() =>
+      groupMedalsByAwardCategory([
+        OPERATION_MEDALS[0],
+        { id: "unknown-award", name: "Unknown award", awardCategory: "bogus" },
+      ]),
+    ).toThrow("Unsupported award category: bogus");
   });
 
   test("every Operation Medal has a non-empty abbreviation", () => {

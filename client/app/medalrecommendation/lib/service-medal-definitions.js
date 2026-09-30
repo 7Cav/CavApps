@@ -1,4 +1,8 @@
 import {
+  buildJointUnitOpening,
+  buildSuperiorUnitOpening,
+  buildUnitNarrativeOpening,
+  buildServiceUnitClosing,
   buildDefenseDistinguishedServiceClosing,
   buildDefenseDistinguishedServiceOpening,
   buildDefenseMeritoriousServiceClosing,
@@ -255,7 +259,50 @@ export const SERVICE_MEDALS = [
     buildOpening: buildDefenseDistinguishedServiceOpening,
     buildClosing: buildDefenseDistinguishedServiceClosing,
   },
+  {
+    id: "joint-meritorious-unit-award",
+    name: "Joint Meritorious Unit Award",
+    abbreviation: "JMUA",
+    awardCategory: "unit",
+    worksheetProfile: "serviceJointUnitAward",
+    criteriaHeading: "Criteria",
+    ribbonUrl: "https://wiki.7cav.us/images/0/00/JMUA.jpg",
+    criteria:
+      "Awarded to section-level units and higher or sub-departments and higher for excellent meritorious performance of their duties and multiple, significant and distinguished meritorious contributions that positively affected multiple areas of the Regiment. Must be recommended by Battalion Staff or Departmental HQ or higher. This award is a Meritorious Service Medal equivalent.",
+    narrativeGuidance:
+      "Continue from the displayed group opening. Describe how the group demonstrated their multiple meritorious service/contributions in a minimum of three professionally written sentences.",
+    eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
+      "The awarded organization must be a section-level unit or larger, or a sub-department or larger.",
+      "Recommendation must originate from Battalion Staff, Departmental HQ, or higher.",
+    ],
+    buildOpening: buildJointUnitOpening,
+    buildNarrativeOpening: buildUnitNarrativeOpening,
+    buildClosing: buildServiceUnitClosing,
+  },
+  {
+    id: "superior-unit-award",
+    name: "Superior Unit Award",
+    abbreviation: "SUA",
+    awardCategory: "unit",
+    worksheetProfile: "serviceSuperiorUnitAward",
+    criteriaHeading: "Criteria",
+    ribbonUrl: "https://wiki.7cav.us/images/7/71/SUA.jpg",
+    criteria:
+      "Awarded to section-level units and higher or sub-departments and higher for superior performance of their duties. Each Battalion/Department may award one per 6 months. This award is an Army Commendation Medal equivalent.",
+    narrativeGuidance:
+      "Continue from the displayed group opening. Describe how the group demonstrated their meritorious service/contributions in a minimum of three professionally written sentences.",
+    eligibilityNotes: [
+      "Unit award recommendations should include all individuals in the unit being awarded.",
+      "The awarded organization must be a section-level unit or larger, or a sub-department or larger.",
+      "Each Battalion or Department may award one SUA per six months.",
+    ],
+    buildOpening: buildSuperiorUnitOpening,
+    buildNarrativeOpening: buildUnitNarrativeOpening,
+    buildClosing: buildServiceUnitClosing,
+  },
 ].map((medal) => ({
+  awardCategory: "individual",
   family: "Service Medal",
   criteriaHeading: "Medal Criteria",
   minimumNarrativeSentences: 3,

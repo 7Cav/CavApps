@@ -8,54 +8,42 @@ import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
+  SelectGroup,
+  SelectLabel,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
-  analyzeNarrative,
-  getGroupRecipientWarning,
+  analyzeRecommendationNarrative,
   getRankEntries,
   mergeHighlightRanges,
 } from "./lib/narrative-validation";
+import { resolveRecommendationRecipientSubject } from "./lib/citation-builders";
 import {
-  combineNarrative,
-  resolveRecommendationRecipientSubject,
-} from "./lib/citation-builders";
-import { getMedalFamily } from "./lib/medal-families";
+  getMedalFamily,
+  groupMedalsByAwardCategory,
+} from "./lib/medal-families";
 import {
   applyAwardChange,
   getActiveWorksheetValues,
-  getCitationChoiceText,
   isWorksheetFieldActive,
   resolveMedalWorksheet,
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
+import { generateRecommendation } from "./lib/recommendation-generation";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
 import {
   RECIPIENT_INLINE_LIMIT,
+  RECIPIENT_SELECTION_POLICY,
   buildRecipientOrganizations,
   getRecipientDisplayName,
   getRecipientId,
-  getRecipientIdentity,
   orderRecipientsForRecommendation,
   uniqueRecipients,
   validateRecipientEntries,
 } from "./lib/recipient-utils";
-
-function formatOperationDate(value) {
-  const [year, month, day] = value.split("-").map(Number);
-
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(date);
-}
 
 function renderNarrativeWithHighlights(text, highlightRanges) {
   const ranges = mergeHighlightRanges(highlightRanges);
@@ -89,37 +77,6 @@ function renderNarrativeWithHighlights(text, highlightRanges) {
   }
 
   return parts;
-}
-
-function analyzeRecommendationNarrative(
-  narrative,
-  recipients,
-  systemOpening,
-  medal,
-  rankEntries,
-  narrativeField,
-) {
-  const systemOwnedNarrativeOpening =
-    narrativeField?.systemOwnedNarrativeOpening;
-  const text =
-    systemOwnedNarrativeOpening && systemOpening
-      ? combineNarrative(systemOpening, narrative)
-      : narrative;
-  const analysis = analyzeNarrative(text, {
-    ...(!systemOwnedNarrativeOpening && recipients.length === 1
-      ? getRecipientIdentity(recipients[0])
-      : {}),
-    rankEntries,
-    minimumNarrativeSentences: medal.minimumNarrativeSentences,
-  });
-  // User-owned identity checks inspect authored narrative, never generated prose.
-  const groupWarning = getGroupRecipientWarning(
-    narrative,
-    recipients,
-    narrativeField,
-  );
-  if (groupWarning) analysis.warnings.unshift(groupWarning);
-  return analysis;
 }
 
 function renderCitationNarrative(recommendation) {
@@ -317,7 +274,7 @@ function WorksheetField({
         <div
           id={warningsId}
           role="status"
-          aria-label="Narrative Warnings"
+          aria-label={`${field.label} Warnings`}
           className="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/5 p-3 text-sm"
         >
           {warnings.map((warning) => (
@@ -338,6 +295,10 @@ export default function MedalRecommendationClient({
 
   const { medals, getMedalById, awardPlaceholder, pageTitle, pageDescription } =
     family;
+  const awardGroups = useMemo(
+    () => groupMedalsByAwardCategory(medals),
+    [medals],
+  );
 
   const [selectedMedalId, setSelectedMedalId] = useState("");
 
@@ -406,38 +367,34 @@ export default function MedalRecommendationClient({
     [selectedWorksheet, worksheetValues],
   );
 
-  const {
-    actionCharacter = "",
-    combatElement = "",
-    operationTitle = "",
-    location = "",
-    operationDate = "",
-  } = activeWorksheetValues;
-
   const narrative = worksheetValues.narrative ?? "";
 
-  const requiredNarrativeOpening = useMemo(
-    () =>
-      selectedMedal?.buildNarrativeOpening && recipientValidation.isComplete
-        ? selectedMedal.buildNarrativeOpening({
-            ...activeWorksheetValues,
-            recipientSubject: resolveRecommendationRecipientSubject(
-              recommendationRecipients,
-            ),
-          })
-        : "",
-    [
-      activeWorksheetValues,
-      recommendationRecipients,
-      recipientValidation.isComplete,
-      selectedMedal,
-    ],
-  );
+  const requiredNarrativeOpening = useMemo(() => {
+    if (!selectedMedal?.buildNarrativeOpening) return "";
+    if (
+      narrativeField?.systemOpeningRequiresCompleteRecipients !== false &&
+      !recipientValidation.isComplete
+    )
+      return "";
+    return selectedMedal.buildNarrativeOpening({
+      ...activeWorksheetValues,
+      recipientSubject: recommendationRecipients.length
+        ? resolveRecommendationRecipientSubject(recommendationRecipients)
+        : undefined,
+    });
+  }, [
+    activeWorksheetValues,
+    narrativeField,
+    recommendationRecipients,
+    recipientValidation.isComplete,
+    selectedMedal,
+  ]);
 
   const liveNarrativeAnalysis = useMemo(() => {
     if (
       !supportsLiveNarrativeWarnings ||
-      !recipientValidation.isComplete ||
+      (narrativeField?.liveWarningsRequireCompleteRecipients !== false &&
+        !recipientValidation.isComplete) ||
       !narrative.trim()
     )
       return null;
@@ -488,7 +445,7 @@ export default function MedalRecommendationClient({
     if (
       !validateRecipientEntries(
         unique.map((member) => ({ member })),
-        recipientPolicy,
+        RECIPIENT_SELECTION_POLICY,
       ).isComplete
     )
       return;
@@ -533,56 +490,20 @@ export default function MedalRecommendationClient({
 
     setHasAttemptedGenerate(false);
 
-    const formattedDate = operationDate
-      ? formatOperationDate(operationDate)
-      : "";
-
-    const normalizedOperationTitle = operationTitle
-      .trim()
-      .replace(/^operation\s+/i, "");
-
-    const citationActionCharacter = selectedWorksheet?.fields.actionCharacter
-      ? getCitationChoiceText(
-          selectedWorksheet.fields.actionCharacter,
-          actionCharacter,
-        )
-      : "";
-
     if (!selectedMedal?.buildOpening || !selectedMedal?.buildClosing) {
       setRecommendation(null);
       return;
     }
 
-    const citationContext = {
-      ...activeWorksheetValues,
-      actionCharacter: citationActionCharacter,
-      combatElement: combatElement.trim(),
-      operationTitle: normalizedOperationTitle,
-      location: location.trim(),
-      date: formattedDate,
-      recipientSubject: resolveRecommendationRecipientSubject(
-        recommendationRecipients,
-      ),
-    };
-    const systemOpening =
-      selectedMedal.buildNarrativeOpening?.(citationContext);
-    const analysis = analyzeRecommendationNarrative(
-      narrative,
-      recommendationRecipients,
-      systemOpening,
-      selectedMedal,
-      rankEntries,
-      narrativeField,
+    setRecommendation(
+      generateRecommendation({
+        medal: selectedMedal,
+        worksheet: selectedWorksheet,
+        values: worksheetValues,
+        recipients: recommendationRecipients,
+        rankEntries,
+      }),
     );
-    setRecommendation({
-      medal: selectedMedal,
-      recipients: recommendationRecipients,
-      openingSentence: selectedMedal.buildOpening(citationContext),
-      narrative: analysis.text,
-      highlightRanges: analysis.highlightRanges,
-      narrativeWarnings: analysis.warnings,
-      closingSentence: selectedMedal.buildClosing(citationContext),
-    });
   }
 
   return (
@@ -649,10 +570,19 @@ export default function MedalRecommendationClient({
                 </SelectTrigger>
 
                 <SelectContent>
-                  {medals.map((medal) => (
-                    <SelectItem key={medal.id} value={medal.id}>
-                      {medal.name}
-                    </SelectItem>
+                  {awardGroups.map((category) => (
+                    <SelectGroup key={category.id}>
+                      <SelectLabel>{category.label}</SelectLabel>
+                      {category.medals.map((medal) => (
+                        <SelectItem
+                          key={medal.id}
+                          value={medal.id}
+                          className="pl-12"
+                        >
+                          {medal.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
                   ))}
                 </SelectContent>
               </Select>
@@ -671,11 +601,9 @@ export default function MedalRecommendationClient({
                     Award Guidance
                   </h3>
 
-                  <div>
-                    <h4 className="text-lg font-semibold text-foreground">
-                      {selectedMedal.name}
-                    </h4>
-                  </div>
+                  <h4 className="text-lg font-semibold text-foreground">
+                    {selectedMedal.name}
+                  </h4>
 
                   <div className="space-y-2">
                     <h5 className="font-semibold text-foreground">
@@ -714,7 +642,8 @@ export default function MedalRecommendationClient({
                   recommendationRecipients={recommendationRecipients}
                   roster={rosterMembers}
                   organizations={organizations}
-                  policy={recipientPolicy}
+                  minimumError={recipientValidation.minimumError}
+                  hasAttemptedGenerate={hasAttemptedGenerate}
                   errors={
                     hasAttemptedGenerate ? recipientValidation.errors : []
                   }
@@ -731,7 +660,10 @@ export default function MedalRecommendationClient({
                     }
                   }}
                   onRemove={() => {
-                    if (recipientEntries.length > recipientPolicy.minimum)
+                    if (
+                      recipientEntries.length >
+                      RECIPIENT_SELECTION_POLICY.minimum
+                    )
                       updateRecipientEntries(recipientEntries.slice(0, -1));
                   }}
                   onQueryChange={(slotId, query) =>

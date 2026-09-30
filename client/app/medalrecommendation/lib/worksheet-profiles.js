@@ -14,7 +14,27 @@ const SERVICE_NARRATIVE = {
   awardChange: "preserve",
 };
 
-function serviceText(label, placeholder) {
+const OPERATION_DATE_FIELD = {
+  type: "date",
+  required: true,
+  defaultValue: "",
+  label: "Operation Date",
+  invalidMessage: "Date must be today or earlier",
+  awardChange: "preserve",
+};
+
+const OPERATION_NARRATIVE_FIELD = {
+  type: "textarea",
+  required: true,
+  defaultValue: "",
+  label: "Narrative",
+  placeholder: "Explain the lead-up, actions, and outcome...",
+  rows: 8,
+  feedback: "narrativeWarnings",
+  awardChange: "preserve",
+};
+
+function requiredText(label, placeholder) {
   return {
     type: "text",
     required: true,
@@ -25,7 +45,7 @@ function serviceText(label, placeholder) {
   };
 }
 
-const SERVICE_UNIT = serviceText("Unit", "A/1/A/1-7, S2 Intelligence, etc.");
+const SERVICE_UNIT = requiredText("Unit", "A/1/A/1-7, S2 Intelligence, etc.");
 
 const SERVICE_CONTRIBUTIONS = {
   type: "semanticChoice",
@@ -77,7 +97,7 @@ const SECONDARY_PATHWAY = { field: "leadershipArea", equals: "secondary" };
 const OPERATIONS_PATHWAY = { field: "leadershipArea", equals: "operations" };
 
 function serviceWorksheet(contextFields = {}) {
-  const fields = { ...contextFields, narrative: SERVICE_NARRATIVE };
+  const fields = { ...contextFields, narrative: { ...SERVICE_NARRATIVE } };
   return {
     recipientType: "individual",
     recipientPolicy: INDIVIDUAL_RECIPIENT_POLICY,
@@ -85,6 +105,26 @@ function serviceWorksheet(contextFields = {}) {
     fields,
   };
 }
+
+function serviceUnitAwardWorksheet(contextFields) {
+  const worksheet = serviceWorksheet(contextFields);
+  worksheet.fields.narrative = {
+    ...SERVICE_NARRATIVE,
+    recipientIdentityChecks: false,
+    systemOpeningRequiresCompleteRecipients: false,
+    liveWarningsRequireCompleteRecipients: false,
+    placeholder: "Continue the group's recommendation narrative...",
+    helperText:
+      "Continue from the displayed group opening. Changes to the awarded group or Narrative Opening preserve your continuation.",
+  };
+  return worksheet;
+}
+
+const BENEFITTED_UNIT = requiredText("Benefitted Unit", "S3 Operations");
+const AWARDED_UNIT = requiredText(
+  "Awarded Department / Unit",
+  "S3 ARMA Operations staff",
+);
 
 export const WORKSHEET_PROFILES = {
   operationIndividual: {
@@ -129,36 +169,72 @@ export const WORKSHEET_PROFILES = {
         awardChange: "preserve",
       },
 
-      operationDate: {
-        type: "date",
-        required: true,
-        defaultValue: "",
-        label: "Operation Date",
-        invalidMessage: "Date must be today or earlier",
-        awardChange: "preserve",
-      },
+      operationDate: { ...OPERATION_DATE_FIELD },
 
-      narrative: {
-        type: "textarea",
-        required: true,
-        defaultValue: "",
-        label: "Narrative",
-        placeholder: "Explain the lead-up, actions, and outcome...",
-        rows: 8,
-        feedback: "narrativeWarnings",
-        awardChange: "preserve",
-      },
+      narrative: { ...OPERATION_NARRATIVE_FIELD },
     },
   },
 
+  operationUnitAward: {
+    // Unit awards still select individual roster records.
+    recipientType: "individual",
+    recipientPolicy: {
+      minimum: 4,
+      minimumMessage: (minimum) =>
+        `At least ${minimum} recipients are required for this Unit Award.`,
+    },
+    fieldOrder: [
+      "actionCharacter",
+      "combatUnit",
+      "operationTitle",
+      "location",
+      "operationDate",
+      "narrative",
+    ],
+    fields: {
+      combatUnit: {
+        ...requiredText("Combat Unit", "Alpha Squad"),
+        helperText: "Enter the combat unit whose actions are being recognized.",
+      },
+      operationTitle: requiredText("Operation Title", "Overlord"),
+      location: requiredText("Location", "Omaha Beach"),
+      operationDate: { ...OPERATION_DATE_FIELD },
+      narrative: {
+        ...OPERATION_NARRATIVE_FIELD,
+        placeholder: "Explain the unit's lead-up, actions, and outcome...",
+        recipientIdentityChecks: false,
+        liveWarningsRequireCompleteRecipients: false,
+      },
+    },
+  },
+  serviceJointUnitAward: serviceUnitAwardWorksheet({
+    benefittedUnit: BENEFITTED_UNIT,
+    awardedUnit: AWARDED_UNIT,
+    serviceType: {
+      ...SERVICE_CONTRIBUTIONS,
+      helperText:
+        "Controls the closing only. The opening uses the fixed SOP wording.",
+    },
+    narrativeOpening: NARRATIVE_OPENING,
+  }),
+  serviceSuperiorUnitAward: serviceUnitAwardWorksheet({
+    serviceType: {
+      ...SERVICE_CONTRIBUTIONS,
+      helperText: "Controls the generated opening and closing together.",
+    },
+    benefittedUnit: BENEFITTED_UNIT,
+    awardedUnit: AWARDED_UNIT,
+    narrativeOpening: NARRATIVE_OPENING,
+  }),
+
   serviceIndividual: serviceWorksheet({
-    affectedArea: serviceText(
+    affectedArea: requiredText(
       "Affected Area of the Cav",
       "S7 HLL SOI, 2/B/2-7, etc.",
     ),
   }),
   serviceVolunteer: serviceWorksheet({
-    nonCombatDepartment: serviceText(
+    nonCombatDepartment: requiredText(
       "Non-Combat Department",
       "S1 Uniforms, S3 ARMA Operations, etc.",
     ),
@@ -179,13 +255,13 @@ export const WORKSHEET_PROFILES = {
       awardChange: "reset",
     },
     actionPhrase: {
-      ...serviceText("Action Phrase", "action phrase"),
+      ...requiredText("Action Phrase", "action phrase"),
       helperText:
         "Enter a short citation phrase, such as “outstanding support” or “inspiring dedication”. It will appear after “For” in the opening and after “dedication to duty and” in the closing. Do not enter a full sentence.",
       when: { field: "recognitionType", equals: "actions" },
     },
-    benefittedCompany: serviceText("Benefitted Company", "B/2-7, A/3-7, etc."),
-    assignedCompany: serviceText("Assigned Company", "C/1-7, A/ACD, etc."),
+    benefittedCompany: requiredText("Benefitted Company", "B/2-7, A/3-7, etc."),
+    assignedCompany: requiredText("Assigned Company", "C/1-7, A/ACD, etc."),
     narrativeOpening: NARRATIVE_OPENING,
   }),
   serviceMeritorious: serviceWorksheet({
@@ -195,10 +271,10 @@ export const WORKSHEET_PROFILES = {
   }),
   serviceSecondaryPeriod: serviceWorksheet({
     role: {
-      ...serviceText("Role", "a clerk, an investigator, etc."),
+      ...requiredText("Role", "a clerk, an investigator, etc."),
       awardChange: "reset",
     },
-    secondaryBillet: serviceText(
+    secondaryBillet: requiredText(
       "Secondary Billet",
       "S1 MILPACS, S5 Public Affairs, etc.",
     ),
@@ -218,29 +294,29 @@ export const WORKSHEET_PROFILES = {
       awardChange: "reset",
     },
     secondaryRole: {
-      ...serviceText("Role", "1IC, 2IC, Lead, etc."),
+      ...requiredText("Role", "1IC, 2IC, Lead, etc."),
       when: SECONDARY_PATHWAY,
     },
     secondaryBillet: {
-      ...serviceText("Secondary Billet", "Military Police, S7 ARMA CAS, etc."),
+      ...requiredText("Secondary Billet", "Military Police, S7 ARMA CAS, etc."),
       when: SECONDARY_PATHWAY,
     },
     operationsLeadership: {
-      ...serviceText("Operations Leadership", "AO Lead, S3 HLL Operations"),
+      ...requiredText("Operations Leadership", "AO Lead, S3 HLL Operations"),
       when: OPERATIONS_PATHWAY,
     },
     operationsAO: {
-      ...serviceText("Operations AO", "Hell Let Loose: Vietnam AO"),
+      ...requiredText("Operations AO", "Hell Let Loose: Vietnam AO"),
       when: OPERATIONS_PATHWAY,
     },
     ...SERVICE_PERIOD,
   }),
   servicePrimaryPeriod: serviceWorksheet({
     role: {
-      ...serviceText("Role", "a trooper, an infantryman, etc."),
+      ...requiredText("Role", "a trooper, an infantryman, etc."),
       awardChange: "reset",
     },
-    element: serviceText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
+    element: requiredText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
     ...SERVICE_PERIOD,
   }),
 };

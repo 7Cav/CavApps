@@ -3,6 +3,8 @@ export const PASTE_CHARACTER_LIMIT = 100_000;
 export const PASTE_CHARACTER_LIMIT_MESSAGE =
   "Recipient list is too large. Reduce the pasted text to 100,000 characters or fewer.";
 export const RECIPIENT_INLINE_LIMIT = 8;
+// Editing a nonempty selection is allowed before an award's generation minimum.
+export const RECIPIENT_SELECTION_POLICY = Object.freeze({ minimum: 1 });
 // Application convention pending S1 guidance, shared with identity warnings.
 export const EXPLICIT_RECIPIENT_LIMIT = 6;
 
@@ -142,10 +144,18 @@ export function validateRecipientEntries(entries, policy) {
       ? "Select each recipient only once."
       : "";
   });
+  const validCount = uniqueRecipients(
+    entries.map(({ member }) => member),
+  ).filter(isValidRecipient).length;
+  const meetsMinimum = validCount >= policy.minimum;
   return {
     errors,
-    isComplete:
-      entries.length >= policy.minimum && errors.every((error) => !error),
+    validCount,
+    meetsMinimum,
+    minimumError: meetsMinimum
+      ? undefined
+      : policy.minimumMessage?.(policy.minimum),
+    isComplete: meetsMinimum && errors.every((error) => !error),
   };
 }
 

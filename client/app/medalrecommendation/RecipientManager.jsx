@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import BulkRecipientDialog from "./BulkRecipientDialog";
 import {
   RECIPIENT_INLINE_LIMIT,
+  RECIPIENT_SELECTION_POLICY,
   filterRecipients,
   getRecipientDisplayName,
   getRecipientId,
@@ -18,7 +19,8 @@ export default function RecipientManager({
   recommendationRecipients,
   roster,
   organizations,
-  policy,
+  minimumError,
+  hasAttemptedGenerate,
   errors,
   onAdd,
   onRemove,
@@ -43,10 +45,23 @@ export default function RecipientManager({
   }
 
   return (
-    <section aria-labelledby="recipients-heading" className="space-y-4">
+    <section
+      aria-labelledby="recipients-heading"
+      aria-describedby={minimumError ? "recipients-minimum-error" : undefined}
+      className="space-y-4"
+    >
       <h3 id="recipients-heading" className="font-semibold">
         Recipients
       </h3>
+      {minimumError && (
+        <p
+          id="recipients-minimum-error"
+          role={hasAttemptedGenerate ? "alert" : "status"}
+          className={`text-sm font-medium ${hasAttemptedGenerate ? "text-destructive" : "text-muted-foreground"}`}
+        >
+          {minimumError}
+        </p>
+      )}
       {compact ? (
         <>
           <Button
@@ -103,7 +118,7 @@ export default function RecipientManager({
             <Button
               type="button"
               variant="outline"
-              disabled={entries.length <= policy.minimum}
+              disabled={entries.length <= RECIPIENT_SELECTION_POLICY.minimum}
               onClick={onRemove}
             >
               Remove Recipient
@@ -220,7 +235,6 @@ export default function RecipientManager({
         roster={roster}
         organizations={organizations}
         selected={selected}
-        policy={policy}
         onConfirm={(members) => {
           onConfirm(members);
           setExpanded(false);

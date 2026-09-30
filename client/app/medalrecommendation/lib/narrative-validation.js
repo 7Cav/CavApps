@@ -1,3 +1,4 @@
+import { combineNarrative } from "./citation-builders";
 import {
   EXPLICIT_RECIPIENT_LIMIT,
   getRecipientIdentity,
@@ -128,6 +129,7 @@ export function getGroupRecipientWarning(
   narrativeField,
 ) {
   if (
+    narrativeField?.recipientIdentityChecks === false ||
     narrativeField?.systemOwnedNarrativeOpening ||
     recipients.length < 2 ||
     recipients.length > EXPLICIT_RECIPIENT_LIMIT
@@ -331,4 +333,37 @@ export function mergeHighlightRanges(highlightRanges) {
   }
 
   return mergedRanges;
+}
+
+export function analyzeRecommendationNarrative(
+  narrative,
+  recipients,
+  systemOpening,
+  medal,
+  rankEntries,
+  narrativeField,
+) {
+  const systemOwnedNarrativeOpening =
+    narrativeField?.systemOwnedNarrativeOpening;
+  const text =
+    systemOwnedNarrativeOpening && systemOpening
+      ? combineNarrative(systemOpening, narrative)
+      : narrative;
+  const analysis = analyzeNarrative(text, {
+    ...(narrativeField?.recipientIdentityChecks !== false &&
+    !systemOwnedNarrativeOpening &&
+    recipients.length === 1
+      ? getRecipientIdentity(recipients[0])
+      : {}),
+    rankEntries,
+    minimumNarrativeSentences: medal.minimumNarrativeSentences,
+  });
+  // User-owned identity checks inspect authored narrative, never generated prose.
+  const groupWarning = getGroupRecipientWarning(
+    narrative,
+    recipients,
+    narrativeField,
+  );
+  if (groupWarning) analysis.warnings.unshift(groupWarning);
+  return analysis;
 }

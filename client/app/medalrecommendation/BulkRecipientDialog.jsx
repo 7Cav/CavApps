@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  RECIPIENT_SELECTION_POLICY,
   getRecipientPasteError,
   clearShownRecipients,
   filterRecipients,
@@ -30,13 +31,7 @@ import {
 } from "./lib/recipient-utils";
 
 // Mounted afresh for each opening: cancelling discards all draft edits.
-function BulkRecipientDraft({
-  roster,
-  organizations,
-  selected,
-  policy,
-  onConfirm,
-}) {
+function BulkRecipientDraft({ roster, organizations, selected, onConfirm }) {
   const [draft, setDraft] = useState(() => uniqueRecipients(selected));
   const [query, setQuery] = useState("");
   const [organizationId, setOrganizationId] = useState("");
@@ -58,7 +53,7 @@ function BulkRecipientDraft({
   );
   const canConfirm = validateRecipientEntries(
     draft.map((member) => ({ member })),
-    policy,
+    RECIPIENT_SELECTION_POLICY,
   ).isComplete;
 
   function rejectOversizedInput(message) {

@@ -1,3 +1,4 @@
+import { generateRecommendation } from "../lib/recommendation-generation.js";
 import {
   combineNarrative,
   resolveRecommendationRecipientSubject,
@@ -146,4 +147,53 @@ describe("collective award wording", () => {
       }
     },
   );
+});
+
+describe("recommendation generation", () => {
+  test("resolves all active citation choices by their field definitions and excludes inactive choices", () => {
+    const worksheet = {
+      fields: {
+        recognition: {
+          type: "citationChoice",
+          options: [{ id: "first", citationText: "distinguished service" }],
+        },
+        credit: {
+          type: "citationChoice",
+          options: [{ id: "second", citationText: "exceptional dedication" }],
+        },
+        inactive: {
+          type: "citationChoice",
+          when: { field: "pathway", equals: "other" },
+          options: [{ id: "unused", citationText: "inactive prose" }],
+        },
+        narrative: { type: "textarea" },
+      },
+    };
+    const medal = {
+      minimumNarrativeSentences: 1,
+      buildOpening: ({ recognition, inactive }) =>
+        inactive === undefined
+          ? `For ${recognition}.`
+          : "Leaked inactive choice.",
+      buildClosing: ({ credit }) => `Their ${credit} brought credit.`,
+    };
+    const recommendation = generateRecommendation({
+      medal,
+      worksheet,
+      values: {
+        recognition: "first",
+        credit: "second",
+        inactive: "unsupported",
+        narrative: "Specialist John Smith completed the task.",
+      },
+      recipients: [makeRecipient()],
+    });
+    expect(recommendation.openingSentence).toBe("For distinguished service.");
+    expect(recommendation.narrative).toBe(
+      "Specialist John Smith completed the task.",
+    );
+    expect(recommendation.closingSentence).toBe(
+      "Their exceptional dedication brought credit.",
+    );
+  });
 });

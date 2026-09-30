@@ -62,46 +62,44 @@ function buildOperationLocationDateTail({ operationTitle, location, date }) {
 const GREAT_CREDIT_CLOSING =
   "great credit upon themselves and the 7th Cavalry Gaming Regiment.";
 
-export function buildEntireOperationActionOpening({
-  actionCharacter,
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+function buildOperationServiceContext(servingElement, context) {
   return (
-    `For ${actionCharacter} actions over an entire operation while serving as ` +
-    `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-    buildOperationLocationDateTail({ operationTitle, location, date })
+    `${servingElement} in the 7th Cavalry Regiment during combat in ` +
+    buildOperationLocationDateTail(context)
   );
+}
+
+export function buildEntireOperationActionOpening(context) {
+  return (
+    `For ${context.actionCharacter} actions over an entire operation while serving as ` +
+    buildOperationServiceContext(context.combatElement, context)
+  );
+}
+
+function buildActionCharacterCredit(possessiveSubject, actionCharacter) {
+  return `${possessiveSubject} ${actionCharacter} actions reflect ${GREAT_CREDIT_CLOSING}`;
 }
 
 export function buildActionCharacterCreditClosing(context) {
-  const { actionCharacter } = context;
-  return (
-    `${getPossessiveSubject(context)} ${actionCharacter} actions ` +
-    `reflect ${GREAT_CREDIT_CLOSING}`
+  return buildActionCharacterCredit(
+    getPossessiveSubject(context),
+    context.actionCharacter,
   );
 }
 
-export function buildGallantryOpening({
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+export function buildGallantryOpening(context) {
   return (
     "For conspicuous gallantry and intrepidity under direct enemy fire while serving as " +
-    `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-    buildOperationLocationDateTail({ operationTitle, location, date })
+    buildOperationServiceContext(context.combatElement, context)
   );
+}
+
+function buildHeroismSkillDevotionCredit(possessiveSubject) {
+  return `${possessiveSubject} heroism, skill and devotion to duty reflect ${GREAT_CREDIT_CLOSING}`;
 }
 
 export function buildHeroismSkillDevotionClosing(context) {
-  return (
-    `${getPossessiveSubject(context)} heroism, skill and devotion to duty ` +
-    `reflect ${GREAT_CREDIT_CLOSING}`
-  );
+  return buildHeroismSkillDevotionCredit(getPossessiveSubject(context));
 }
 
 export function buildSkillsAndHeroicActionsClosing(context) {
@@ -111,16 +109,10 @@ export function buildSkillsAndHeroicActionsClosing(context) {
   );
 }
 
-export function buildSingleHeroismOrSkillOpening({
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+export function buildSingleHeroismOrSkillOpening(context) {
   return (
     "For a single act of heroism or skill under enemy fire while serving as " +
-    `${combatElement} in the 7th Cavalry Regiment during combat in ` +
-    buildOperationLocationDateTail({ operationTitle, location, date })
+    buildOperationServiceContext(context.combatElement, context)
   );
 }
 
@@ -131,20 +123,11 @@ export function buildHeroismAndSkillClosing(context) {
   );
 }
 
-export function buildPurpleHeartOpening({
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+export function buildPurpleHeartOpening(context) {
   return (
     "For a single or multiple heroic actions while under enemy fire resulting in their " +
-    `sacrifice and death while serving as ${combatElement} in the 7th Cavalry ` +
-    `Regiment during combat in ${buildOperationLocationDateTail({
-      operationTitle,
-      location,
-      date,
-    })}`
+    "sacrifice and death while serving as " +
+    buildOperationServiceContext(context.combatElement, context)
   );
 }
 
@@ -155,29 +138,17 @@ export function buildHeroismAndSacrificeClosing(context) {
   );
 }
 
-export function buildExtraordinaryHeroismOpening({
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+export function buildExtraordinaryHeroismOpening(context) {
   return (
-    "For a single act demonstrating extraordinary heroism and skill under enemy fire " +
-    `while serving as ${combatElement} in the 7th Cavalry Regiment during combat in ` +
-    buildOperationLocationDateTail({ operationTitle, location, date })
+    "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as " +
+    buildOperationServiceContext(context.combatElement, context)
   );
 }
 
-export function buildExtraordinaryHeroismPilotOpening({
-  combatElement,
-  operationTitle,
-  location,
-  date,
-}) {
+export function buildExtraordinaryHeroismPilotOpening(context) {
   return (
-    "For a single act demonstrating extraordinary heroism and skill under enemy fire " +
-    `while serving as ${combatElement} pilot in the 7th Cavalry Regiment during combat in ` +
-    buildOperationLocationDateTail({ operationTitle, location, date })
+    "For a single act demonstrating extraordinary heroism and skill under enemy fire while serving as " +
+    buildOperationServiceContext(`${context.combatElement} pilot`, context)
   );
 }
 
@@ -197,13 +168,20 @@ export function buildServiceNarrativeOpening(context) {
   return `${getSubject(context)} distinguished themselves by`;
 }
 
-export function buildSelectableServiceNarrativeOpening(context) {
-  const { narrativeOpening } = context;
+function buildSelectableNarrativeOpening(subject, narrativeOpening) {
   if (!narrativeOpening) return "";
   if (!["distinguished", "contributed"].includes(narrativeOpening)) {
     throw new Error(`Unsupported Narrative Opening: ${narrativeOpening}`);
   }
-  return `${getSubject(context)} ${narrativeOpening} themselves by`;
+  if (!subject) return "";
+  return `${subject} ${narrativeOpening} themselves by`;
+}
+
+export function buildSelectableServiceNarrativeOpening(context) {
+  return buildSelectableNarrativeOpening(
+    context.narrativeOpening ? getSubject(context) : "",
+    context.narrativeOpening,
+  );
 }
 
 export function buildVolunteerServiceOpening({ nonCombatDepartment }) {
@@ -370,4 +348,42 @@ export function buildDefenseDistinguishedServiceOpening(context) {
 export function buildDefenseDistinguishedServiceClosing(context) {
   const { element } = context;
   return `${getPossessiveSubject(context)} exemplary leadership demonstrates their commitment to their troopers and reflects great credit upon themselves, ${element}, and the 7th Cavalry Gaming Regiment.`;
+}
+
+export function buildValorousUnitOpening(context) {
+  return buildGallantryOpening({
+    ...context,
+    combatElement: context.combatUnit,
+  });
+}
+
+export function buildValorousUnitClosing() {
+  return buildHeroismSkillDevotionCredit("Their");
+}
+
+export function buildMeritoriousUnitOpening(context) {
+  return buildEntireOperationActionOpening({
+    ...context,
+    combatElement: context.combatUnit,
+  });
+}
+
+export function buildMeritoriousUnitClosing({ actionCharacter }) {
+  return buildActionCharacterCredit("Their", actionCharacter);
+}
+
+export function buildJointUnitOpening({ benefittedUnit }) {
+  return `For exceptionally meritorious performance and distinguished contributions to ${benefittedUnit}.`;
+}
+
+export function buildSuperiorUnitOpening({ serviceType, benefittedUnit }) {
+  return `For exceptionally meritorious ${resolveServiceType(serviceType)} to ${benefittedUnit}.`;
+}
+
+export function buildUnitNarrativeOpening({ awardedUnit, narrativeOpening }) {
+  return buildSelectableNarrativeOpening(awardedUnit?.trim(), narrativeOpening);
+}
+
+export function buildServiceUnitClosing({ serviceType, benefittedUnit }) {
+  return `Their dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to themselves, ${benefittedUnit}, and the 7th Cavalry Gaming Regiment.`;
 }

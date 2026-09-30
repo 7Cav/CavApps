@@ -48,3 +48,32 @@ export function getMedalFamily(familyId) {
 
   return MEDAL_FAMILIES[familyId];
 }
+
+export const AWARD_CATEGORY_IDS = Object.freeze({
+  INDIVIDUAL: "individual",
+  UNIT: "unit",
+});
+
+export const AWARD_CATEGORY_LIST = Object.freeze([
+  Object.freeze({ id: AWARD_CATEGORY_IDS.INDIVIDUAL, label: "Individual" }),
+  Object.freeze({ id: AWARD_CATEGORY_IDS.UNIT, label: "Unit" }),
+]);
+
+export function groupMedalsByAwardCategory(medals) {
+  const groups = AWARD_CATEGORY_LIST.map((category) => ({
+    ...category,
+    medals: [],
+  }));
+  for (const medal of medals) {
+    const group = groups.find(
+      (category) => category.id === medal.awardCategory,
+    );
+    if (!group) {
+      throw new Error(
+        `Unsupported award category: ${String(medal.awardCategory)}`,
+      );
+    }
+    group.medals.push(medal);
+  }
+  return groups;
+}
