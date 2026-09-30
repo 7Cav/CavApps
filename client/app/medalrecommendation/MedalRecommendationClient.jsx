@@ -32,6 +32,8 @@ import {
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
 import { generateRecommendation } from "./lib/recommendation-generation";
+import { buildMilpacsUrl } from "./lib/recommendation-export";
+import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
 import {
@@ -312,6 +314,9 @@ export default function MedalRecommendationClient({
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
   const [recommendation, setRecommendation] = useState(null);
+  const generationId = useRef(0);
+  const [previewHovered, setPreviewHovered] = useState(false);
+  const [previewFocused, setPreviewFocused] = useState(false);
 
   const rosterMembers = useMemo(
     () => uniqueRecipients(recipientRoster ?? []),
@@ -495,6 +500,7 @@ export default function MedalRecommendationClient({
       return;
     }
 
+    generationId.current += 1;
     setRecommendation(
       generateRecommendation({
         medal: selectedMedal,
@@ -772,9 +778,28 @@ export default function MedalRecommendationClient({
                   <section
                     role="region"
                     aria-label="Recommendation Preview"
-                    className="space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center"
+                    aria-describedby="preview-copy-warning"
+                    tabIndex={0}
+                    onMouseEnter={() => setPreviewHovered(true)}
+                    onMouseLeave={() => setPreviewHovered(false)}
+                    onFocus={() => setPreviewFocused(true)}
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget))
+                        setPreviewFocused(false);
+                    }}
+                    className="relative space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center text-secondary-foreground transition-colors hover:border-destructive/60 hover:bg-destructive/10 focus-within:border-destructive/60 focus-within:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
                   >
-                    <h4 className="text-xl font-semibold text-foreground">
+                    <p
+                      id="preview-copy-warning"
+                      role="tooltip"
+                      hidden={!previewHovered && !previewFocused}
+                      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-md border border-border bg-popover p-3 text-left text-sm text-popover-foreground shadow-md"
+                    >
+                      Do not copy from this preview. Use the Recommendation
+                      Title and Recommendation Body copy buttons below to
+                      preserve formatting and the ribbon image.
+                    </p>
+                    <h4 className="text-xl font-bold">
                       {recommendation.medal.name}
                     </h4>
 
@@ -786,18 +811,25 @@ export default function MedalRecommendationClient({
 
                     <ul
                       aria-label="Recommendation recipients"
-                      className="space-y-1 font-medium"
+                      className="space-y-1 font-bold"
                     >
                       {recommendation.recipients.map((member) => (
                         <li key={getRecipientId(member)}>
-                          {getRecipientDisplayName(member)}
+                          <a
+                            href={buildMilpacsUrl(member)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary"
+                          >
+                            {getRecipientDisplayName(member)}
+                          </a>
                         </li>
                       ))}
                     </ul>
 
                     <p
                       aria-label="Citation Narrative"
-                      className="text-left leading-7"
+                      className="whitespace-pre-wrap text-center leading-7"
                     >
                       {renderCitationNarrative(recommendation)}
                     </p>
@@ -808,6 +840,12 @@ export default function MedalRecommendationClient({
                   </p>
                 )}
               </section>
+              {recommendation && (
+                <RecommendationSubmission
+                  key={generationId.current}
+                  recommendation={recommendation}
+                />
+              )}
             </CardContent>
           </Card>
         </aside>

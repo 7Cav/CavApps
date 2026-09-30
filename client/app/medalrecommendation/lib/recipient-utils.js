@@ -61,7 +61,7 @@ export function getRecipientId(member) {
   return String(member?.user?.userId ?? "").trim();
 }
 
-function getRankOrder(member) {
+function getRecommendationRank(member) {
   const value = member?.rank?.rankId;
   const rankId =
     typeof value === "number" ||
@@ -72,7 +72,17 @@ function getRankOrder(member) {
   const abbreviation = normalize(member?.rank?.rankShort).toUpperCase();
   // CavApps uses GA; the roster API spells the same rank GOA.
   const canonicalAbbreviation = abbreviation === "GOA" ? "GA" : abbreviation;
-  return rank?.abbreviation === canonicalAbbreviation ? rank.order : Infinity;
+  return rank?.abbreviation === canonicalAbbreviation ? rank : undefined;
+}
+
+function getRankOrder(member) {
+  return getRecommendationRank(member)?.order ?? Infinity;
+}
+
+export function getRecipientRankAbbreviation(member) {
+  const rank = getRecommendationRank(member);
+  if (!rank) throw new Error("Unsupported recipient rank abbreviation");
+  return rank.abbreviation;
 }
 
 // Recommendation order is separate from the user's editable selection order.
