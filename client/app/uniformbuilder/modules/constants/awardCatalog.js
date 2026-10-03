@@ -277,7 +277,7 @@ export const AWARD_CATALOG = [
     awardType: AwardType.Medal,
   },
   {
-    name: "Vietnam Service Ribbon",
+    name: "Hell Let Loose Vietnam Service Ribbon",
     awardPriority: 39,
     medalPriority: 35,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,

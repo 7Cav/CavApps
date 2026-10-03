@@ -202,20 +202,20 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
 const medalsFor = async (awardNames) =>
   (await canvasObjectFor("11B", awardNames))[3];
 
-await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+await test("Hell Let Loose Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
   // Expected order is MILPAC's, not the catalog's: display_order 205
   // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
   // the API's ordering cannot satisfy this by accident.
   const medals = await medalsFor([
     "Ready or Not Service Ribbon",
-    "Vietnam Service Ribbon",
+    "Hell Let Loose Vietnam Service Ribbon",
     "Overseas Service Ribbon",
   ]);
   assert.deepStrictEqual(
     medals.map((medal) => medal.awardTitle),
     [
       "Overseas Service Ribbon",
-      "Vietnam Service Ribbon",
+      "Hell Let Loose Vietnam Service Ribbon",
       "Ready or Not Service Ribbon",
     ],
   );
