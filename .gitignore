@@ -48,6 +48,7 @@ compose.yml
 # Tooling (do not commit)
 CLAUDE.md
 .claude/
+.playwright-mcp/
 docs/superpowers/
 .bmad/
 .bmad-core/

@@ -3,6 +3,8 @@
 // placement, and Node's ESM resolver does not guess extensions.
 import { AwardType } from "./awardTypes.js";
 import { AwardAttachmentType } from "./awardAttachmentTypes.js";
+import { BadgeFamily } from "./badgeFamilies.js";
+import { BadgeImages } from "./badgeImages.js";
 
 // The full award catalog: name + per-award metadata. AwardRegistry loops this
 // in order to populate its Map, so KEEP THE ORDER STABLE — Map iteration order
@@ -241,7 +243,7 @@ export const AWARD_CATALOG = [
     name: "NCO Professional Development Ribbon",
     awardPriority: 33,
     awardAttachmentType: AwardAttachmentType.NCO_NUMS,
-    awardType: AwardType.Ribbon,
+    awardType: AwardType.RibbonByHighestRank,
   },
   {
     name: "Honor Graduate Ribbon",
@@ -275,87 +277,94 @@ export const AWARD_CATALOG = [
     awardType: AwardType.Medal,
   },
   {
-    name: "Ready or Not Service Ribbon",
+    name: "Vietnam Service Ribbon",
     awardPriority: 39,
     medalPriority: 35,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "DCS World Service Ribbon",
+    name: "Ready or Not Service Ribbon",
     awardPriority: 40,
     medalPriority: 36,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Squad Service Ribbon",
+    name: "DCS World Service Ribbon",
     awardPriority: 41,
     medalPriority: 37,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "WWII Service Ribbon",
+    name: "Squad Service Ribbon",
     awardPriority: 42,
     medalPriority: 38,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Hell Let Loose Service Ribbon",
+    name: "WWII Service Ribbon",
     awardPriority: 43,
     medalPriority: 39,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Hell Let Loose Console Service Ribbon",
+    name: "Hell Let Loose Service Ribbon",
     awardPriority: 44,
     medalPriority: 40,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Battlefield 6 Service Ribbon",
+    name: "Hell Let Loose Console Service Ribbon",
     awardPriority: 45,
     medalPriority: 41,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Foxhole Service Ribbon",
+    name: "Battlefield 6 Service Ribbon",
     awardPriority: 46,
     medalPriority: 42,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
     awardType: AwardType.Medal,
   },
   {
-    name: "Recruiting Ribbon",
+    name: "Foxhole Service Ribbon",
     awardPriority: 47,
+    medalPriority: 43,
+    awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
+    awardType: AwardType.Medal,
+  },
+  {
+    name: "Recruiting Ribbon",
+    awardPriority: 48,
     awardAttachmentType: AwardAttachmentType.STARS_DONATION,
     awardType: AwardType.RibbonDonationLogic,
   }, // May Also require Special Case
   {
     name: "D-Day Commemorative Medal",
-    awardPriority: 48,
-    medalPriority: 43,
-    awardType: AwardType.Medal,
-  },
-  {
-    name: "Ranger Selection Ribbon",
     awardPriority: 49,
-    awardType: AwardType.Ribbon,
-  },
-  {
-    name: "Sniper Ribbon",
-    awardPriority: 50,
     medalPriority: 44,
     awardType: AwardType.Medal,
   },
   {
-    name: "Basic Assault Course Ribbon",
+    name: "Ranger Selection Ribbon",
+    awardPriority: 50,
+    awardType: AwardType.Ribbon,
+  },
+  {
+    name: "Sniper Ribbon",
     awardPriority: 51,
+    medalPriority: 45,
+    awardType: AwardType.Medal,
+  },
+  {
+    name: "Basic Assault Course Ribbon",
+    awardPriority: 52,
     awardType: AwardType.Ribbon,
   },
 
@@ -364,24 +373,24 @@ export const AWARD_CATALOG = [
   // Anything here is shown as is, and there is no inherent precicence for these.
   {
     name: "Cadre Course Ribbon",
-    awardPriority: 52,
+    awardPriority: 53,
     awardType: AwardType.Ribbon,
   },
   {
     name: "Womens Army Corp Service Medal",
-    awardPriority: 53,
-    medalPriority: 45,
+    awardPriority: 54,
+    medalPriority: 46,
     awardType: AwardType.Medal,
   },
   {
     name: "D Day Participation Ribbon",
-    awardPriority: 54,
+    awardPriority: 55,
     awardType: AwardType.Ribbon,
   },
   {
     name: "European/African/Middle Eastern Campaign Medal",
-    awardPriority: 55,
-    medalPriority: 46,
+    awardPriority: 56,
+    medalPriority: 47,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS,
     awardType: AwardType.Medal,
   },
@@ -429,185 +438,271 @@ export const AWARD_CATALOG = [
     name: "Flight Medic Badge",
     awardPriority: 6,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.flightMedicBadge,
+    badgeFamily: BadgeFamily.FLIGHT_MEDIC,
   }, // (3/1/b/1-7) (4/1/b/1-7)
   {
     name: "Master Army Aviator Badge",
     awardPriority: 11,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.masterAviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   }, // (A/1-7) (A/ACD)
   {
     name: "Senior Army Aviator Badge",
     awardPriority: 10,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.seniorAviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   },
   {
     name: "Army Aviator Badge",
     awardPriority: 9,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.aviator,
+    badgeFamily: BadgeFamily.AVIATOR,
   },
   {
     name: "Aircraft Master Crewman Badge",
     awardPriority: 8,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.masterAircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   }, // (A/1-7) (A/ACD)
   {
     name: "Aircraft Senior Crewman Badge",
     awardPriority: 7,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.seniorAircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   },
   {
     name: "Aircraft Crewman Badge",
     awardPriority: 6,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.aircrew,
+    badgeFamily: BadgeFamily.AIRCREW,
   },
   {
     name: "Combat Infantry Badge 4th Award",
     awardPriority: 5,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantryFourth,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge 3rd Award",
     awardPriority: 4,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantryThird,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge 2nd Award",
     awardPriority: 3,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantrySecond,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Combat Infantry Badge",
     awardPriority: 2,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.combatInfantry,
+    badgeFamily: BadgeFamily.INFANTRY,
   },
   {
     name: "Expert Infantry Badge",
     awardPriority: 1,
     awardType: AwardType.BadgeCombat,
+    badgeImage: BadgeImages.expertInfantry,
+    badgeFamily: BadgeFamily.INFANTRY,
   }, // et. al.
 
   //____ WEAPON QUALS ____
-  { name: "Rifle Expert", awardTag: "rifle", awardType: AwardType.WeaponQual },
+  // awardPriority is the weapon's rank in the S1 Uniforms SOP weapon order.
+  // Plates stack in that order, lowest first, and all three entries for a
+  // weapon carry the same number. Ranks 9 and 10 are Carbine and Auto Rifle,
+  // which the SOP lists and MILPAC does not award yet. The plate is the file
+  // named after awardTag, see weaponQualPlates.js.
+  {
+    name: "Rifle Expert",
+    awardTag: "rifle",
+    awardPriority: 1,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "Rifle Sharpshooter",
     awardTag: "rifle",
+    awardPriority: 1,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Rifle Marksman",
     awardTag: "rifle",
+    awardPriority: 1,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Expert",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Sharpshooter",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Grenade Marksman",
     awardTag: "grenade",
+    awardPriority: 2,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Expert",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Sharpshooter",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Pistol Marksman",
     awardTag: "pistol",
+    awardPriority: 7,
     awardType: AwardType.WeaponQual,
   },
-  { name: "M-203 Expert", awardTag: "m203", awardType: AwardType.WeaponQual },
+  {
+    name: "M-203 Expert",
+    awardTag: "m203",
+    awardPriority: 4,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "M-203 Sharpshooter",
     awardTag: "m203",
+    awardPriority: 4,
     awardType: AwardType.WeaponQual,
   },
-  { name: "M-203 Marksman", awardTag: "m203", awardType: AwardType.WeaponQual },
+  {
+    name: "M-203 Marksman",
+    awardTag: "m203",
+    awardPriority: 4,
+    awardType: AwardType.WeaponQual,
+  },
   {
     name: "Machine Gun Expert",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Machine Gun Sharpshooter",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Machine Gun Marksman",
     awardTag: "machineGun",
+    awardPriority: 5,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Expert",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Sharpshooter",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Recoilless Rifle Marksman",
     awardTag: "recoilless",
+    awardPriority: 6,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Expert",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Sharpshooter",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Aeroweapons Marksman",
     awardTag: "aeroweapons",
+    awardPriority: 8,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Expert",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Sharpshooter",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Hydra-70 Marksman",
     awardTag: "hydra70",
+    awardPriority: 11,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Expert",
     awardTag: "tankWeapons",
+    awardPriority: 3,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Sharpshooter",
     awardTag: "tankWeapons",
+    awardPriority: 3,
     awardType: AwardType.WeaponQual,
   },
   {
     name: "Tank Weapons Marksman",
     awardTag: "tankWeapons",
+    awardPriority: 3,
+    awardType: AwardType.WeaponQual,
+  },
+  {
+    name: "Mk-82 Expert",
+    awardTag: "mk82",
+    awardPriority: 12,
+    awardType: AwardType.WeaponQual,
+  },
+  {
+    name: "Mk-82 Sharpshooter",
+    awardTag: "mk82",
+    awardPriority: 12,
+    awardType: AwardType.WeaponQual,
+  },
+  {
+    name: "Mk-82 Marksman",
+    awardTag: "mk82",
+    awardPriority: 12,
     awardType: AwardType.WeaponQual,
   },
 

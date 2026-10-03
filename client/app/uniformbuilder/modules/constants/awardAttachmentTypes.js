@@ -1,5 +1,6 @@
 // Ribbon/medal attachment-device taxonomy and the max displayable count per
-// device. MAX_AWARD_COUNT is the source of those numbers, not a copy of them:
+// device. For a numeral device the count is the highest numeral image that
+// exists. MAX_AWARD_COUNT is the source of those numbers, not a copy of them:
 // AwardRegistry.getMaxAwardCount reads this table. (It once described a switch
 // statement there, which PR #130 replaced with this lookup.)
 export const AwardAttachmentType = Object.freeze({

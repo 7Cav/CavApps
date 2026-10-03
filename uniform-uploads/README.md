@@ -14,10 +14,13 @@ the sprite sheets and opens a pull request for review.
 2. **Drop the source art** here as PNG(s), named as plain filenames — no
    subdirectories, and the name must end in `.png`:
    - Ribbon art: 43×13 or 43×14, RGB or RGBA, or an exact whole-number multiple
-     of either (86×26, 86×28, 129×39, …). Any other shape fails the run: the
-     tile is made by _stretching_ the source to fill 43×14, so a source of
-     another shape comes out distorted rather than merely imperfect, and by
-     then your PNG is gone.
+     of either (86×26, 86×28, 129×39, …). A tile is 13 lines of ribbon over one
+     transparent line, the gap the rack shows between ribbons. A 43×13 source
+     is the ribbon alone and lands on the top 13 lines; a 43×14 source brings
+     its own 14th line, so leave that line clear. Any other shape fails the
+     run: the resize is a _stretch_ to fill the width, so a source of another
+     shape comes out distorted rather than merely imperfect, and by then your
+     PNG is gone.
 
      Author at 1× if you can. A larger source is scaled down first, and that
      resample softens stripe edges, so the tile it produces is **not** the same

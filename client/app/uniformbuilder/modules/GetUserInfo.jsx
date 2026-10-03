@@ -134,6 +134,9 @@ function setShoulderCord(mos) {
     case Mos.BRADLEY_CREWMEMBER:
     case Mos.CAVALRY_SCOUT:
       return "Armor";
+    case Mos.LOGISTICS_OFFICER:
+    case Mos.LOGISTICS_ENLISTED:
+      return "Logistics";
     default:
       return false;
   }
@@ -215,6 +218,10 @@ function setNeckPins(mos) {
     case Mos.WAG_ENLISTED:
     case Mos.NCOA_ENLISTED:
       return "InfantryNCO";
+    case Mos.LOGISTICS_OFFICER:
+      return "LogisticsOfficer";
+    case Mos.LOGISTICS_ENLISTED:
+      return "LogisticsNCO";
     default:
       return false;
   }

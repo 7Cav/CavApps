@@ -32,8 +32,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run generator tests
-        run: npm test
+      # `npm test` ends with the server suite, which resolves its modules from
+      # server/node_modules. Same step LINT_FORMAT_CHECK runs.
+      - name: Install server dependencies
+        run: npm ci --prefix server
 
       - name: Generate sprite sheets
         id: generate
@@ -81,6 +83,18 @@ jobs:
             echo "$WARNINGS"
             echo "SPRITE_EOF"
           } >> "$GITHUB_OUTPUT"
+
+      # After the generator, not before it. The sprite suite asserts that each
+      # committed sheet holds exactly the rows the catalog claims, and it does
+      # not read the manifest. The documented upload flow edits the catalog
+      # first and leaves the sheets to the generator. Before generation, then,
+      # the catalog is one row ahead of every sheet an upload inserts into, and
+      # the gate fails on every insert (#234). Run here, the same assertion
+      # checks the sheets the pull request will carry. No `if:` on purpose. A
+      # push with an empty manifest still runs the whole suite against the
+      # committed sheets, which is the regression check main relies on.
+      - name: Run tests
+        run: npm test
 
       - name: Detect sprite-sheet changes
         id: changes

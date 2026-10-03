@@ -1,10 +1,8 @@
 import {
   AwardAttachmentType,
-  MosGroup,
-  AwardNameFragment,
   hasValorDevice,
+  parseNcoRankNumeral,
   stripValorDevice,
-  BadgeImages,
 } from "./constants";
 
 export class Award {
@@ -37,15 +35,32 @@ export class Ribbon extends Award {
     Ribbon.totalRibbonCount++;
   }
 
+  // Called once per further MILPAC row of this award. A subclass that reads
+  // the row takes it as an argument; the base count ignores it.
   incrementAwardCount() {
     this.ribbonTrueAttachmentCount++;
     this.calculateNewDisplayCount();
   }
 
   calculateNewDisplayCount() {
+    // Clusters and stars mark the awards past the first, so their count runs
+    // one lower than the award count. A numeral shows the award count itself
+    // (7CAV-DR-021, section 5.2.3.6: Air Medal, 2nd award = "2"). A subclass
+    // that reads the numeral off the rows overrides this method.
+    if (this.ribbonAttachmentType === AwardAttachmentType.NCO_NUMS) {
+      this.displayNumeral(this.ribbonTrueAttachmentCount + 1);
+      return;
+    }
     if (this.ribbonTrueAttachmentCount <= this.maxAwardcount) {
       this.ribbonDisplayedAttachmentCount++;
     }
+  }
+
+  // A numeral of 1 is never drawn; the ribbon stays plain. For a numeral,
+  // maxAwardcount is the highest numeral image that exists.
+  displayNumeral(numeral) {
+    this.ribbonDisplayedAttachmentCount =
+      numeral > 1 ? Math.min(numeral, this.maxAwardcount) : 0;
   }
 }
 
@@ -123,6 +138,41 @@ export class RibbonDonationLogic extends Ribbon {
   }
 }
 
+// The NCO Professional Development Ribbon's numeral marks the highest NCO
+// rank held above Sergeant (7CAV-DR-021, section 5.2.3.6): Sergeant plain,
+// Staff Sergeant "2", up to Command Sergeant Major "7". S1 names the rank in
+// each MILPAC row's details. The numeral is the highest rank named across the
+// rows, however many there are, and a demotion never lowers it.
+//
+// The SOP has no rule for a row that names no rank. Such a row cannot prove a
+// rank above Sergeant, so it never raises the numeral. A trooper whose only
+// rows are blank draws a plain ribbon.
+export class RibbonByHighestRank extends Ribbon {
+  highestRankNumeral = 0;
+
+  constructor(data, AwardRegistry) {
+    super(data, AwardRegistry);
+    this.noteRank(data);
+    this.calculateNewDisplayCount();
+  }
+
+  incrementAwardCount(row) {
+    this.noteRank(row);
+    super.incrementAwardCount();
+  }
+
+  noteRank(row) {
+    const numeral = parseNcoRankNumeral(row.awardDetails);
+    if (numeral !== null && numeral > this.highestRankNumeral) {
+      this.highestRankNumeral = numeral;
+    }
+  }
+
+  calculateNewDisplayCount() {
+    this.displayNumeral(this.highestRankNumeral);
+  }
+}
+
 export class MedalTiered extends Medal {
   highestTierAchieved = 0;
 
@@ -192,109 +242,30 @@ export class Badge extends Award {
   // Do things
 }
 
+// A member wears one combat badge: the highest-ranked of those they hold and
+// their MOS may display. Eligibility is settled before construction, in
+// getCanvasObject.jsx — every award reaching this class is one the member may
+// wear, so all that is left is to keep the highest.
 export class BadgeCombat extends Badge {
-  isMedical = false;
-  isAviation = false;
   imageNum = 0;
-  maxAllowed;
-  userMos = "";
 
-  constructor(awardData, userMos, AwardRegistry) {
+  constructor(awardData, AwardRegistry) {
     super(awardData, AwardRegistry);
 
     const registryDetails = AwardRegistry.getAwardDetails(awardData.awardName);
     this.awardPriority = registryDetails.awardPriority;
-
-    this.userMos = userMos;
-    if (MosGroup.AVIATION.includes(this.userMos)) {
-      this.isAviation = true;
-    }
-
-    if (MosGroup.MEDICAL.includes(this.userMos)) {
-      this.isMedical = true;
-    }
-
-    this.imageNum = this.getImageNum(this.awardPriority);
-    this.setMaxAllowed();
-  }
-
-  setMaxAllowed() {
-    if (this.isMedical) {
-      this.maxAllowed = 6;
-      return;
-    }
-
-    //we need to give 15T (aircrew) an exception so that they stop at aircrew badges.
-    if (this.isAviation) {
-      if (MosGroup.AIRCREW.includes(this.userMos)) {
-        this.maxAllowed = 8;
-      } else {
-        this.maxAllowed = 11;
-      }
-      return;
-    }
-
-    this.maxAllowed = 5;
-  }
-
-  getImageNum(awardPriority) {
-    // Maps awardPriority from constants/awardCatalog.js to a badge image that
-    // canvas.jsx will use to render from client/public/skunkworks/uniformBadges/combatBadges/<n>.png
-    // awardPriority values 1-5 (EIB thru CIB4) are universal and are matched by default and fall through
-
-    if (this.isAviation) {
-      switch (awardPriority) {
-        case 6:
-          return BadgeImages.aircrew;
-        case 7:
-          return BadgeImages.seniorAircrew;
-        case 8:
-          return BadgeImages.masterAircrew;
-        case 9:
-          return BadgeImages.aviator;
-        case 10:
-          return BadgeImages.seniorAviator;
-        case 11:
-          return BadgeImages.masterAviator;
-      }
-    }
-
-    // awardPriority 6 is used for both aviation and medical trees.
-    // isMedical will claim the value for the medical tree.
-    if (this.isMedical && awardPriority == 6) {
-      return BadgeImages.flightMedicBadge;
-    }
-
-    return awardPriority;
+    this.imageNum = registryDetails.badgeImage;
   }
 
   updateBadgeCombat(newAwardData, AwardRegistry) {
     const registryDetails = AwardRegistry.getAwardDetails(
       newAwardData.awardName,
     );
-    const newAwardPriority = registryDetails.awardPriority;
 
-    if (
-      newAwardPriority > this.awardPriority &&
-      newAwardPriority <= this.maxAllowed
-    ) {
-      if (
-        newAwardData.awardName == AwardNameFragment.FLIGHT_MEDIC_BADGE &&
-        !this.isMedical
-      ) {
-        return;
-      }
-
-      if (
-        newAwardData.awardName.includes(AwardNameFragment.AVIATOR) &&
-        !this.isAviation
-      ) {
-        return;
-      }
-
+    if (registryDetails.awardPriority > this.awardPriority) {
       this.awardTitle = newAwardData.awardName;
-      this.awardPriority = newAwardPriority;
-      this.imageNum = this.getImageNum(newAwardPriority);
+      this.awardPriority = registryDetails.awardPriority;
+      this.imageNum = registryDetails.badgeImage;
     }
   }
 }
@@ -338,19 +309,10 @@ export class WeaponQual extends Award {
   sharpshooterQuals = [];
   marksmanQuals = [];
 
-  weaponOrder = [
-    "rifle",
-    "grenade",
-    "tankWeapons",
-    "m203",
-    "machineGun",
-    "recoillessRifle",
-    "pistol",
-    "aeroweapons",
-    //"carbine",
-    //"autoRifle",
-    "hydra70",
-  ];
+  // SOP rank per tag, copied from the catalog entry as each qual is filed.
+  // The level arrays hold bare tags because the canvas names the plate file
+  // after the tag, so the rank lives here instead of on the array entries.
+  priorityByTag = new Map();
 
   constructor(data, AwardRegistry) {
     super(data);
@@ -359,19 +321,17 @@ export class WeaponQual extends Award {
   }
 
   sortQuals(qualArray) {
-    qualArray.sort((a, b) => {
-      const indexA = this.weaponOrder.indexOf(a);
-      const indexB = this.weaponOrder.indexOf(b);
-
-      if (indexA === -1) return 1;
-      if (indexB === -1) return -1;
-
-      return indexA - indexB;
-    });
+    qualArray.sort(
+      (a, b) => this.priorityByTag.get(a) - this.priorityByTag.get(b),
+    );
   }
 
   addAward(data, AwardRegistry) {
     const registryDetails = AwardRegistry.getAwardDetails(data.awardName);
+    this.priorityByTag.set(
+      registryDetails.awardTag,
+      registryDetails.awardPriority,
+    );
 
     if (data.awardName.includes("Expert")) {
       this.expertQuals.push(registryDetails.awardTag);

@@ -7,6 +7,7 @@ import {
   MedalWithValor,
   MedalTiered,
   RibbonDonationLogic,
+  RibbonByHighestRank,
   UnitCitation,
   BadgeCombat,
   WeaponQual,
@@ -18,10 +19,13 @@ import {
   AwardAttachmentType,
   hasValorDevice,
   stripValorDevice,
+  displayableBadgeFamilies,
 } from "./constants";
 
 export default async function GetCanvasObject(userName) {
   const data = await GetIndividual(userName);
+
+  const displayableFamilies = displayableBadgeFamilies(data.mos);
 
   let awardCounts = [];
   let totalRibbonCount = 0;
@@ -43,7 +47,18 @@ export default async function GetCanvasObject(userName) {
     let useCombatBadgeLogic = false;
     let combatBadgeKey;
 
-    const awardType = AwardRegistryInstance.getAwardDetails(key).awardType;
+    const registryDetails = AwardRegistryInstance.getAwardDetails(key);
+    const awardType = registryDetails.awardType;
+
+    //A member can hold a combat badge their MOS does not wear — an aircrew
+    //badge earned by a medic, say. It stays on their record; it just never
+    //reaches the uniform.
+    if (
+      awardType == AwardType.BadgeCombat &&
+      !displayableFamilies.includes(registryDetails.badgeFamily)
+    ) {
+      continue;
+    }
 
     if (
       awardType == AwardType.BadgeCombat ||
@@ -100,7 +115,7 @@ export default async function GetCanvasObject(userName) {
         existingAward instanceof Ribbon ||
         existingAward instanceof UnitCitation
       ) {
-        existingAward.incrementAwardCount();
+        existingAward.incrementAwardCount(data.awards[i]);
       }
     } else {
       const awardDetails = AwardRegistryInstance.getAwardDetails(key);
@@ -122,6 +137,14 @@ export default async function GetCanvasObject(userName) {
               AwardRegistryInstance,
             );
             awardMap.set(key, newRibbonDonation);
+            totalRibbonCount++;
+            break;
+          case AwardType.RibbonByHighestRank:
+            const newRibbonByHighestRank = new RibbonByHighestRank(
+              data.awards[i],
+              AwardRegistryInstance,
+            );
+            awardMap.set(key, newRibbonByHighestRank);
             totalRibbonCount++;
             break;
           case AwardType.Medal:
@@ -156,7 +179,6 @@ export default async function GetCanvasObject(userName) {
           case AwardType.BadgeCombat:
             const newBadgeCombat = new BadgeCombat(
               data.awards[i],
-              data.mos,
               AwardRegistryInstance,
             );
             awardMap.set(AwardType.BadgeCombat, newBadgeCombat);

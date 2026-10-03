@@ -34,13 +34,10 @@ services:
 
   server:
     restart: always
-    #image: 7cav/apps_beta_server:latest
     build:
       dockerfile: "./server.Dockerfile"
       context: "./server"
     container_name: cavapps-server
-    #labels:
-    #- com.centurylinklabs.watchtower.enable=true
     ports:
       - "4000:4000"
     environment:
@@ -76,7 +73,6 @@ services:
 
   client:
     restart: always
-    #image: 7cav/apps_beta_client:latest
     build:
       context: ./client
       dockerfile: ./client.Dockerfile
@@ -85,8 +81,6 @@ services:
       - /client/node_modules
       - /client/.next
     container_name: cavapps-client
-    #labels:
-    #- com.centurylinklabs.watchtower.enable=true
     environment:
       DEVMODE: "true"
       NEXT_PUBLIC_CLIENT_TOKEN: ${CLIENT_TOKEN}

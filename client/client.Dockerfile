@@ -16,6 +16,13 @@ RUN npm install
 
 COPY . .
 
+# The release tag, passed by the deploy workflow. GET /version reports it.
+# A local build leaves it empty and the route answers "dev". Declared last so
+# a new tag rebuilds only this layer.
+
+ARG VERSION
+ENV APP_VERSION=$VERSION
+
 # Expose, Deployment is handled by compose to allow server to start first
 
 EXPOSE 3000

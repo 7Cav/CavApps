@@ -3,8 +3,6 @@
 export const AwardNameFragment = Object.freeze({
   // Matched bare via .includes(); the " " + form is the suffix stripped via .replace().
   VALOR_DEVICE: "with Valor Device",
-  FLIGHT_MEDIC_BADGE: "Flight Medic Badge",
-  AVIATOR: "Aviator",
 });
 
 // Does this award name carry the " with Valor Device" suffix?

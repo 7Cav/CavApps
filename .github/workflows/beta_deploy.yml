@@ -1,28 +1,51 @@
-name: Production Deploy
+name: Beta Deploy
 
-# A published release builds and pushes both images, then deploys them. A
-# prerelease stops after the push. workflow_dispatch skips the build and
-# deploys a tag Docker Hub already holds; that is the redeploy and rollback
-# path. There is no auto-rollback. A failed deploy leaves the host as it is,
-# and the fix is a dispatch with the last good tag.
+# Beta holds one commit at a time. A run builds the branch, tag or SHA given as
+# `ref`, pushes both images tagged with its full commit SHA, and deploys that
+# SHA. Each run replaces whatever Beta ran before.
+#
+# Start every run from main. The beta environment allows main only, and GitHub
+# matches that rule against the ref a run starts from, not the ref it builds.
+# So a feature branch that edits this file cannot reach the Beta deploy key.
+run-name: Beta deploy ${{ inputs.ref }}
+
 on:
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
-      tag:
-        description: Release tag to deploy. Bare semver, already pushed to Docker Hub.
+      ref:
+        description: Branch, tag or full 40-character SHA to build and deploy to Beta.
         required: true
         type: string
+        default: main
 
 jobs:
   build:
-    if: github.event_name == 'release'
     runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.resolve.outputs.sha }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      # The image tag is the commit that was checked out. github.sha would be
+      # main's head, since every run starts from main.
+      - name: Resolve the commit SHA and write the run summary
+        id: resolve
+        env:
+          REF: ${{ inputs.ref }}
+        run: |
+          set -euo pipefail
+          sha=$(git rev-parse HEAD)
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Beta build"
+            echo
+            echo "- Ref: \`$REF\`"
+            echo "- Commit: \`$sha\`"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v4.6.0
@@ -32,7 +55,8 @@ jobs:
 
       # VERSION reaches each container as APP_VERSION, which GET /version
       # reports. The deploy job's probe reads it to tell when the new
-      # containers are the ones serving.
+      # containers are the ones serving. The build pushes no latest tag. Nothing
+      # reads it, and it would name whichever branch deployed last.
       - name: Build and Push Client Docker Image
         uses: docker/build-push-action@v7.4.0
         with:
@@ -40,10 +64,8 @@ jobs:
           file: ./client/client.Dockerfile
           push: true
           build-args: |
-            VERSION=${{ github.ref_name }}
-          tags: |
-            7cav/apps_client:${{ github.ref_name }}
-            7cav/apps_client:latest
+            VERSION=${{ steps.resolve.outputs.sha }}
+          tags: 7cav/apps_beta_client:${{ steps.resolve.outputs.sha }}
 
       - name: Build and Push Server Docker Image
         uses: docker/build-push-action@v7.4.0
@@ -52,56 +74,51 @@ jobs:
           file: ./server/server.Dockerfile
           push: true
           build-args: |
-            VERSION=${{ github.ref_name }}
-          tags: |
-            7cav/apps_server:${{ github.ref_name }}
-            7cav/apps_server:latest
+            VERSION=${{ steps.resolve.outputs.sha }}
+          tags: 7cav/apps_beta_server:${{ steps.resolve.outputs.sha }}
 
   deploy:
     needs: build
-    # Referencing the production environment is what makes GitHub record a
-    # deployment for this run. Its status follows the job outcome, so a host
-    # failure or a probe timeout marks the deployment failed.
+    # Referencing the beta environment is what makes GitHub record a deployment
+    # for this run. Its status follows the job outcome, so a host failure or a
+    # probe timeout marks the deployment failed. GitHub records the deployment
+    # against main, the ref the run started from. The run name and the build
+    # job's summary carry the ref that was built.
     #
-    # The build job is skipped on workflow_dispatch. Under the default success()
-    # gate that would skip this job too, so the gate is spelled out. Run after a
-    # successful or skipped build, never after a failed one, and never for a
-    # prerelease.
-    if: >-
-      ${{ !cancelled()
-          && (needs.build.result == 'success' || needs.build.result == 'skipped')
-          && (github.event_name == 'workflow_dispatch' || !github.event.release.prerelease) }}
+    # This job checks out no code, so nothing from the built ref runs where the
+    # deploy key is.
     runs-on: ubuntu-latest
     environment:
-      name: production
-      url: https://apps.7cav.us
+      name: beta
+      url: https://appsbeta.7cav.us
     # One deploy at a time. A run that arrives while another is deploying waits
     # for it instead of cancelling it, so the host is never left mid-recreate.
     # (GitHub keeps only the newest waiting run. Older waiting runs are
     # cancelled before they start and never touch the host.)
     concurrency:
-      group: deploy-production
+      group: deploy-beta
       cancel-in-progress: false
     env:
-      TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.release.tag_name }}
-      SERVER_VERSION_URL: https://bffapps.7cav.us/version
-      CLIENT_VERSION_URL: https://apps.7cav.us/version
+      TAG: ${{ needs.build.outputs.sha }}
+      SERVER_VERSION_URL: https://bffappsbeta.7cav.us/version
+      CLIENT_VERSION_URL: https://appsbeta.7cav.us/version
       # The client runs `next build` when its container starts, which is why
       # this is long.
       PROBE_TIMEOUT_SECONDS: 600
 
     steps:
-      # The host's forced command rejects anything but a bare semver tag. Failing
-      # here first gives a readable error instead of a bare non-zero ssh exit.
+      # The host's forced command for Beta rejects anything but a full commit
+      # SHA. Failing here first gives a readable error instead of a bare
+      # non-zero ssh exit.
       - name: Check the tag
         run: |
           set -euo pipefail
-          if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "tag '$TAG' is not a bare semver version" >&2
+          if [[ ! "$TAG" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "tag '$TAG' is not a full commit SHA" >&2
             exit 1
           fi
 
-      # The command string is the bare tag and nothing else. The host's forced
+      # The command string is the bare SHA and nothing else. The host's forced
       # command reads it from SSH_ORIGINAL_COMMAND, writes it to the stack .env,
       # then runs docker compose pull and up -d. Host key checking is strict
       # against the pinned DEPLOY_KNOWN_HOSTS. A non-zero exit from the host
@@ -126,7 +143,7 @@ jobs:
 
       # The host returning is not the same as the new containers serving. Poll
       # both public /version routes (no token needed) until each reports the
-      # tag. The timeout covers the pull, the recreate and the client's build;
+      # SHA. The timeout covers the pull, the recreate and the client's build;
       # past it the job fails and the deployment is recorded as failed.
       - name: Wait for both /version routes to report the tag
         run: |
