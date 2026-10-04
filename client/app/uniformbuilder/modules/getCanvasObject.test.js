@@ -6,7 +6,9 @@
  * is null (nothing is drawn), and data[4].imageNum (which badge image is
  * drawn). Those are the only things asserted here. awardTitle and the rest of
  * the badge object are internal and are deliberately left alone, so this suite
- * survives a rewrite of how the badge is chosen.
+ * survives a rewrite of how the badge is chosen. Where the badge image goes it
+ * reads from data[0].combatBadgeCoords, and with no position it stops drawing
+ * the rest of the uniform.
  *
  * For the collar it reads three things off data[0]: mosCheck (non-null means
  * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
@@ -25,9 +27,10 @@
  * a wreath, and so on. They are deliberately NOT read back from the catalog:
  * sourcing them from the data under test would move both sides of the
  * assertion together and no row could ever fail. The weapon qual order is a
- * literal for the same reason. The one catalog read in this file is the guard
- * that checks the literal names every weapon the catalog has, which is
- * membership, not order.
+ * literal for the same reason. The catalog is read in two places, neither for
+ * an expected value: the guard that checks the literal names every weapon the
+ * catalog has, which is membership, not order, and the list of ribbon awards a
+ * fixture member holds.
  *
  * Run with `npm run test:client` — not a bare `node`; the script carries the
  * loader hook that lets Node import the client's .jsx modules.
@@ -43,6 +46,7 @@ import assert from "node:assert";
 import { createHarness } from "../../../test-harness.mjs";
 import { AWARD_CATALOG } from "./constants/awardCatalog.js";
 import { AwardType } from "./constants/awardTypes.js";
+import { chestLimit } from "./ribbonLayout.test-helpers.js";
 
 // getIndividual.js reads the two variables above at module scope, so this one
 // import has to happen after they are set — hence dynamic rather than static.
@@ -188,6 +192,41 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   const held = ["Combat Infantry Badge", "Flight Medic Badge"];
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
+});
+
+// ── Placement: the badge above a full chest ──────────────────────────────────
+// Ribbons past what the chest holds go on the pinboard, and the chest stays as
+// it is when full, so the badge above it belongs where a full chest puts it.
+// chestLimit only sizes the fixture here; the expected position is the
+// builder's own output for a full chest.
+
+const RIBBON_AWARD_TYPES = new Set([
+  AwardType.Ribbon,
+  AwardType.RibbonDonationLogic,
+  AwardType.RibbonByHighestRank,
+  AwardType.Medal,
+  AwardType.MedalTiered,
+  AwardType.MedalWithValor,
+]);
+const RIBBON_AWARDS = AWARD_CATALOG.filter((award) =>
+  RIBBON_AWARD_TYPES.has(award.awardType),
+).map((award) => award.name);
+
+await test("a member whose ribbons spill onto the pinboard gets their combat badge where a full chest puts it", async () => {
+  const chest = chestLimit(RIBBON_AWARDS.length);
+  assert.ok(RIBBON_AWARDS.length > chest, "too few ribbon awards to overflow");
+  const badgeAt = async (ribbons) =>
+    (
+      await canvasObjectFor("11B", [
+        "Combat Infantry Badge",
+        ...RIBBON_AWARDS.slice(0, ribbons),
+      ])
+    )[0].combatBadgeCoords;
+
+  const fullChest = await badgeAt(chest);
+  const spilled = await badgeAt(chest + 1);
+  assert.notStrictEqual(spilled, null, "no badge position past a full chest");
+  assert.deepStrictEqual(spilled, fullChest);
 });
 
 // ── Service ribbons: the medal display, in precedence order ──────────────────

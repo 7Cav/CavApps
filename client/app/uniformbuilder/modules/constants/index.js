@@ -12,9 +12,13 @@ export { BadgeFamily, displayableBadgeFamilies } from "./badgeFamilies";
 export { BadgeImages, combatBadgeImagePath } from "./badgeImages";
 export { weaponQualPlatePath } from "./weaponQualPlates";
 export {
-  RIBBON_BOTTOM_ROW_DY,
+  RIBBON_CHEST_BOTTOM_ROW_DY,
+  RIBBON_CHEST_CAPACITY,
+  RIBBON_PINBOARD,
+  RIBBON_PINBOARD_CAPACITY,
   RIBBON_RACKS,
   RIBBON_ROW_HEIGHT,
   RIBBON_SLOT_WIDTH,
   RibbonRowAlign,
+  ribbonsOnChest,
 } from "./ribbonRacks";

@@ -3,7 +3,7 @@ import GetCitationCoordArray from "./getCitationCoordArray";
 import GetCombatBadgeCoords from "./getCombatBadgeCoords";
 import GetYearsInServiceCoordArray from "./getYearsInServiceCoordArray";
 import GetTabCoordArray from "./getTabCoordArray";
-import { Mos } from "./constants";
+import { Mos, ribbonsOnChest } from "./constants";
 
 export default function GetUserInfo(
   dataActive,
@@ -32,7 +32,9 @@ export default function GetUserInfo(
   };
   returnObject.ribbonCoordArray = GetCoordArray(ribbonCount);
   returnObject.unitCitationCoordArray = GetCitationCoordArray(citationCount);
-  returnObject.combatBadgeCoords = GetCombatBadgeCoords(ribbonCount);
+  returnObject.combatBadgeCoords = GetCombatBadgeCoords(
+    ribbonsOnChest(ribbonCount),
+  );
   returnObject.yearsInServiceCoordArray = GetYearsInServiceCoordArray(
     yearsInService,
     getRankGrade(dataActive.rank.rankId),
