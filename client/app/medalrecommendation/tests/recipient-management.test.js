@@ -5,6 +5,7 @@ import {
   getCitationName,
   getRecipientDisplayName,
   getRecipientIdentity,
+  isValidRecipient,
   matchPastedRecipients,
   orderRecipientsForRecommendation,
   selectShownRecipients,
@@ -441,6 +442,21 @@ describe("recipient collection and identity", () => {
     expect(validation.isComplete).toBe(false);
     expect(validation.errors[0]).not.toBe("");
   });
+
+  test.each(["", "   ", undefined])(
+    "rejects a missing roster username %j before recommendation generation",
+    (username) => {
+      const recipient = makeRecipient({ user: { username } });
+      expect(isValidRecipient(recipient)).toBe(false);
+      const validation = validateRecipientEntries(
+        makeRecipientEntries([recipient]),
+        currentPolicy,
+      );
+      expect(validation.isComplete).toBe(false);
+      expect(validation.validCount).toBe(0);
+      expect(validation.errors[0]).toMatch(/username is missing/i);
+    },
+  );
 
   test("rejects duplicate IDs even when invalid state is supplied directly", () => {
     expect(

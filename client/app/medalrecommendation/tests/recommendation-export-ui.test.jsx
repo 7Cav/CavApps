@@ -1,7 +1,8 @@
-import { act, fireEvent, screen, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   fillOperationWorksheet,
+  enterWorksheetField as enter,
   getCitationText,
   getHighlightTexts,
   makeRecipient,
@@ -13,6 +14,9 @@ import {
   submitRecommendation,
 } from "./test-helpers";
 
+// Independent title/body/header oracles from Awards and Decorations,
+// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17782
+// Keep expected strings independent of production definitions and serializers.
 const citation =
   "For a single act of heroism or skill under enemy fire while serving as a rifleman in the 7th Cavalry Regiment during combat in Operation Overlord near Normandy on 11 August 2026. Specialist John Smith advanced. The team held. The mission succeeded. Specialist John Smith's heroism and skill reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
 const title =
@@ -21,16 +25,15 @@ const body =
   "[CENTER][B]Army Commendation Medal With Valor[/B]\n\n[IMG]https://wiki.7cav.us/images/0/0f/ARCOMV.jpg[/IMG]\n\n[B][URL=https://7cav.us/rosters/profile/profile-1001/]Specialist John Smith[/URL][/B]\n\nFor a single act of heroism or skill under enemy fire while serving as a rifleman in the 7th Cavalry Regiment during combat in Operation Overlord near Normandy on 11 August 2026. Specialist John Smith advanced. The team held. The mission succeeded. Specialist John Smith's heroism and skill reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.\n[/CENTER]";
 const previewWarning =
   "Do not copy from this preview. Use the Recommendation Title and Recommendation Body copy buttons below to preserve formatting and the ribbon image.";
-function enter(label, value) {
-  fireEvent.change(screen.getByLabelText(label, { exact: true }), {
-    target: { value },
-  });
-}
-async function ready() {
+async function ready({
+  recipient = makeRecipient(),
+  location = "Normandy",
+  operationTitle = "Overlord",
+} = {}) {
   const user = userEvent.setup();
   renderClient({
     roster: [
-      makeRecipient(),
+      recipient,
       makeRecipient({
         user: { userId: "1002", username: "Doe.J" },
         realName: "Jane Doe",
@@ -44,11 +47,11 @@ async function ready() {
     screen.queryByRole("link", { name: "Open Medal Recommendation Ticket" }),
   ).not.toBeInTheDocument();
   await selectAward(user, "Army Commendation Medal With Valor");
-  await selectRecipient(user);
+  await selectRecipient(user, "Smi", recipient.user.username?.trim() ?? "");
   await fillOperationWorksheet(user, {
     combatElement: "a rifleman",
-    operationTitle: "Overlord",
-    location: "Normandy",
+    operationTitle,
+    location,
     operationDate: "2026-08-11",
     narrative:
       "Specialist John Smith advanced. The team held. The mission succeeded.",
@@ -125,9 +128,8 @@ describe("Recommendation submission", () => {
     });
     expect(ticket).toHaveAttribute(
       "href",
-      "https://7cav.us/tickets/categories/19/create",
+      "https://7cav.us/tickets/categories/18/create",
     );
-    expect(within(ticket).getByText("↗")).toBeVisible();
     for (const link of [profile, ticket]) {
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", "noopener noreferrer");
@@ -157,11 +159,6 @@ describe("Recommendation submission", () => {
       expect(
         first.compareDocumentPosition(next) & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
-    expect(
-      screen.getByText(
-        /Copy the Recommendation Title, open the Medal Recommendation ticket/,
-      ),
-    ).toBeVisible();
     const write = vi
       .spyOn(navigator.clipboard, "writeText")
       .mockResolvedValue();
@@ -182,19 +179,40 @@ describe("Recommendation submission", () => {
     const preview = screen.getByRole("region", {
       name: "Recommendation Preview",
     });
-    expect(preview).toHaveAccessibleDescription(previewWarning);
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     await user.hover(preview);
-    expect(screen.getByRole("tooltip")).toHaveTextContent(previewWarning);
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      previewWarning,
+    );
+    expect(preview).toHaveAccessibleDescription(previewWarning);
     await user.unhover(preview);
-    expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
     screen.getByRole("button", { name: "Generate Recommendation" }).focus();
     await user.tab();
     expect(preview).toHaveFocus();
-    expect(screen.getByRole("tooltip")).toBeVisible();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      previewWarning,
+    );
     await user.tab();
-    expect(within(preview).getByRole("link")).toHaveFocus();
-    expect(screen.getByRole("tooltip")).toBeVisible();
+    const profile = within(preview).getByRole("link");
+    expect(profile).toHaveFocus();
+    expect(await screen.findByRole("tooltip")).toHaveTextContent(
+      previewWarning,
+    );
+    await user.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument(),
+    );
+    expect(profile).toHaveFocus();
+    expect(profile).toHaveAttribute(
+      "href",
+      "https://7cav.us/rosters/profile/profile-1001/",
+    );
+    expect(profile).toHaveAttribute("target", "_blank");
+    expect(profile).toHaveAttribute("rel", "noopener noreferrer");
     await user.tab();
     expect(screen.getByRole("button", { name: "Copy Title" })).toHaveFocus();
     expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
@@ -330,6 +348,114 @@ describe("Recommendation submission", () => {
     },
   );
 
+  test.each(["resolve", "reject"])(
+    "late clipboard %s cannot update a freshly regenerated snapshot with unchanged content",
+    async (outcome) => {
+      const user = await ready();
+      let resolve, reject;
+      vi.spyOn(navigator.clipboard, "writeText").mockReturnValue(
+        new Promise((done, fail) => {
+          resolve = done;
+          reject = fail;
+        }),
+      );
+      await user.click(screen.getByRole("button", { name: "Copy Title" }));
+      expect(screen.getByRole("button", { name: "Copy Title" })).toBeDisabled();
+      await submitRecommendation(user);
+      await act(async () => {
+        if (outcome === "resolve") resolve();
+        else reject(new Error("late failure"));
+      });
+      expect(screen.getByRole("button", { name: "Copy Title" })).toBeEnabled();
+      expect(
+        screen.queryByRole("button", { name: "Title Copied" }),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Recommendation Title")).toHaveValue(title);
+      expect(screen.getByLabelText("Recommendation Body")).toHaveValue(body);
+    },
+  );
+
+  test("an Operation Title with no normalized name blocks output until corrected", async () => {
+    const user = await ready({ operationTitle: "Operation:" });
+    const operationTitle = screen.getByRole("textbox", {
+      name: "Operation Title",
+    });
+    expect(operationTitle).toHaveValue("Operation:");
+    expect(operationTitle).toHaveAttribute("aria-invalid", "true");
+    expect(operationTitle).toHaveAccessibleDescription(
+      "Enter an operation name.",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Recommendation Preview" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("region", { name: "Recommendation Submission" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recommendation Title"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recommendation Body"),
+    ).not.toBeInTheDocument();
+    enter("Operation Title", "Operation: Hammer");
+    await submitRecommendation(user);
+    expect(operationTitle).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Recommendation Title")).toHaveValue(
+      "Medal Recommendation - Operation Hammer - ARCOMV - SPC.Smith.J",
+    );
+    expect(getCitationText()).toContain(
+      "in Operation Hammer near Normandy on 11 August 2026.",
+    );
+    expect(screen.getByLabelText("Recommendation Body").value).toContain(
+      getCitationText(),
+    );
+  });
+
+  test("bracket-bearing worksheet text blocks all generated output until corrected", async () => {
+    const user = await ready({ location: "Normandy [/CENTER]" });
+    const location = screen.getByRole("textbox", { name: "Location" });
+    expect(location).toHaveValue("Normandy [/CENTER]");
+    expect(location).toHaveAttribute("aria-invalid", "true");
+    expect(location).toHaveAccessibleDescription(
+      "Square brackets [ and ] are not allowed in recommendation text.",
+    );
+    expect(
+      screen.queryByRole("region", { name: "Recommendation Preview" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recommendation Title"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recommendation Body"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open Medal Recommendation Ticket" }),
+    ).not.toBeInTheDocument();
+    enter("Location", "Normandy");
+    await submitRecommendation(user);
+    expect(location).not.toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Recommendation Body")).toHaveValue(body);
+  });
+
+  test.each(["", "   "])(
+    "a selected recipient with blank username %j cannot reach export rendering",
+    async (username) => {
+      await ready({ recipient: makeRecipient({ user: { username } }) });
+      const recipientField = screen.getByRole("textbox", { name: "Recipient" });
+      expect(recipientField).toHaveAttribute("aria-invalid", "true");
+      expect(recipientField).toHaveAccessibleDescription(
+        /username is missing/i,
+      );
+      expect(
+        screen.queryByRole("region", { name: "Recommendation Preview" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("region", { name: "Recommendation Submission" }),
+      ).not.toBeInTheDocument();
+    },
+  );
+
   test("DSSM pathway switching discards stale context and award changes clear submission", async () => {
     const user = userEvent.setup();
     renderClient({ medalFamily: "service", roster: [makeRecipient()] });
@@ -400,8 +526,16 @@ describe("Recommendation submission", () => {
     expect(screen.getByLabelText("Recommendation Body").value).toContain(
       getCitationText(),
     );
-    expect(
-      screen.queryByText(/title.*truncat|truncat.*title/i),
-    ).not.toBeInTheDocument();
+    const submission = screen.getByRole("region", {
+      name: "Recommendation Submission",
+    });
+    expect(within(submission).queryByRole("alert")).not.toBeInTheDocument();
+    expect(within(submission).queryByRole("status")).not.toBeInTheDocument();
+    const titleField = within(submission).getByRole("textbox", {
+      name: "Recommendation Title",
+    });
+    expect(titleField).not.toHaveAttribute("aria-invalid", "true");
+    expect(titleField).not.toHaveAccessibleErrorMessage();
+    expect(titleField).not.toHaveAccessibleDescription();
   });
 });

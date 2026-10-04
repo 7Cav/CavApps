@@ -3,6 +3,9 @@ import {
   getRecipientRankAbbreviation,
 } from "./recipient-utils";
 
+const TITLE_PREFIX = "Medal Recommendation - ";
+const MAX_TITLE_LENGTH = 150;
+
 function exportError(message) {
   throw new Error(`Recommendation export: ${message}`);
 }
@@ -42,21 +45,22 @@ export function buildRecommendationTitle(recommendation) {
   }
   const context = recommendation.titleContext;
   if (context === null) {
-    const title = `Medal Recommendation - ${abbreviation} - ${recipientLabel}`;
-    if (title.length > 150)
-      exportError("protected title segments exceed 150 characters");
+    const title = `${TITLE_PREFIX}${abbreviation} - ${recipientLabel}`;
+    if (title.length > MAX_TITLE_LENGTH)
+      exportError(
+        `protected title segments exceed ${MAX_TITLE_LENGTH} characters`,
+      );
     return title;
   }
   if (typeof context !== "string" || !context)
     exportError("a captured title context is required");
-  const prefix = "Medal Recommendation - ";
   const suffix = ` - ${abbreviation} - ${recipientLabel}`;
-  const budget = 150 - prefix.length - suffix.length;
+  const budget = MAX_TITLE_LENGTH - TITLE_PREFIX.length - suffix.length;
   if (budget < 1)
     exportError("protected title segments leave no room for context");
   const outputContext =
     context.length <= budget ? context : `${safePrefix(context, budget - 1)}…`;
-  return prefix + outputContext + suffix;
+  return TITLE_PREFIX + outputContext + suffix;
 }
 
 export function buildRecommendationBody(recommendation) {

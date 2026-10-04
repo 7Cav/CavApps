@@ -55,8 +55,21 @@ export function combineNarrative(requiredOpening, continuation) {
   return `${normalizedOpening} ${normalizedContinuation}`;
 }
 
+export function normalizeOperationTitle(value) {
+  return value
+    .trim()
+    .replace(/^operation(?=$|[\s–—|:/_,;-])/i, "")
+    .trim()
+    .replace(/^[\s–—|:/_,;-]+/, "")
+    .trim();
+}
+
+export function formatOperationName(value) {
+  return `Operation ${normalizeOperationTitle(value)}`;
+}
+
 function buildOperationLocationDateTail({ operationTitle, location, date }) {
-  return `Operation ${operationTitle} near ${location} on ${date}.`;
+  return `${formatOperationName(operationTitle)} near ${location} on ${date}.`;
 }
 
 const GREAT_CREDIT_CLOSING =

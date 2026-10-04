@@ -1,4 +1,7 @@
-import { resolveRecommendationRecipientSubject } from "./citation-builders";
+import {
+  formatOperationName,
+  resolveRecommendationRecipientSubject,
+} from "./citation-builders";
 import { analyzeRecommendationNarrative } from "./narrative-validation";
 import {
   getActiveWorksheetValues,
@@ -25,7 +28,8 @@ function resolveTitleContext(configuration, context) {
     case "none":
       return null;
     case "operation":
-      if (context.operationTitle) return `Operation ${context.operationTitle}`;
+      if (context.operationTitle)
+        return formatOperationName(context.operationTitle);
       break;
     case "field":
       field = configuration.field;
@@ -70,10 +74,6 @@ export function generateRecommendation({
       context[name] = getCitationChoiceText(field, context[name]);
     }
   }
-  context.operationTitle = (context.operationTitle ?? "").replace(
-    /^operation\s+/i,
-    "",
-  );
   context.date = context.operationDate
     ? formatOperationDate(context.operationDate)
     : "";
@@ -99,7 +99,7 @@ export function generateRecommendation({
     narrativeWarnings: analysis.warnings,
     closingSentence,
     titleContext: resolveTitleContext(
-      medal.recommendationTitleContext,
+      worksheet.recommendationTitleContext,
       context,
     ),
     citationText: [openingSentence, analysis.text, closingSentence].join(" "),

@@ -14,6 +14,9 @@ import {
   UNIT_SERVICE_INPUTS,
 } from "./unit-award-cases";
 
+// Independent title/body/header oracles from Awards and Decorations,
+// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17782
+// Keep expected strings independent of production definitions and serializers.
 const operationCases = [
   ["army-commendation-medal", "ARCOM", 1],
   ["army-commendation-medal-with-valor", "ARCOMV", 1],
@@ -214,10 +217,36 @@ describe("Recommendation export snapshots", () => {
           recipients,
         );
         expect(result.titleContext).toBe("Operation Overlord");
+        expect(result.openingSentence).toContain(
+          "in Operation Overlord near Normandy on 11 August 2026.",
+        );
         expect(buildRecommendationTitle(result)).toBe(
           `Medal Recommendation - Operation Overlord - ${abbreviation} - ${count === 1 ? "SPC.Smith.J" : "Multiple"}`,
         );
       }
+    },
+  );
+  test.each([
+    ["Overlord", "Operation Overlord"],
+    ["Operation Overlord", "Operation Overlord"],
+    ["  oPeRaTiOn Overlord  ", "Operation Overlord"],
+    ["Operation: Hammer", "Operation Hammer"],
+    ["Operation - Hammer", "Operation Hammer"],
+    ["Operation–Hammer", "Operation Hammer"],
+    ["Operation — |:/_,; Hammer", "Operation Hammer"],
+    ["Operation_Hammer", "Operation Hammer"],
+    ["Operational Hammer", "Operation Operational Hammer"],
+  ])(
+    "Operation name %j is canonical in both title context and citation",
+    (operationTitle, expected) => {
+      const result = generate("operation", "purple-heart", { operationTitle });
+      expect(result.titleContext).toBe(expected);
+      expect(buildRecommendationTitle(result)).toBe(
+        `Medal Recommendation - ${expected} - PH - SPC.Smith.J`,
+      );
+      expect(result.openingSentence).toContain(
+        `in ${expected} near Normandy on 11 August 2026.`,
+      );
     },
   );
   test.each(serviceCases)(
@@ -276,8 +305,11 @@ describe("Recommendation export snapshots", () => {
       const original = getMedalFamily("operation").getMedalById("purple-heart");
       expect(() =>
         generateRecommendation({
-          medal: { ...original, recommendationTitleContext: configuration },
-          worksheet: resolveMedalWorksheet(original),
+          medal: original,
+          worksheet: {
+            ...resolveMedalWorksheet(original),
+            recommendationTitleContext: configuration,
+          },
           values,
           recipients: [makeRecipient()],
         }),

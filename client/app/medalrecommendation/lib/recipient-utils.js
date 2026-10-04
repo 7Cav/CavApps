@@ -124,6 +124,7 @@ export function getRecipientDisplayName(member) {
 export function isValidRecipient(member) {
   return Boolean(
     getRecipientId(member) &&
+    trimText(member?.user?.username) &&
     trimText(member?.rank?.rankFull) &&
     trimText(member?.realName) &&
     getRankOrder(member) !== Infinity,
@@ -149,7 +150,9 @@ export function validateRecipientEntries(entries, policy) {
     if (!isValidRecipient(member))
       return member && getRankOrder(member) === Infinity
         ? "Recipient rank information is missing or unsupported."
-        : "Required";
+        : member && !trimText(member.user?.username)
+          ? "Recipient username is missing. Select a recipient with a roster username."
+          : "Required";
     return counts.get(getRecipientId(member)) > 1
       ? "Select each recipient only once."
       : "";

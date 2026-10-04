@@ -38,7 +38,6 @@ export const SERVICE_MEDALS = [
     id: "outstanding-volunteer-service-medal",
     name: "Outstanding Volunteer Service Medal",
     abbreviation: "OVSM",
-    recommendationTitleContext: { type: "field", field: "nonCombatDepartment" },
     worksheetProfile: "serviceVolunteer",
     ribbonUrl: "https://wiki.7cav.us/images/e/ec/OVSM.jpg",
     criteria:
@@ -57,7 +56,6 @@ export const SERVICE_MEDALS = [
     id: "humanitarian-service-medal",
     name: "Humanitarian Service Medal",
     abbreviation: "HSM",
-    recommendationTitleContext: { type: "none" },
     worksheetProfile: "serviceNarrative",
     ribbonUrl: "https://wiki.7cav.us/images/3/3b/HSM.jpg",
     criteria:
@@ -72,7 +70,6 @@ export const SERVICE_MEDALS = [
     id: "army-achievement-medal",
     name: "Army Achievement Medal",
     abbreviation: "AAM",
-    recommendationTitleContext: { type: "field", field: "affectedArea" },
     worksheetProfile: "serviceIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/d/d6/AAM.jpg",
     criteria:
@@ -86,7 +83,6 @@ export const SERVICE_MEDALS = [
     id: "joint-service-achievement-medal",
     name: "Joint Service Achievement Medal",
     abbreviation: "JSAM",
-    recommendationTitleContext: { type: "field", field: "unit" },
     worksheetProfile: "serviceUnit",
     ribbonUrl: "https://wiki.7cav.us/images/d/d0/JSAM.jpg",
     criteria:
@@ -106,7 +102,6 @@ export const SERVICE_MEDALS = [
     id: "army-commendation-medal",
     name: "Army Commendation Medal",
     abbreviation: "ARCOM",
-    recommendationTitleContext: { type: "field", field: "unit" },
     worksheetProfile: "serviceUnit",
     ribbonUrl: "https://wiki.7cav.us/images/d/dc/ARCOM.jpg",
     criteria:
@@ -120,7 +115,6 @@ export const SERVICE_MEDALS = [
     id: "joint-service-commendation-medal",
     name: "Joint Service Commendation Medal",
     abbreviation: "JSCM",
-    recommendationTitleContext: { type: "field", field: "benefittedCompany" },
     worksheetProfile: "serviceJointContribution",
     ribbonUrl: "https://wiki.7cav.us/images/5/5f/JSCM.jpg",
     criteria:
@@ -140,7 +134,6 @@ export const SERVICE_MEDALS = [
     id: "meritorious-service-medal",
     name: "Meritorious Service Medal",
     abbreviation: "MSM",
-    recommendationTitleContext: { type: "field", field: "unit" },
     worksheetProfile: "serviceMeritorious",
     ribbonUrl: "https://wiki.7cav.us/images/b/b3/MSM.jpg",
     criteria:
@@ -158,7 +151,6 @@ export const SERVICE_MEDALS = [
     id: "defense-meritorious-service-medal",
     name: "Defense Meritorious Service Medal",
     abbreviation: "DMSM",
-    recommendationTitleContext: { type: "field", field: "unit" },
     worksheetProfile: "serviceUnit",
     ribbonUrl: "https://wiki.7cav.us/images/a/a5/DMSM.jpg",
     criteria:
@@ -175,7 +167,6 @@ export const SERVICE_MEDALS = [
     id: "soldiers-medal",
     name: "Soldier’s Medal",
     abbreviation: "SM",
-    recommendationTitleContext: { type: "field", field: "unit" },
     worksheetProfile: "serviceMeritorious",
     ribbonUrl: "https://wiki.7cav.us/images/9/93/SM.jpg",
     criteria:
@@ -193,7 +184,6 @@ export const SERVICE_MEDALS = [
     id: "legion-of-merit",
     name: "Legion of Merit",
     abbreviation: "LOM",
-    recommendationTitleContext: { type: "field", field: "secondaryBillet" },
     worksheetProfile: "serviceSecondaryPeriod",
     ribbonUrl: "https://wiki.7cav.us/images/e/e5/LOM.jpg",
     criteria:
@@ -212,10 +202,6 @@ export const SERVICE_MEDALS = [
     id: "defense-superior-service-medal",
     name: "Defense Superior Service Medal",
     abbreviation: "DSSM",
-    recommendationTitleContext: {
-      type: "activeField",
-      fields: ["secondaryBillet", "operationsAO"],
-    },
     worksheetProfile: "serviceLeadershipPeriod",
     ribbonUrl: "https://wiki.7cav.us/images/b/b1/DSSM.jpg",
     criteria:
@@ -236,7 +222,6 @@ export const SERVICE_MEDALS = [
     id: "distinguished-service-medal",
     name: "Distinguished Service Medal",
     abbreviation: "DSM",
-    recommendationTitleContext: { type: "field", field: "element" },
     worksheetProfile: "servicePrimaryPeriod",
     ribbonUrl: "https://wiki.7cav.us/images/2/29/DSM.jpg",
     criteria:
@@ -256,7 +241,6 @@ export const SERVICE_MEDALS = [
     id: "defense-distinguished-service-medal",
     name: "Defense Distinguished Service Medal",
     abbreviation: "DDSM",
-    recommendationTitleContext: { type: "field", field: "element" },
     worksheetProfile: "servicePrimaryPeriod",
     ribbonUrl: "https://wiki.7cav.us/images/3/33/DDSM.jpg",
     criteria:
@@ -279,7 +263,6 @@ export const SERVICE_MEDALS = [
     id: "joint-meritorious-unit-award",
     name: "Joint Meritorious Unit Award",
     abbreviation: "JMUA",
-    recommendationTitleContext: { type: "field", field: "benefittedUnit" },
     awardCategory: "unit",
     worksheetProfile: "serviceJointUnitAward",
     criteriaHeading: "Criteria",
@@ -301,7 +284,6 @@ export const SERVICE_MEDALS = [
     id: "superior-unit-award",
     name: "Superior Unit Award",
     abbreviation: "SUA",
-    recommendationTitleContext: { type: "field", field: "benefittedUnit" },
     awardCategory: "unit",
     worksheetProfile: "serviceSuperiorUnitAward",
     criteriaHeading: "Criteria",

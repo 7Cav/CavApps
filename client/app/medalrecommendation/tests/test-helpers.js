@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import MedalRecommendationClient from "../MedalRecommendationClient";
 import { MEDAL_FAMILY_IDS } from "../lib/medal-families.js";
 import OperationMedalRecommendationPage from "../operation/page";
@@ -289,4 +289,10 @@ export function getHighlightTexts() {
     screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
     (highlight) => highlight.textContent,
   );
+}
+
+export function enterWorksheetField(label, value) {
+  fireEvent.change(screen.getByLabelText(label, { exact: true }), {
+    target: { value },
+  });
 }

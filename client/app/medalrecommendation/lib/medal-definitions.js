@@ -41,7 +41,6 @@ export const OPERATION_MEDALS = [
     id: "army-commendation-medal",
     name: "Army Commendation Medal",
     abbreviation: "ARCOM",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/d/dc/ARCOM.jpg",
 
@@ -68,7 +67,6 @@ export const OPERATION_MEDALS = [
     id: "army-commendation-medal-with-valor",
     name: "Army Commendation Medal With Valor",
     abbreviation: "ARCOMV",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/0/0f/ARCOMV.jpg",
 
@@ -90,7 +88,6 @@ export const OPERATION_MEDALS = [
     id: "air-medal",
     name: "Air Medal",
     abbreviation: "AM",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/3/3f/AM.jpg",
 
@@ -124,7 +121,6 @@ export const OPERATION_MEDALS = [
     id: "purple-heart",
     name: "Purple Heart",
     abbreviation: "PH",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/b/b5/PH.jpg",
 
@@ -149,7 +145,6 @@ export const OPERATION_MEDALS = [
     id: "bronze-star-medal",
     name: "Bronze Star Medal",
     abbreviation: "BS",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/5/5e/BS.jpg",
 
@@ -176,7 +171,6 @@ export const OPERATION_MEDALS = [
     id: "bronze-star-medal-with-valor",
     name: "Bronze Star Medal With Valor",
     abbreviation: "BSV",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/8/88/BSV.jpg",
 
@@ -201,7 +195,6 @@ export const OPERATION_MEDALS = [
     id: "distinguished-flying-cross",
     name: "Distinguished Flying Cross",
     abbreviation: "DFC",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/7/74/DFC.jpg",
 
@@ -237,7 +230,6 @@ export const OPERATION_MEDALS = [
     id: "silver-star",
     name: "Silver Star",
     abbreviation: "SS",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/8/8f/SS.jpg",
 
@@ -271,7 +263,6 @@ export const OPERATION_MEDALS = [
     id: "distinguished-service-cross",
     name: "Distinguished Service Cross",
     abbreviation: "DSC",
-    recommendationTitleContext: { type: "operation" },
     worksheetProfile: "operationIndividual",
     ribbonUrl: "https://wiki.7cav.us/images/d/d3/DSC.jpg",
 
@@ -297,7 +288,6 @@ export const OPERATION_MEDALS = [
     id: "army-valorous-unit-award",
     name: "Army Valorous Unit Award",
     abbreviation: "AVUA",
-    recommendationTitleContext: { type: "operation" },
     awardCategory: "unit",
     worksheetProfile: "operationUnitAward",
     ribbonUrl: "https://wiki.7cav.us/images/8/8e/VUA.jpg",
@@ -318,7 +308,6 @@ export const OPERATION_MEDALS = [
     id: "meritorious-unit-commendation",
     name: "Meritorious Unit Commendation",
     abbreviation: "MUC",
-    recommendationTitleContext: { type: "operation" },
     awardCategory: "unit",
     worksheetProfile: "operationUnitAward",
     ribbonUrl: "https://wiki.7cav.us/images/c/cc/MUC.jpg",

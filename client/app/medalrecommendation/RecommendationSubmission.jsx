@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,13 +13,6 @@ export default function RecommendationSubmission({ recommendation }) {
   const title = buildRecommendationTitle(recommendation);
   const body = buildRecommendationBody(recommendation);
   const [feedback, setFeedback] = useState({});
-  const current = useRef(true);
-  useEffect(() => {
-    current.current = true;
-    return () => {
-      current.current = false;
-    };
-  }, []);
 
   async function copy(field, value) {
     setFeedback((previous) => ({ ...previous, [field]: "pending" }));
@@ -27,11 +20,9 @@ export default function RecommendationSubmission({ recommendation }) {
       if (!navigator.clipboard?.writeText)
         throw new Error("Clipboard unavailable");
       await navigator.clipboard.writeText(value);
-      if (current.current)
-        setFeedback((previous) => ({ ...previous, [field]: "copied" }));
+      setFeedback((previous) => ({ ...previous, [field]: "copied" }));
     } catch {
-      if (current.current)
-        setFeedback((previous) => ({ ...previous, [field]: "error" }));
+      setFeedback((previous) => ({ ...previous, [field]: "error" }));
     }
   }
 
@@ -103,7 +94,7 @@ export default function RecommendationSubmission({ recommendation }) {
         className="h-auto min-h-10 max-w-full whitespace-normal text-center"
       >
         <a
-          href="https://7cav.us/tickets/categories/19/create"
+          href="https://7cav.us/tickets/categories/18/create"
           target="_blank"
           rel="noopener noreferrer"
           className="!text-primary-foreground hover:!text-primary-foreground hover:!no-underline"

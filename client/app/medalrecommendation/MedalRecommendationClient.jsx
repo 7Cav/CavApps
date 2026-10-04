@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -315,8 +321,6 @@ export default function MedalRecommendationClient({
 
   const [recommendation, setRecommendation] = useState(null);
   const generationId = useRef(0);
-  const [previewHovered, setPreviewHovered] = useState(false);
-  const [previewFocused, setPreviewFocused] = useState(false);
 
   const rosterMembers = useMemo(
     () => uniqueRecipients(recipientRoster ?? []),
@@ -775,65 +779,58 @@ export default function MedalRecommendationClient({
                 </h3>
 
                 {recommendation ? (
-                  <section
-                    role="region"
-                    aria-label="Recommendation Preview"
-                    aria-describedby="preview-copy-warning"
-                    tabIndex={0}
-                    onMouseEnter={() => setPreviewHovered(true)}
-                    onMouseLeave={() => setPreviewHovered(false)}
-                    onFocus={() => setPreviewFocused(true)}
-                    onBlur={(event) => {
-                      if (!event.currentTarget.contains(event.relatedTarget))
-                        setPreviewFocused(false);
-                    }}
-                    className="relative space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center text-secondary-foreground transition-colors hover:border-destructive/60 hover:bg-destructive/10 focus-within:border-destructive/60 focus-within:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <p
-                      id="preview-copy-warning"
-                      role="tooltip"
-                      hidden={!previewHovered && !previewFocused}
-                      className="absolute inset-x-0 bottom-full z-10 mb-2 rounded-md border border-border bg-popover p-3 text-left text-sm text-popover-foreground shadow-md"
-                    >
-                      Do not copy from this preview. Use the Recommendation
-                      Title and Recommendation Body copy buttons below to
-                      preserve formatting and the ribbon image.
-                    </p>
-                    <h4 className="text-xl font-bold">
-                      {recommendation.medal.name}
-                    </h4>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <section
+                          role="region"
+                          aria-label="Recommendation Preview"
+                          tabIndex={0}
+                          className="relative space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center text-secondary-foreground transition-colors hover:border-destructive/60 hover:bg-destructive/10 focus-within:border-destructive/60 focus-within:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <h4 className="text-xl font-bold">
+                            {recommendation.medal.name}
+                          </h4>
 
-                    <img
-                      src={recommendation.medal.ribbonUrl}
-                      alt={`${recommendation.medal.name} ribbon`}
-                      className="mx-auto"
-                    />
+                          <img
+                            src={recommendation.medal.ribbonUrl}
+                            alt={`${recommendation.medal.name} ribbon`}
+                            className="mx-auto"
+                          />
 
-                    <ul
-                      aria-label="Recommendation recipients"
-                      className="space-y-1 font-bold"
-                    >
-                      {recommendation.recipients.map((member) => (
-                        <li key={getRecipientId(member)}>
-                          <a
-                            href={buildMilpacsUrl(member)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary"
+                          <ul
+                            aria-label="Recommendation recipients"
+                            className="space-y-1 font-bold"
                           >
-                            {getRecipientDisplayName(member)}
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
+                            {recommendation.recipients.map((member) => (
+                              <li key={getRecipientId(member)}>
+                                <a
+                                  href={buildMilpacsUrl(member)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary"
+                                >
+                                  {getRecipientDisplayName(member)}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
 
-                    <p
-                      aria-label="Citation Narrative"
-                      className="whitespace-pre-wrap text-center leading-7"
-                    >
-                      {renderCitationNarrative(recommendation)}
-                    </p>
-                  </section>
+                          <p
+                            aria-label="Citation Narrative"
+                            className="whitespace-pre-wrap text-center leading-7"
+                          >
+                            {renderCitationNarrative(recommendation)}
+                          </p>
+                        </section>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Do not copy from this preview. Use the Recommendation
+                        Title and Recommendation Body copy buttons below to
+                        preserve formatting and the ribbon image.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : (
                   <p className="rounded-lg border border-dashed border-border/70 px-5 py-10 text-center text-sm text-muted-foreground">
                     Your generated recommendation will appear here.

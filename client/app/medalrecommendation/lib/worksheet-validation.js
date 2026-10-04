@@ -33,6 +33,13 @@ export function isServiceMonthValid(value) {
 }
 
 function validateField(field, value, values) {
+  if (
+    typeof value === "string" &&
+    (value.includes("[") || value.includes("]"))
+  ) {
+    return "Square brackets [ and ] are not allowed in recommendation text.";
+  }
+
   if (!field.required) {
     return true;
   }
@@ -98,7 +105,14 @@ export function validateWorksheet(worksheet, values = {}) {
 
   for (const [fieldName, field] of Object.entries(worksheet.fields)) {
     if (isWorksheetFieldActive(field, values)) {
-      const result = validateField(field, values[fieldName], values);
+      let result = validateField(field, values[fieldName], values);
+      if (
+        result === true &&
+        field.validate &&
+        field.validate(values[fieldName], values) !== true
+      ) {
+        result = field.invalidMessage ?? false;
+      }
       fields[fieldName] = result === true;
       if (typeof result === "string") {
         errors[fieldName] = result;
