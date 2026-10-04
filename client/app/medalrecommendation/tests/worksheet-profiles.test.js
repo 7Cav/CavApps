@@ -1,11 +1,58 @@
 import {
+  WORKSHEET_PROFILES,
   applyAwardChange,
   getCitationChoiceText,
   resolveMedalWorksheet,
 } from "../lib/worksheet-profiles.js";
+import { getMedalFamily } from "../lib/medal-families";
 import { getOperationMedal } from "./operation-medal-cases.js";
 
 describe("Medal Recommendation Aid - worksheet profiles", () => {
+  test("every medal inherits explicit title context from its worksheet profile", () => {
+    for (const profile of Object.values(WORKSHEET_PROFILES)) {
+      const context = profile.recommendationTitleContext;
+      expect(context).toBeDefined();
+      expect(["operation", "none", "field", "activeField"]).toContain(
+        context.type,
+      );
+      if (context.type === "field")
+        expect(profile.fields).toHaveProperty(context.field);
+      if (context.type === "activeField") {
+        expect(context.fields.length).toBeGreaterThan(0);
+        for (const field of context.fields)
+          expect(profile.fields).toHaveProperty(field);
+      }
+    }
+    for (const family of ["operation", "service"]) {
+      for (const medal of getMedalFamily(family).medals) {
+        expect(medal).not.toHaveProperty("recommendationTitleContext");
+        expect(resolveMedalWorksheet(medal).recommendationTitleContext).toEqual(
+          WORKSHEET_PROFILES[medal.worksheetProfile].recommendationTitleContext,
+        );
+      }
+    }
+    expect(
+      resolveMedalWorksheet({ worksheetProfile: "serviceNarrative" })
+        .recommendationTitleContext,
+    ).toEqual({ type: "none" });
+  });
+
+  test("a new medal inherits a profile's title context without separate medal metadata", () => {
+    const newMedal = {
+      id: "new-leadership-medal",
+      worksheetProfile: "serviceLeadershipPeriod",
+    };
+    const worksheet = resolveMedalWorksheet(newMedal);
+    expect(worksheet.recommendationTitleContext).toEqual({
+      type: "activeField",
+      fields: ["secondaryBillet", "operationsAO"],
+    });
+    worksheet.recommendationTitleContext.fields.push("local-only");
+    expect(
+      resolveMedalWorksheet(newMedal).recommendationTitleContext.fields,
+    ).toEqual(["secondaryBillet", "operationsAO"]);
+  });
+
   test("resolves the shared Operation worksheet for ARCOM", () => {
     const worksheet = resolveMedalWorksheet(
       getOperationMedal("Army Commendation Medal"),

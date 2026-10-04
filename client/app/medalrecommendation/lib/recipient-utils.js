@@ -61,7 +61,7 @@ export function getRecipientId(member) {
   return String(member?.user?.userId ?? "").trim();
 }
 
-function getRankOrder(member) {
+function getRecommendationRank(member) {
   const value = member?.rank?.rankId;
   const rankId =
     typeof value === "number" ||
@@ -72,7 +72,17 @@ function getRankOrder(member) {
   const abbreviation = normalize(member?.rank?.rankShort).toUpperCase();
   // CavApps uses GA; the roster API spells the same rank GOA.
   const canonicalAbbreviation = abbreviation === "GOA" ? "GA" : abbreviation;
-  return rank?.abbreviation === canonicalAbbreviation ? rank.order : Infinity;
+  return rank?.abbreviation === canonicalAbbreviation ? rank : undefined;
+}
+
+function getRankOrder(member) {
+  return getRecommendationRank(member)?.order ?? Infinity;
+}
+
+export function getRecipientRankAbbreviation(member) {
+  const rank = getRecommendationRank(member);
+  if (!rank) throw new Error("Unsupported recipient rank abbreviation");
+  return rank.abbreviation;
 }
 
 // Recommendation order is separate from the user's editable selection order.
@@ -114,6 +124,7 @@ export function getRecipientDisplayName(member) {
 export function isValidRecipient(member) {
   return Boolean(
     getRecipientId(member) &&
+    trimText(member?.user?.username) &&
     trimText(member?.rank?.rankFull) &&
     trimText(member?.realName) &&
     getRankOrder(member) !== Infinity,
@@ -139,7 +150,9 @@ export function validateRecipientEntries(entries, policy) {
     if (!isValidRecipient(member))
       return member && getRankOrder(member) === Infinity
         ? "Recipient rank information is missing or unsupported."
-        : "Required";
+        : member && !trimText(member.user?.username)
+          ? "Recipient username is missing. Select a recipient with a roster username."
+          : "Required";
     return counts.get(getRecipientId(member)) > 1
       ? "Select each recipient only once."
       : "";

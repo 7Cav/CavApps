@@ -45,6 +45,87 @@ describe("Medal Recommendation Aid - worksheet validation", () => {
     });
   });
 
+  describe.each(["operationIndividual", "operationUnitAward"])(
+    "%s Operation Title validation",
+    (worksheetProfile) => {
+      test.each([
+        ["Operation", false],
+        ["Operation:", false],
+        [":", false],
+        ["---", false],
+        ["— / _ ;", false],
+        ["Operation: Hammer", true],
+      ])(
+        "accepts %j only when a normalized name remains: %s",
+        (operationTitle, valid) => {
+          const worksheet = resolveMedalWorksheet({ worksheetProfile });
+          const result = validateWorksheet(worksheet, {
+            ...completeOperationValues({ operationTitle }),
+            combatUnit: "Alpha Squad",
+          });
+          expect(result.isComplete).toBe(valid);
+          expect(result.fields.operationTitle).toBe(valid);
+          if (!valid)
+            expect(result.errors.operationTitle).toBe(
+              "Enter an operation name.",
+            );
+        },
+      );
+    },
+  );
+
+  test("field-owned validation follows a field regardless of its worksheet key", () => {
+    const worksheet = resolveMedalWorksheet({
+      worksheetProfile: "operationIndividual",
+    });
+    const result = validateSingleField(
+      worksheet.fields.operationTitle,
+      "Operation:",
+    );
+    expect(result).toEqual({
+      fields: { fieldUnderTest: false },
+      errors: { fieldUnderTest: "Enter an operation name." },
+      isComplete: false,
+    });
+  });
+
+  describe.each(["text", "textarea"])(
+    "BBCode safety for active %s fields",
+    (type) => {
+      test.each(["[", "]"])("rejects %s even in optional fields", (bracket) => {
+        const value = `User text ${bracket}`;
+        for (const required of [true, false]) {
+          const result = validateSingleField({ type, required }, value);
+          expect(result.isComplete).toBe(false);
+          expect(result.fields.fieldUnderTest).toBe(false);
+          expect(result.errors.fieldUnderTest).toBe(
+            "Square brackets [ and ] are not allowed in recommendation text.",
+          );
+        }
+      });
+    },
+  );
+
+  test("brackets in inactive conditional fields do not block an otherwise complete worksheet", () => {
+    const worksheet = {
+      fields: {
+        active: { type: "text", required: true },
+        inactive: {
+          type: "textarea",
+          required: true,
+          when: { field: "pathway", equals: "other" },
+        },
+      },
+    };
+    expect(
+      validateWorksheet(worksheet, {
+        active: "Normal text",
+        inactive: "[/CENTER]",
+        pathway: "current",
+      }),
+    ).toEqual({ fields: { active: true }, isComplete: true });
+  });
+
   describe.each(["text", "textarea"])("required %s fields", (type) => {
     test.each([
       ["plain text", "rifleman"],

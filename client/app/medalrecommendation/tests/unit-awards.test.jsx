@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MedalRecommendationPage from "../page";
 import {
+  enterWorksheetField as enter,
   getCitationText,
   makeRecipientRoster,
   renderClient,
@@ -24,11 +25,6 @@ const [avua, muc, jmua, sua] = UNIT_AWARD_CASES;
 const minimumError = "At least 4 recipients are required for this Unit Award.";
 const identityWarning =
   /Recipient mentions?:|\d+ of \d+ recipients (?:is|are) not referenced/;
-function enter(label, value) {
-  fireEvent.change(screen.getByLabelText(label, { exact: true }), {
-    target: { value },
-  });
-}
 function expectValues(values) {
   for (const [label, value] of Object.entries(values))
     expect(screen.getByLabelText(label, { exact: true })).toHaveValue(value);

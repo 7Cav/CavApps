@@ -6,6 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  TooltipProvider,
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -32,6 +38,8 @@ import {
 } from "./lib/worksheet-profiles";
 import { validateWorksheet } from "./lib/worksheet-validation";
 import { generateRecommendation } from "./lib/recommendation-generation";
+import { buildMilpacsUrl } from "./lib/recommendation-export";
+import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
 import {
@@ -312,6 +320,7 @@ export default function MedalRecommendationClient({
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
   const [recommendation, setRecommendation] = useState(null);
+  const generationId = useRef(0);
 
   const rosterMembers = useMemo(
     () => uniqueRecipients(recipientRoster ?? []),
@@ -495,6 +504,7 @@ export default function MedalRecommendationClient({
       return;
     }
 
+    generationId.current += 1;
     setRecommendation(
       generateRecommendation({
         medal: selectedMedal,
@@ -769,45 +779,70 @@ export default function MedalRecommendationClient({
                 </h3>
 
                 {recommendation ? (
-                  <section
-                    role="region"
-                    aria-label="Recommendation Preview"
-                    className="space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center"
-                  >
-                    <h4 className="text-xl font-semibold text-foreground">
-                      {recommendation.medal.name}
-                    </h4>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <section
+                          role="region"
+                          aria-label="Recommendation Preview"
+                          tabIndex={0}
+                          className="relative space-y-5 rounded-lg border border-border/70 bg-background/40 p-5 text-center text-secondary-foreground transition-colors hover:border-destructive/60 hover:bg-destructive/10 focus-within:border-destructive/60 focus-within:bg-destructive/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <h4 className="text-xl font-bold">
+                            {recommendation.medal.name}
+                          </h4>
 
-                    <img
-                      src={recommendation.medal.ribbonUrl}
-                      alt={`${recommendation.medal.name} ribbon`}
-                      className="mx-auto"
-                    />
+                          <img
+                            src={recommendation.medal.ribbonUrl}
+                            alt={`${recommendation.medal.name} ribbon`}
+                            className="mx-auto"
+                          />
 
-                    <ul
-                      aria-label="Recommendation recipients"
-                      className="space-y-1 font-medium"
-                    >
-                      {recommendation.recipients.map((member) => (
-                        <li key={getRecipientId(member)}>
-                          {getRecipientDisplayName(member)}
-                        </li>
-                      ))}
-                    </ul>
+                          <ul
+                            aria-label="Recommendation recipients"
+                            className="space-y-1 font-bold"
+                          >
+                            {recommendation.recipients.map((member) => (
+                              <li key={getRecipientId(member)}>
+                                <a
+                                  href={buildMilpacsUrl(member)}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-primary"
+                                >
+                                  {getRecipientDisplayName(member)}
+                                </a>
+                              </li>
+                            ))}
+                          </ul>
 
-                    <p
-                      aria-label="Citation Narrative"
-                      className="text-left leading-7"
-                    >
-                      {renderCitationNarrative(recommendation)}
-                    </p>
-                  </section>
+                          <p
+                            aria-label="Citation Narrative"
+                            className="whitespace-pre-wrap text-center leading-7"
+                          >
+                            {renderCitationNarrative(recommendation)}
+                          </p>
+                        </section>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-sm">
+                        Do not copy from this preview. Use the Recommendation
+                        Title and Recommendation Body copy buttons below to
+                        preserve formatting and the ribbon image.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 ) : (
                   <p className="rounded-lg border border-dashed border-border/70 px-5 py-10 text-center text-sm text-muted-foreground">
                     Your generated recommendation will appear here.
                   </p>
                 )}
               </section>
+              {recommendation && (
+                <RecommendationSubmission
+                  key={generationId.current}
+                  recommendation={recommendation}
+                />
+              )}
             </CardContent>
           </Card>
         </aside>

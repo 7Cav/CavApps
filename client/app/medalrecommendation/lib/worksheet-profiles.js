@@ -1,3 +1,5 @@
+import { normalizeOperationTitle } from "./citation-builders.js";
+
 const INDIVIDUAL_RECIPIENT_POLICY = { minimum: 1 };
 
 const SERVICE_NARRATIVE = {
@@ -44,6 +46,12 @@ function requiredText(label, placeholder) {
     awardChange: "preserve",
   };
 }
+
+const OPERATION_TITLE_FIELD = {
+  ...requiredText("Operation Title", "Overlord"),
+  validate: (value) => Boolean(normalizeOperationTitle(value)),
+  invalidMessage: "Enter an operation name.",
+};
 
 const SERVICE_UNIT = requiredText("Unit", "A/1/A/1-7, S2 Intelligence, etc.");
 
@@ -96,9 +104,10 @@ const SERVICE_PERIOD = {
 const SECONDARY_PATHWAY = { field: "leadershipArea", equals: "secondary" };
 const OPERATIONS_PATHWAY = { field: "leadershipArea", equals: "operations" };
 
-function serviceWorksheet(contextFields = {}) {
+function serviceWorksheet(recommendationTitleContext, contextFields = {}) {
   const fields = { ...contextFields, narrative: { ...SERVICE_NARRATIVE } };
   return {
+    recommendationTitleContext,
     recipientType: "individual",
     recipientPolicy: INDIVIDUAL_RECIPIENT_POLICY,
     fieldOrder: Object.keys(fields),
@@ -107,7 +116,10 @@ function serviceWorksheet(contextFields = {}) {
 }
 
 function serviceUnitAwardWorksheet(contextFields) {
-  const worksheet = serviceWorksheet(contextFields);
+  const worksheet = serviceWorksheet(
+    { type: "field", field: "benefittedUnit" },
+    contextFields,
+  );
   worksheet.fields.narrative = {
     ...SERVICE_NARRATIVE,
     recipientIdentityChecks: false,
@@ -128,6 +140,7 @@ const AWARDED_UNIT = requiredText(
 
 export const WORKSHEET_PROFILES = {
   operationIndividual: {
+    recommendationTitleContext: { type: "operation" },
     recipientType: "individual",
     recipientPolicy: INDIVIDUAL_RECIPIENT_POLICY,
 
@@ -151,14 +164,7 @@ export const WORKSHEET_PROFILES = {
         awardChange: "sameVariant",
       },
 
-      operationTitle: {
-        type: "text",
-        required: true,
-        defaultValue: "",
-        label: "Operation Title",
-        placeholder: "Overlord",
-        awardChange: "preserve",
-      },
+      operationTitle: { ...OPERATION_TITLE_FIELD },
 
       location: {
         type: "text",
@@ -176,6 +182,7 @@ export const WORKSHEET_PROFILES = {
   },
 
   operationUnitAward: {
+    recommendationTitleContext: { type: "operation" },
     // Unit awards still select individual roster records.
     recipientType: "individual",
     recipientPolicy: {
@@ -196,7 +203,7 @@ export const WORKSHEET_PROFILES = {
         ...requiredText("Combat Unit", "Alpha Squad"),
         helperText: "Enter the combat unit whose actions are being recognized.",
       },
-      operationTitle: requiredText("Operation Title", "Overlord"),
+      operationTitle: { ...OPERATION_TITLE_FIELD },
       location: requiredText("Location", "Omaha Beach"),
       operationDate: { ...OPERATION_DATE_FIELD },
       narrative: {
@@ -227,98 +234,128 @@ export const WORKSHEET_PROFILES = {
     narrativeOpening: NARRATIVE_OPENING,
   }),
 
-  serviceIndividual: serviceWorksheet({
-    affectedArea: requiredText(
-      "Affected Area of the Cav",
-      "S7 HLL SOI, 2/B/2-7, etc.",
-    ),
-  }),
-  serviceVolunteer: serviceWorksheet({
-    nonCombatDepartment: requiredText(
-      "Non-Combat Department",
-      "S1 Uniforms, S3 ARMA Operations, etc.",
-    ),
-  }),
-  serviceNarrative: serviceWorksheet(),
-  serviceUnit: serviceWorksheet({ unit: SERVICE_UNIT }),
-  serviceJointContribution: serviceWorksheet({
-    recognitionType: {
-      type: "semanticChoice",
-      required: true,
-      defaultValue: "contributions",
-      label: "Recognition Wording",
-      placeholder: "Select actions or contributions",
-      options: [
-        { id: "contributions", label: "Contributions" },
-        { id: "actions", label: "Custom Action Phrase" },
-      ],
-      awardChange: "reset",
+  serviceIndividual: serviceWorksheet(
+    { type: "field", field: "affectedArea" },
+    {
+      affectedArea: requiredText(
+        "Affected Area of the Cav",
+        "S7 HLL SOI, 2/B/2-7, etc.",
+      ),
     },
-    actionPhrase: {
-      ...requiredText("Action Phrase", "action phrase"),
-      helperText:
-        "Enter a short citation phrase, such as “outstanding support” or “inspiring dedication”. It will appear after “For” in the opening and after “dedication to duty and” in the closing. Do not enter a full sentence.",
-      when: { field: "recognitionType", equals: "actions" },
+  ),
+  serviceVolunteer: serviceWorksheet(
+    { type: "field", field: "nonCombatDepartment" },
+    {
+      nonCombatDepartment: requiredText(
+        "Non-Combat Department",
+        "S1 Uniforms, S3 ARMA Operations, etc.",
+      ),
     },
-    benefittedCompany: requiredText("Benefitted Company", "B/2-7, A/3-7, etc."),
-    assignedCompany: requiredText("Assigned Company", "C/1-7, A/ACD, etc."),
-    narrativeOpening: NARRATIVE_OPENING,
-  }),
-  serviceMeritorious: serviceWorksheet({
-    serviceType: SERVICE_CONTRIBUTIONS,
-    unit: SERVICE_UNIT,
-    narrativeOpening: NARRATIVE_OPENING,
-  }),
-  serviceSecondaryPeriod: serviceWorksheet({
-    role: {
-      ...requiredText("Role", "a clerk, an investigator, etc."),
-      awardChange: "reset",
+  ),
+  serviceNarrative: serviceWorksheet({ type: "none" }),
+  serviceUnit: serviceWorksheet(
+    { type: "field", field: "unit" },
+    { unit: SERVICE_UNIT },
+  ),
+  serviceJointContribution: serviceWorksheet(
+    { type: "field", field: "benefittedCompany" },
+    {
+      recognitionType: {
+        type: "semanticChoice",
+        required: true,
+        defaultValue: "contributions",
+        label: "Recognition Wording",
+        placeholder: "Select actions or contributions",
+        options: [
+          { id: "contributions", label: "Contributions" },
+          { id: "actions", label: "Custom Action Phrase" },
+        ],
+        awardChange: "reset",
+      },
+      actionPhrase: {
+        ...requiredText("Action Phrase", "action phrase"),
+        helperText:
+          "Enter a short citation phrase, such as “outstanding support” or “inspiring dedication”. It will appear after “For” in the opening and after “dedication to duty and” in the closing. Do not enter a full sentence.",
+        when: { field: "recognitionType", equals: "actions" },
+      },
+      benefittedCompany: requiredText(
+        "Benefitted Company",
+        "B/2-7, A/3-7, etc.",
+      ),
+      assignedCompany: requiredText("Assigned Company", "C/1-7, A/ACD, etc."),
+      narrativeOpening: NARRATIVE_OPENING,
     },
-    secondaryBillet: requiredText(
-      "Secondary Billet",
-      "S1 MILPACS, S5 Public Affairs, etc.",
-    ),
-    ...SERVICE_PERIOD,
-  }),
-  serviceLeadershipPeriod: serviceWorksheet({
-    leadershipArea: {
-      type: "semanticChoice",
-      required: true,
-      defaultValue: "",
-      label: "Leadership Area",
-      placeholder: "Select leadership area",
-      options: [
-        { id: "secondary", label: "Secondary Billet" },
-        { id: "operations", label: "Operations Leadership" },
-      ],
-      awardChange: "reset",
+  ),
+  serviceMeritorious: serviceWorksheet(
+    { type: "field", field: "unit" },
+    {
+      serviceType: SERVICE_CONTRIBUTIONS,
+      unit: SERVICE_UNIT,
+      narrativeOpening: NARRATIVE_OPENING,
     },
-    secondaryRole: {
-      ...requiredText("Role", "1IC, 2IC, Lead, etc."),
-      when: SECONDARY_PATHWAY,
+  ),
+  serviceSecondaryPeriod: serviceWorksheet(
+    { type: "field", field: "secondaryBillet" },
+    {
+      role: {
+        ...requiredText("Role", "a clerk, an investigator, etc."),
+        awardChange: "reset",
+      },
+      secondaryBillet: requiredText(
+        "Secondary Billet",
+        "S1 MILPACS, S5 Public Affairs, etc.",
+      ),
+      ...SERVICE_PERIOD,
     },
-    secondaryBillet: {
-      ...requiredText("Secondary Billet", "Military Police, S7 ARMA CAS, etc."),
-      when: SECONDARY_PATHWAY,
+  ),
+  serviceLeadershipPeriod: serviceWorksheet(
+    { type: "activeField", fields: ["secondaryBillet", "operationsAO"] },
+    {
+      leadershipArea: {
+        type: "semanticChoice",
+        required: true,
+        defaultValue: "",
+        label: "Leadership Area",
+        placeholder: "Select leadership area",
+        options: [
+          { id: "secondary", label: "Secondary Billet" },
+          { id: "operations", label: "Operations Leadership" },
+        ],
+        awardChange: "reset",
+      },
+      secondaryRole: {
+        ...requiredText("Role", "1IC, 2IC, Lead, etc."),
+        when: SECONDARY_PATHWAY,
+      },
+      secondaryBillet: {
+        ...requiredText(
+          "Secondary Billet",
+          "Military Police, S7 ARMA CAS, etc.",
+        ),
+        when: SECONDARY_PATHWAY,
+      },
+      operationsLeadership: {
+        ...requiredText("Operations Leadership", "AO Lead, S3 HLL Operations"),
+        when: OPERATIONS_PATHWAY,
+      },
+      operationsAO: {
+        ...requiredText("Operations AO", "Hell Let Loose: Vietnam AO"),
+        when: OPERATIONS_PATHWAY,
+      },
+      ...SERVICE_PERIOD,
     },
-    operationsLeadership: {
-      ...requiredText("Operations Leadership", "AO Lead, S3 HLL Operations"),
-      when: OPERATIONS_PATHWAY,
+  ),
+  servicePrimaryPeriod: serviceWorksheet(
+    { type: "field", field: "element" },
+    {
+      role: {
+        ...requiredText("Role", "a trooper, an infantryman, etc."),
+        awardChange: "reset",
+      },
+      element: requiredText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
+      ...SERVICE_PERIOD,
     },
-    operationsAO: {
-      ...requiredText("Operations AO", "Hell Let Loose: Vietnam AO"),
-      when: OPERATIONS_PATHWAY,
-    },
-    ...SERVICE_PERIOD,
-  }),
-  servicePrimaryPeriod: serviceWorksheet({
-    role: {
-      ...requiredText("Role", "a trooper, an infantryman, etc."),
-      awardChange: "reset",
-    },
-    element: requiredText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
-    ...SERVICE_PERIOD,
-  }),
+  ),
 };
 
 function copyField(field) {
@@ -395,6 +432,14 @@ export function resolveMedalWorksheet(medal) {
   ];
 
   return {
+    recommendationTitleContext: profile.recommendationTitleContext
+      ? {
+          ...profile.recommendationTitleContext,
+          ...(profile.recommendationTitleContext.fields
+            ? { fields: [...profile.recommendationTitleContext.fields] }
+            : {}),
+        }
+      : undefined,
     recipientType: profile.recipientType,
     recipientPolicy: { ...profile.recipientPolicy },
     fieldOrder,

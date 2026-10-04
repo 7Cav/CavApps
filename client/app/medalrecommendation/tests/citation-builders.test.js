@@ -152,6 +152,7 @@ describe("collective award wording", () => {
 describe("recommendation generation", () => {
   test("resolves all active citation choices by their field definitions and excludes inactive choices", () => {
     const worksheet = {
+      recommendationTitleContext: { type: "none" },
       fields: {
         recognition: {
           type: "citationChoice",

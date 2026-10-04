@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import MedalRecommendationClient from "../MedalRecommendationClient";
 import { MEDAL_FAMILY_IDS } from "../lib/medal-families.js";
 import OperationMedalRecommendationPage from "../operation/page";
@@ -16,6 +16,7 @@ export function makeRecipient(overrides = {}) {
 
   return {
     ...recipient,
+    profileId: `profile-${overrides.user?.userId ?? recipient.user.userId}`,
     ...overrides,
     user: { ...recipient.user, ...overrides.user },
     rank: { ...recipient.rank, ...overrides.rank },
@@ -106,49 +107,51 @@ export const namelessRecipient = makeRecipient({
   primary: { positionId: "104" },
 });
 
-export const combatRoster = {
-  1001: makeRecipient(),
-  1002: makeRecipient({
-    user: { userId: "1002", username: "Long.A" },
-    realName: "Adam Long",
-    primary: { positionId: "101" },
-  }),
-  1003: makeRecipient({
-    user: { userId: "1003", username: "Smith.TM" },
-    realName: "Taylor Morgan Smith",
-    primary: { positionId: "102" },
-  }),
-  1004: ranklessRecipient,
-  1005: namelessRecipient,
-  1006: makeRecipient({
-    user: { userId: "1006", username: "Rankspace.T" },
-    rank: { rankFull: "   " },
-    realName: "Test Rankspace",
-    primary: { positionId: "105" },
-  }),
-  1007: makeRecipient({
-    user: { userId: "1007", username: "Namespace.T" },
-    realName: "   ",
-    primary: { positionId: "106" },
-  }),
-  1008: makeRecipient({
-    user: { userId: "1008", username: "Smith.TJ" },
-    realName: "Taylor J. Smith",
-    primary: { positionId: "107" },
-  }),
-  1009: makeRecipient({
-    user: { userId: "1009", username: "Kenton.W" },
-    rank: { rankShort: "Cpl", rankFull: "Corporal", rankId: "19" },
-    realName: "Wade Kenton",
-    primary: { positionId: "108" },
-  }),
-  1010: makeRecipient({
-    user: { userId: "1010", username: "General.M" },
-    rank: { rankShort: "MG", rankFull: "Major General", rankId: "4" },
-    realName: "Morgan General",
-    primary: { positionId: "109" },
-  }),
-};
+export const combatRoster = Object.fromEntries(
+  [
+    makeRecipient(),
+    makeRecipient({
+      user: { userId: "1002", username: "Long.A" },
+      realName: "Adam Long",
+      primary: { positionId: "101" },
+    }),
+    makeRecipient({
+      user: { userId: "1003", username: "Smith.TM" },
+      realName: "Taylor Morgan Smith",
+      primary: { positionId: "102" },
+    }),
+    ranklessRecipient,
+    namelessRecipient,
+    makeRecipient({
+      user: { userId: "1006", username: "Rankspace.T" },
+      rank: { rankFull: "   " },
+      realName: "Test Rankspace",
+      primary: { positionId: "105" },
+    }),
+    makeRecipient({
+      user: { userId: "1007", username: "Namespace.T" },
+      realName: "   ",
+      primary: { positionId: "106" },
+    }),
+    makeRecipient({
+      user: { userId: "1008", username: "Smith.TJ" },
+      realName: "Taylor J. Smith",
+      primary: { positionId: "107" },
+    }),
+    makeRecipient({
+      user: { userId: "1009", username: "Kenton.W" },
+      rank: { rankShort: "Cpl", rankFull: "Corporal", rankId: "19" },
+      realName: "Wade Kenton",
+      primary: { positionId: "108" },
+    }),
+    makeRecipient({
+      user: { userId: "1010", username: "General.M" },
+      rank: { rankShort: "MG", rankFull: "Major General", rankId: "4" },
+      realName: "Morgan General",
+      primary: { positionId: "109" },
+    }),
+  ].map((recipient) => [recipient.profileId, recipient]),
+);
 
 export function renderClient({
   roster = Object.values(combatRoster),
@@ -176,7 +179,15 @@ export function mockMedalPageFetch({
 } = {}) {
   const profiles = Array.isArray(roster)
     ? Object.fromEntries(
-        roster.map((recipient) => [recipient.user.userId, recipient]),
+        roster.map((recipient, index) => {
+          const profileId = recipient?.profileId;
+          if (typeof profileId !== "string" || !profileId.trim()) {
+            throw new Error(
+              `Array roster fixture recipient ${index} requires a nonempty string profileId`,
+            );
+          }
+          return [profileId, recipient];
+        }),
       )
     : roster;
 
@@ -278,4 +289,10 @@ export function getHighlightTexts() {
     screen.getByLabelText("Citation Narrative").querySelectorAll("mark"),
     (highlight) => highlight.textContent,
   );
+}
+
+export function enterWorksheetField(label, value) {
+  fireEvent.change(screen.getByLabelText(label, { exact: true }), {
+    target: { value },
+  });
 }
