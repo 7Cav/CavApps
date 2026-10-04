@@ -245,7 +245,7 @@ export default async function GetCanvasObject(userName) {
   //error.
   userInfo.combatBadgeError =
     combatBadge != null && userInfo.combatBadgeCoords == null
-      ? "The builder left off the combat badge. This member has no ribbons yet, so the badge has no position on the uniform. Their record probably has no graduation posting yet. Build the uniform again once it does."
+      ? "The builder left off the combat badge. This member has no ribbons yet, so the badge has no position on the uniform. Their milpac probably has no graduation posting yet. Build the uniform again once it does."
       : null;
 
   weaponQual = weaponQual ?? 0;
