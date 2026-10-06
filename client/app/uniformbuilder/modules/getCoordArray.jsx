@@ -1,34 +1,37 @@
 import {
-  RIBBON_BOTTOM_ROW_DY,
+  RIBBON_CHEST_BOTTOM_ROW_DY,
+  RIBBON_CHEST_CAPACITY,
+  RIBBON_PINBOARD,
+  RIBBON_PINBOARD_CAPACITY,
   RIBBON_RACKS,
   RIBBON_ROW_HEIGHT,
   RIBBON_SLOT_WIDTH,
   RibbonRowAlign,
+  ribbonsOnChest,
 } from "./constants";
 
 // Returns where to draw each of the member's ribbons, highest priority first.
 // canvas.jsx pairs entry i with the member's ribbon i in awardPriority order.
+// The chest takes the highest-priority ribbons and the pinboard the rest.
 export default function GetCoordArray(ribbonCount) {
-  const rack = RIBBON_RACKS.find((r) => ribbonCount <= r.upTo);
-  if (!rack)
+  if (!(ribbonCount <= RIBBON_CHEST_CAPACITY + RIBBON_PINBOARD_CAPACITY))
     throw new Error(
       "FATAL ERROR! The number of ribbons of this user exceeds the max allowable limit. This is a priority error. Inform your lead, S1 1IC and 2IC with the name of the affected user.",
     );
 
-  /* included for use later
-  {
-    // -1 (On the pinboard)
-    dx: 706,
-    dy: 571,
-  },
-  {
-    // -2
-    dx: 750,
-    dy: 571,
-  },
-  */
+  const onChest = ribbonsOnChest(ribbonCount);
+  const chest = RIBBON_RACKS.find((r) => onChest <= r.upTo);
+  return [
+    ...fillRack(chest, onChest, RIBBON_CHEST_BOTTOM_ROW_DY),
+    ...centeredOn(
+      fillRack(RIBBON_PINBOARD, ribbonCount - onChest, 0),
+      RIBBON_PINBOARD.middleDy,
+    ),
+  ];
+}
 
-  // Filled from the bottom row up, so lowest priority first.
+// Fills rows from the bottom up, so lowest priority first, then reverses.
+function fillRack(rack, ribbonCount, bottomRowDy) {
   const coords = [];
   let remaining = ribbonCount;
   rack.rows.forEach((capacity, row) => {
@@ -36,12 +39,21 @@ export default function GetCoordArray(ribbonCount) {
     for (let slot = 0; slot < ribbonsInRow; slot++) {
       coords.push({
         dx: slotDx(rack, slot, ribbonsInRow),
-        dy: RIBBON_BOTTOM_ROW_DY - row * RIBBON_ROW_HEIGHT,
+        dy: bottomRowDy - row * RIBBON_ROW_HEIGHT,
       });
     }
     remaining -= ribbonsInRow;
   });
   return coords.reverse();
+}
+
+// Moves the rows so they straddle middleDy, so the block grows both ways.
+function centeredOn(coords, middleDy) {
+  if (coords.length === 0) return coords;
+  const top = Math.min(...coords.map((c) => c.dy));
+  const bottom = Math.max(...coords.map((c) => c.dy)) + RIBBON_ROW_HEIGHT;
+  const shift = Math.round(middleDy - (top + bottom) / 2);
+  return coords.map((c) => ({ dx: c.dx, dy: c.dy + shift }));
 }
 
 // Slot 0 is the rightmost on screen, the row's lowest-priority ribbon.
