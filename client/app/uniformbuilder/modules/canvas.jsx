@@ -201,7 +201,7 @@ function Canvas(props) {
 
   const placeInfantryBadge = (image, coordData, context) => {
     return new Promise((resolve) => {
-      if (image == undefined) {
+      if (image == undefined || coordData == null) {
         resolve();
         return;
       }
@@ -559,6 +559,14 @@ function Canvas(props) {
             context,
           ),
         ]);
+
+        // A badge with no position is left off, and the error box says why.
+        if (data[0].combatBadgeError != null) {
+          setBuilderErrors((prevErrors) => [
+            ...prevErrors,
+            data[0].combatBadgeError,
+          ]);
+        }
 
         //Draw the lapel and the epaulette
         await Promise.all([

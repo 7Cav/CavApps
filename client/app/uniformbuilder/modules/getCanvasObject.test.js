@@ -8,6 +8,10 @@
  * the badge object are internal and are deliberately left alone, so this suite
  * survives a rewrite of how the badge is chosen.
  *
+ * When the badge has no position, canvas.jsx leaves it off and lists
+ * data[0].combatBadgeError in the error box. The no-ribbon cases assert only
+ * whether there is an error. Its wording is left to review.
+ *
  * For the collar it reads three things off data[0]: mosCheck (non-null means
  * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
  * (asset names, or false for none). The collar cases assert those three.
@@ -188,6 +192,36 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   const held = ["Combat Infantry Badge", "Flight Medic Badge"];
   assertDraws(await combatBadgeFor("68W", held), 6);
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
+});
+
+// ── No ribbons: the badge has no position, and the builder says so (#271) ────
+// The badge sits above the ribbons, so the builder has no position for it
+// when a member has none. That happens when a combat badge is posted before
+// a recruit's graduation posting.
+
+/** The combat badge error the builder hands the renderer. */
+const combatBadgeErrorFor = async (awardNames) =>
+  (await canvasObjectFor("11B", awardNames))[0].combatBadgeError;
+
+await test("a combat badge holder with no ribbons is told the badge was not drawn", async () => {
+  const error = await combatBadgeErrorFor(["Expert Infantry Badge"]);
+  assert.ok(
+    typeof error === "string" && error.length > 0,
+    `expected a combat badge error, got ${error}`,
+  );
+});
+
+// Regression pins. The error needs both a badge and no ribbons, and each pin
+// goes red if the error is raised on one of them alone. Loose equality on
+// purpose, because the canvas tests `combatBadgeError != null`.
+
+await test("a combat badge holder with a ribbon gets no combat badge error", async () => {
+  const held = ["Expert Infantry Badge", "Army Service Ribbon"];
+  assert.equal(await combatBadgeErrorFor(held), null);
+});
+
+await test("a member with no ribbons and no combat badge gets no combat badge error", async () => {
+  assert.equal(await combatBadgeErrorFor([]), null);
 });
 
 // ── Service ribbons: the medal display, in precedence order ──────────────────

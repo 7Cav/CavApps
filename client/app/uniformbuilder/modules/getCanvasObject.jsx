@@ -240,6 +240,14 @@ export default async function GetCanvasObject(userName) {
     }
   }
 
+  //The badge sits above the ribbons, so GetCombatBadgeCoords has no position
+  //for it when there are none. canvas.jsx leaves the badge off and lists this
+  //error.
+  userInfo.combatBadgeError =
+    combatBadge != null && userInfo.combatBadgeCoords == null
+      ? "Failed to render the combat badge because this user has no ribbons. This user likely has not graduated. Rebuild this user's uniform once their milpac shows their graduation."
+      : null;
+
   weaponQual = weaponQual ?? 0;
 
   arr.push(ribbons.sort((a, b) => a.awardPriority - b.awardPriority));
