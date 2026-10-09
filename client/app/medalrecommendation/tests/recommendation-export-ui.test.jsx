@@ -63,6 +63,125 @@ async function ready({
 describe("Recommendation submission", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  test.each([
+    [
+      2,
+      "Humanitarian Service Medal",
+      [0, 1],
+      "Specialist Taylor Smith and Specialist Aaron Young",
+    ],
+    [
+      6,
+      "Humanitarian Service Medal",
+      [2, 3, 5, 4, 0, 1],
+      "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young",
+    ],
+    [7, "Humanitarian Service Medal", [2, 3, 6, 5, 4, 0, 1], "The recipients"],
+    [7, "Superior Unit Award", [2, 3, 6, 5, 4, 0, 1], "S6 Development"],
+  ])(
+    "%i recipients / %s carries canonical order into the citation, preview and BBCode without reordering selection",
+    async (count, award, order, subject) => {
+      const members = [
+        makeRecipient({
+          realName: "Taylor Morgan Smith",
+          user: { userId: "t", username: "Smith.TM" },
+        }),
+        makeRecipient({
+          realName: "Aaron Young",
+          user: { userId: "a", username: "Young.A" },
+        }),
+        makeRecipient({
+          realName: "Zulu Zulu",
+          user: { userId: "z", username: "Zulu.Z" },
+          rank: { rankId: 9, rankShort: "CPT", rankFull: "Captain" },
+        }),
+        makeRecipient({
+          realName: "Wade Kenton",
+          user: { userId: "w", username: "Kenton.W" },
+          rank: { rankId: 17, rankShort: "SSG", rankFull: "Staff Sergeant" },
+        }),
+        makeRecipient({
+          realName: "John Robert Smith",
+          user: { userId: "r", username: "Smith.JR" },
+        }),
+        makeRecipient({
+          realName: "John Michael Smith",
+          user: { userId: "m", username: "Smith.JM" },
+        }),
+        makeRecipient({
+          realName: "John Smith",
+          user: { userId: "j", username: "Smith.J" },
+        }),
+      ].slice(0, count);
+      const fullNames = [
+        "Specialist Taylor Morgan Smith",
+        "Specialist Aaron Young",
+        "Captain Zulu Zulu",
+        "Staff Sergeant Wade Kenton",
+        "Specialist John Robert Smith",
+        "Specialist John Michael Smith",
+        "Specialist John Smith",
+      ];
+      const user = userEvent.setup();
+      renderClient({ medalFamily: "service", roster: members });
+      await selectAward(user, award);
+      await user.click(
+        screen.getByRole("button", { name: "Bulk Add Recipients" }),
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Select All Shown" }),
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Confirm Recipients" }),
+      );
+      if (award === "Superior Unit Award") {
+        enter("Benefitted Unit", "2/B/2-7");
+        enter("Awarded Department / Unit", "S6 Development");
+        await selectComboboxOption(user, "Service / Contributions", "Service");
+      }
+      enter(
+        "Narrative",
+        "supporting the unit. Readiness improved. The mission succeeded.",
+      );
+      await submitRecommendation(user);
+      const preview = screen.getByRole("region", {
+        name: "Recommendation Preview",
+      });
+      expect(
+        within(preview)
+          .getAllByRole("link")
+          .map((link) => link.textContent),
+      ).toEqual(order.map((index) => fullNames[index]));
+      const exported = screen.getByLabelText("Recommendation Body").value;
+      expect(
+        exported.split("\n").filter((line) => line.startsWith("[B][URL=")),
+      ).toEqual(
+        order.map(
+          (index) =>
+            `[B][URL=https://7cav.us/rosters/profile/${members[index].profileId}/]${fullNames[index]}[/URL][/B]`,
+        ),
+      );
+      expect(getCitationText()).toContain(
+        `${subject} distinguished themselves by supporting the unit.`,
+      );
+      expect(getCitationText()).toContain(
+        award === "Superior Unit Award"
+          ? "Their dedication to duty"
+          : `${subject}${count > 6 ? "'" : "'s"} dedication to duty`,
+      );
+      expect(screen.getByLabelText("Recommendation Title")).toHaveValue(
+        award === "Superior Unit Award"
+          ? "Medal Recommendation - 2/B/2-7 - SUA - Multiple"
+          : "Medal Recommendation - HSM - Multiple",
+      );
+      expect(
+        screen
+          .getAllByRole("textbox", { name: /^Recipient(?: \d+)?$/ })
+          .map((input) => input.value),
+      ).toEqual(members.map((member) => member.user.username));
+    },
+  );
+
   test("the roster profile key reaches both preview and exported links when the forum ID differs", async () => {
     const user = userEvent.setup();
     // Live roster shape: profiles[4637].user.userId is 9397 for Kenton.W.
@@ -503,39 +622,53 @@ describe("Recommendation submission", () => {
     );
   });
 
-  test("long titles truncate quietly while preview, body and warning highlights retain full prose", async () => {
-    const user = await ready();
-    enter("Operation Title", "Long ".repeat(70));
-    enter(
-      "Narrative",
-      "Specialist John Smith led the the team!! The mission succeeded.",
-    );
-    await submitRecommendation(user);
-    expect(screen.getByLabelText("Recommendation Title").value).toHaveLength(
-      150,
-    );
-    expect(screen.getByLabelText("Recommendation Title").value).toMatch(
-      /… - ARCOMV - SPC.Smith.J$/,
-    );
-    expect(getCitationText()).toContain(
-      "Operation " + "Long ".repeat(70).trim(),
-    );
-    expect(getHighlightTexts()).toEqual(
-      expect.arrayContaining(["the the", "!!"]),
-    );
-    expect(screen.getByLabelText("Recommendation Body").value).toContain(
-      getCitationText(),
-    );
-    const submission = screen.getByRole("region", {
-      name: "Recommendation Submission",
-    });
-    expect(within(submission).queryByRole("alert")).not.toBeInTheDocument();
-    expect(within(submission).queryByRole("status")).not.toBeInTheDocument();
-    const titleField = within(submission).getByRole("textbox", {
-      name: "Recommendation Title",
-    });
-    expect(titleField).not.toHaveAttribute("aria-invalid", "true");
-    expect(titleField).not.toHaveAccessibleErrorMessage();
-    expect(titleField).not.toHaveAccessibleDescription();
-  });
+  test.each([1, 2])(
+    "long titles for %i recipients truncate quietly while preview, body and warning highlights retain full prose",
+    async (count) => {
+      const user = await ready();
+      if (count === 2) {
+        await user.click(screen.getByRole("button", { name: "Add Recipient" }));
+        enter("Recipient 2", "Doe");
+        await user.click(
+          screen.getByRole("button", { name: "Doe.J", exact: true }),
+        );
+      }
+      enter("Operation Title", "Long ".repeat(70));
+      enter(
+        "Narrative",
+        "Specialist John Smith led the the team!! The mission succeeded.",
+      );
+      await submitRecommendation(user);
+      expect(screen.getByLabelText("Recommendation Title").value).toHaveLength(
+        150,
+      );
+      expect(
+        screen
+          .getByLabelText("Recommendation Title")
+          .value.endsWith(
+            count === 1 ? "… - ARCOMV - SPC.Smith.J" : "… - ARCOMV - Multiple",
+          ),
+      ).toBe(true);
+      expect(getCitationText()).toContain(
+        "Operation " + "Long ".repeat(70).trim(),
+      );
+      expect(getHighlightTexts()).toEqual(
+        expect.arrayContaining(["the the", "!!"]),
+      );
+      expect(screen.getByLabelText("Recommendation Body").value).toContain(
+        getCitationText(),
+      );
+      const submission = screen.getByRole("region", {
+        name: "Recommendation Submission",
+      });
+      expect(within(submission).queryByRole("alert")).not.toBeInTheDocument();
+      expect(within(submission).queryByRole("status")).not.toBeInTheDocument();
+      const titleField = within(submission).getByRole("textbox", {
+        name: "Recommendation Title",
+      });
+      expect(titleField).not.toHaveAttribute("aria-invalid", "true");
+      expect(titleField).not.toHaveAccessibleErrorMessage();
+      expect(titleField).not.toHaveAccessibleDescription();
+    },
+  );
 });

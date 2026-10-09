@@ -173,7 +173,7 @@ export function buildServiceDedicationClosing(context) {
   const { affectedArea } = context;
   return (
     `${getPossessiveSubject(context)} dedication to duty and commitment ` +
-    `is in great credit to themselves, ${affectedArea} and the 7th Cavalry Gaming Regiment.`
+    `is in great credit to themselves, ${affectedArea}, and the 7th Cavalry Gaming Regiment.`
   );
 }
 
@@ -203,7 +203,7 @@ export function buildVolunteerServiceOpening({ nonCombatDepartment }) {
 
 export function buildVolunteerServiceClosing(context) {
   const { nonCombatDepartment } = context;
-  return `${getPossessiveSubject(context)} dedication to duty and commitment is in great credit to themselves, ${nonCombatDepartment} and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} dedication to duty and commitment is in great credit to themselves, ${nonCombatDepartment}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 export function buildHumanitarianServiceOpening() {
@@ -228,7 +228,7 @@ export function buildServiceCommendationOpening({ unit }) {
 
 export function buildServiceCommendationClosing(context) {
   const { unit } = context;
-  return `${getPossessiveSubject(context, "’")} dedication to duty and commitment to the Regiment is in great credit to themselves, ${unit} and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context, "’")} dedication to duty and commitment to the Regiment is in great credit to themselves, ${unit}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 function resolveJointContributionPhrase({ recognitionType, actionPhrase }) {
@@ -263,7 +263,7 @@ export function buildMeritoriousServiceOpening({ serviceType, unit }) {
 
 export function buildMeritoriousServiceClosing(context) {
   const { serviceType } = context;
-  return `${getPossessiveSubject(context)} dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to ${context.recipientSubject?.isPlural ? "themselves" : "themself"} and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to themselves and the 7th Cavalry Gaming Regiment.`;
 }
 
 export function buildDefenseMeritoriousServiceOpening({ unit }) {
@@ -272,7 +272,7 @@ export function buildDefenseMeritoriousServiceOpening({ unit }) {
 
 export function buildDefenseMeritoriousServiceClosing(context) {
   const { unit } = context;
-  return `${getPossessiveSubject(context)} distinguished contribution is in great credit to themselves, the ${unit}, and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} distinguished contribution is in great credit to themselves, ${unit}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 export function buildSoldiersMedalOpening({ serviceType, unit }) {
@@ -281,7 +281,7 @@ export function buildSoldiersMedalOpening({ serviceType, unit }) {
 
 export function buildSoldiersMedalClosing(context) {
   const { serviceType, unit } = context;
-  return `${getPossessiveSubject(context)} dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to ${context.recipientSubject?.isPlural ? "themselves" : "themself"}, the ${unit}, and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} dedication to duty and exceptionally meritorious ${resolveServiceType(serviceType)} are in great credit to themselves, ${unit}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 export const SERVICE_MONTH_NAMES = [
@@ -314,7 +314,7 @@ export function buildLegionOfMeritOpening(context) {
 
 export function buildLegionOfMeritClosing(context) {
   const { secondaryBillet } = context;
-  return `${getPossessiveSubject(context)} dedication to duty and commitment to their department is in great credit to themselves, the ${secondaryBillet} and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} dedication to duty and commitment to their department is in great credit to themselves, ${secondaryBillet}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 function resolveLeadershipPathway(context) {
@@ -342,11 +342,22 @@ export function buildDefenseSuperiorServiceOpening(context) {
 }
 
 export function buildDefenseSuperiorServiceClosing(context) {
-  return `${getPossessiveSubject(context)} exceptionally meritorious leadership is in great credit to themselves, the ${resolveLeadershipPathway(context).organization}, and the 7th Cavalry Gaming Regiment.`;
+  return `${getPossessiveSubject(context)} exceptionally meritorious leadership is in great credit to themselves, ${resolveLeadershipPathway(context).organization}, and the 7th Cavalry Gaming Regiment.`;
 }
 
 export function buildDistinguishedServiceOpening(context) {
-  return `For distinguished service in a primary billet while serving as ${context.role} in ${context.element} during ${servicePeriod(context)}.`;
+  let area;
+  switch (context.serviceArea) {
+    case "primary":
+      area = "a primary billet";
+      break;
+    case "operations":
+      area = "operations";
+      break;
+    default:
+      throw new Error(`Unsupported Service Area: ${context.serviceArea}`);
+  }
+  return `For distinguished service in ${area} while serving as ${context.role} in ${context.element} during ${servicePeriod(context)}.`;
 }
 
 export function buildDistinguishedServiceClosing(context) {

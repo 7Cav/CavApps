@@ -345,6 +345,29 @@ export const WORKSHEET_PROFILES = {
       ...SERVICE_PERIOD,
     },
   ),
+  serviceDistinguishedService: serviceWorksheet(
+    { type: "field", field: "element" },
+    {
+      serviceArea: {
+        type: "semanticChoice",
+        required: true,
+        defaultValue: "primary",
+        label: "Service Area",
+        placeholder: "Select service area",
+        options: [
+          { id: "primary", label: "Primary Billet" },
+          { id: "operations", label: "Operations" },
+        ],
+        awardChange: "reset",
+      },
+      role: {
+        ...requiredText("Role", "a trooper, an officer, etc."),
+        awardChange: "reset",
+      },
+      element: requiredText("Element", "A/2/B/3-7, 2nd Battalion, etc."),
+      ...SERVICE_PERIOD,
+    },
+  ),
   servicePrimaryPeriod: serviceWorksheet(
     { type: "field", field: "element" },
     {

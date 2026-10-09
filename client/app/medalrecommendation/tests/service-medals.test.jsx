@@ -41,8 +41,9 @@ const requiredNarrativeOpening =
 const completeNarrativeContinuation =
   "developing and maintaining several resources used by S7 HLL SOI. Corporal Smith consistently volunteered additional time to keep those resources current and assist staff when problems arose. Corporal Smith's contributions substantially improved the section's ability to support the Regiment.";
 
+// S1-approved October 2026 supersedes the prior Wiki AAM closing comma.
 const expectedCitation =
-  "For contributions in S7 HLL SOI. Corporal John Smith distinguished themselves by developing and maintaining several resources used by S7 HLL SOI. Corporal Smith consistently volunteered additional time to keep those resources current and assist staff when problems arose. Corporal Smith's contributions substantially improved the section's ability to support the Regiment. Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S7 HLL SOI and the 7th Cavalry Gaming Regiment.";
+  "For contributions in S7 HLL SOI. Corporal John Smith distinguished themselves by developing and maintaining several resources used by S7 HLL SOI. Corporal Smith consistently volunteered additional time to keep those resources current and assist staff when problems arose. Corporal Smith's contributions substantially improved the section's ability to support the Regiment. Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S7 HLL SOI, and the 7th Cavalry Gaming Regiment.";
 
 async function renderSelectedServiceMedal({
   roster = [serviceRecipient],

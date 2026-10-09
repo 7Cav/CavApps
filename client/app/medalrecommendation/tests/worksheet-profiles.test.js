@@ -6,8 +6,57 @@ import {
 } from "../lib/worksheet-profiles.js";
 import { getMedalFamily } from "../lib/medal-families";
 import { getOperationMedal } from "./operation-medal-cases.js";
+import { validateWorksheet } from "../lib/worksheet-validation.js";
 
 describe("Medal Recommendation Aid - worksheet profiles", () => {
+  test("DSM defaults to Primary Billet with one shared Role and Element, while DDSM retains its primary profile", () => {
+    const family = getMedalFamily("service");
+    const dsm = resolveMedalWorksheet(
+      family.getMedalById("distinguished-service-medal"),
+    );
+    const ddsm = resolveMedalWorksheet(
+      family.getMedalById("defense-distinguished-service-medal"),
+    );
+    expect(dsm.fieldOrder).toEqual([
+      "serviceArea",
+      "role",
+      "element",
+      "serviceStart",
+      "serviceEnd",
+      "narrative",
+    ]);
+    expect(applyAwardChange(null, dsm, {}).serviceArea).toBe("primary");
+    expect(dsm.fields.serviceArea.options).toEqual([
+      { id: "primary", label: "Primary Billet" },
+      { id: "operations", label: "Operations" },
+    ]);
+    expect(ddsm.fieldOrder).toEqual([
+      "role",
+      "element",
+      "serviceStart",
+      "serviceEnd",
+      "narrative",
+    ]);
+    expect(ddsm.fields).not.toHaveProperty("serviceArea");
+    expect(ddsm.recommendationTitleContext).toEqual({
+      type: "field",
+      field: "element",
+    });
+    expect(
+      family.getMedalById("defense-distinguished-service-medal").criteria,
+    ).not.toContain("500 operations");
+    for (const serviceArea of [
+      "primary",
+      "operations",
+      "",
+      "unsupported",
+      undefined,
+    ]) {
+      expect(validateWorksheet(dsm, { serviceArea }).fields.serviceArea).toBe(
+        ["primary", "operations"].includes(serviceArea),
+      );
+    }
+  });
   test("every medal inherits explicit title context from its worksheet profile", () => {
     for (const profile of Object.values(WORKSHEET_PROFILES)) {
       const context = profile.recommendationTitleContext;

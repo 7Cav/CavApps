@@ -52,19 +52,19 @@ const currentPolicy = resolveMedalWorksheet(
 describe("recommendation recipient ordering", () => {
   test("orders Cav ranks without mutating the input or recipients", () => {
     const specialist = makeRecipient({
-      realName: "Tim Rhone",
+      realName: "Aaron Aardvark",
       rank: { rankId: "20", rankFull: "Specialist" },
     });
     const captain = makeRecipient({
-      realName: "Brent Swanson",
+      realName: "Zulu Zulu",
       rank: { rankId: "9", rankFull: "Captain", rankShort: "CPT" },
     });
     const sergeant = makeRecipient({
-      realName: "Wade Kenton",
+      realName: "Aaron Aaron",
       rank: { rankId: 17, rankFull: "Staff Sergeant", rankShort: "SSG" },
     });
     const lieutenant = makeRecipient({
-      realName: "Darek Hazen",
+      realName: "Alpha Alpha",
       rank: { rankId: 10, rankFull: "First Lieutenant", rankShort: "1LT" },
     });
     const members = [specialist, captain, sergeant, lieutenant];
@@ -83,7 +83,8 @@ describe("recommendation recipient ordering", () => {
     expect(lieutenant.rank.rankId).toBe(10);
   });
 
-  test("sorts the complete real name within a rank, beginning with first name rather than surname", () => {
+  // S1-approved October 2026 ordering supersedes the first-name-first oracle.
+  test("sorts same-rank recipients by surname before first name", () => {
     const members = [
       "Wade Kenton",
       "Eli Belmont",
@@ -99,8 +100,50 @@ describe("recommendation recipient ordering", () => {
       orderRecipientsForRecommendation(members).map(
         (member) => member.realName,
       ),
-    ).toEqual(["Eli Belmont", "Jim Rhoden", "Ryan Beauchamp", "Wade Kenton"]);
+    ).toEqual(["Ryan Beauchamp", "Eli Belmont", "Wade Kenton", "Jim Rhoden"]);
   });
+
+  test.each([
+    [
+      "first name",
+      ["John Smith", "Allen Smith"],
+      ["Allen Smith", "John Smith"],
+    ],
+    [
+      "middle names",
+      ["John Robert Smith", "John Michael Smith"],
+      ["John Michael Smith", "John Robert Smith"],
+    ],
+    [
+      "empty middle name",
+      ["John Michael Smith", "John Smith"],
+      ["John Smith", "John Michael Smith"],
+    ],
+    [
+      "all middle tokens",
+      ["John Michael Zed Smith", "John Michael Allen Smith"],
+      ["John Michael Allen Smith", "John Michael Zed Smith"],
+    ],
+  ])(
+    "breaks equal-rank surname ties by %s without rewriting roster names",
+    (_label, names, expected) => {
+      const members = names.map((realName, index) =>
+        Object.freeze(
+          makeRecipient({
+            realName,
+            user: { userId: String(index), username: `Tie.${index}` },
+          }),
+        ),
+      );
+      Object.freeze(members);
+      expect(
+        orderRecipientsForRecommendation(members).map(
+          (member) => member.realName,
+        ),
+      ).toEqual(expected);
+      expect(members.map((member) => member.realName)).toEqual(names);
+    },
+  );
 
   test("normalizes case and whitespace for name and username comparison, then breaks ties by stable userId", () => {
     const members = [
@@ -127,13 +170,13 @@ describe("recommendation recipient ordering", () => {
     ];
     const ordered = orderRecipientsForRecommendation(members);
     expect(ordered.map((member) => member.user.userId)).toEqual([
-      "d",
       "a",
       "b",
       "c",
+      "d",
     ]);
-    expect(ordered[0].realName).toBe("  adam  Jarvis ");
-    expect(ordered[1].user.username).toBe("  alpha.USER ");
+    expect(ordered[3].realName).toBe("  adam  Jarvis ");
+    expect(ordered[0].user.username).toBe("  alpha.USER ");
   });
 
   test("safely orders malformed or missing ranks last but rejects them for recommendations", () => {
@@ -159,12 +202,12 @@ describe("recommendation recipient ordering", () => {
     expect(orderRecipientsForRecommendation(members)).toEqual([
       members[5],
       members[4],
-      members[2],
       members[1],
+      members[3],
+      members[2],
+      members[0],
       members[6],
       members[7],
-      members[3],
-      members[0],
     ]);
     for (const member of members.filter(
       (_, index) => ![4, 5].includes(index),

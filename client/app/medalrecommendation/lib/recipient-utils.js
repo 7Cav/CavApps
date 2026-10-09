@@ -5,7 +5,7 @@ export const PASTE_CHARACTER_LIMIT_MESSAGE =
 export const RECIPIENT_INLINE_LIMIT = 8;
 // Editing a nonempty selection is allowed before an award's generation minimum.
 export const RECIPIENT_SELECTION_POLICY = Object.freeze({ minimum: 1 });
-// Application convention pending S1 guidance, shared with identity warnings.
+// S1-approved explicit citation boundary, shared with identity warnings.
 export const EXPLICIT_RECIPIENT_LIMIT = 6;
 
 // API IDs identify ranks; their numeric order does not describe seniority.
@@ -86,20 +86,27 @@ export function getRecipientRankAbbreviation(member) {
 }
 
 // Recommendation order is separate from the user's editable selection order.
+function getRecommendationNameParts(member) {
+  const tokens = normalize(member?.realName).split(" ");
+  return [tokens.at(-1), tokens[0], tokens.slice(1, -1).join(" ")];
+}
+
 export function orderRecipientsForRecommendation(recipients) {
-  return [...recipients].sort(
-    (left, right) =>
+  return [...recipients].sort((left, right) => {
+    const leftName = getRecommendationNameParts(left);
+    const rightName = getRecommendationNameParts(right);
+    return (
       getRankOrder(left) - getRankOrder(right) ||
-      normalize(left?.realName).localeCompare(
-        normalize(right?.realName),
-        "en",
-      ) ||
+      leftName[0].localeCompare(rightName[0], "en") ||
+      leftName[1].localeCompare(rightName[1], "en") ||
+      leftName[2].localeCompare(rightName[2], "en") ||
       normalize(left?.user?.username).localeCompare(
         normalize(right?.user?.username),
         "en",
       ) ||
-      getRecipientId(left).localeCompare(getRecipientId(right), "en"),
-  );
+      getRecipientId(left).localeCompare(getRecipientId(right), "en")
+    );
+  });
 }
 
 export function getCitationName(fullName) {

@@ -106,7 +106,13 @@ const serviceCases = [
   ],
   [
     "distinguished-service-medal",
-    "secondary",
+    "primary",
+    "B/2-7 Element",
+    "Medal Recommendation - B/2-7 Element - DSM - SPC.Smith.J",
+  ],
+  [
+    "distinguished-service-medal",
+    "operations",
     "B/2-7 Element",
     "Medal Recommendation - B/2-7 Element - DSM - SPC.Smith.J",
   ],
@@ -148,6 +154,7 @@ const values = {
   operationsAO: "Vietnam AO",
   operationsLeadership: "AO Lead",
   leadershipArea: "secondary",
+  serviceArea: "primary",
   role: "a clerk",
   element: "B/2-7 Element",
   serviceStart: "2025-01",
@@ -186,18 +193,66 @@ function snapshot(overrides = {}) {
 }
 
 describe("Recommendation export snapshots", () => {
-  test("the independent mapping matrix covers all 26 awards and both DSSM pathways", () => {
+  // S1-approved October 2026 confirms Multiple and the context-free HSM exception.
+  test.each([
+    [
+      "operation",
+      "army-commendation-medal-with-valor",
+      "Medal Recommendation - Operation Overlord - ARCOMV",
+    ],
+    [
+      "service",
+      "army-achievement-medal",
+      "Medal Recommendation - S7 Affected - AAM",
+    ],
+    ["service", "humanitarian-service-medal", "Medal Recommendation - HSM"],
+    [
+      "service",
+      "superior-unit-award",
+      "Medal Recommendation - S3 Benefitted - SUA",
+    ],
+  ])(
+    "%s / %s uses the captured recipient count at 1, 2, 6 and 7",
+    (family, id, prefix) => {
+      for (const count of [1, 2, 6, 7]) {
+        const recipients =
+          count === 1 ? [makeRecipient()] : makeRecipientRoster(count);
+        const result = generate(family, id, {}, recipients);
+        expect(buildRecommendationTitle(result)).toBe(
+          `${prefix} - ${count === 1 ? "SPC.Smith.J" : "Multiple"}`,
+        );
+      }
+    },
+  );
+
+  test("a single recipient keeps optional username middle initials independent of the real name", () => {
+    const result = generate(
+      "operation",
+      "army-commendation-medal-with-valor",
+      {},
+      [
+        makeRecipient({
+          user: { username: "Smith.TM" },
+          realName: "Unrelated Roster Name",
+        }),
+      ],
+    );
+    expect(buildRecommendationTitle(result)).toBe(
+      "Medal Recommendation - Operation Overlord - ARCOMV - SPC.Smith.TM",
+    );
+  });
+  test("the independent mapping matrix covers all 26 awards and both DSSM and DSM pathways", () => {
     const operationIds = getMedalFamily("operation").medals.map(({ id }) => id);
     const serviceIds = getMedalFamily("service").medals.map(({ id }) => id);
     const expectedOperationIds = new Set(operationCases.map(([id]) => id));
     const expectedServiceIds = new Set(serviceCases.map(([id]) => id));
     expect(operationCases).toHaveLength(11);
-    expect(serviceCases).toHaveLength(16);
+    expect(serviceCases).toHaveLength(17);
     expect(expectedOperationIds.size).toBe(11);
     expect(expectedServiceIds.size).toBe(15);
     expect(
       new Set(serviceCases.map(([id, pathway]) => `${id}/${pathway}`)).size,
-    ).toBe(16);
+    ).toBe(17);
     // Counts plus complete membership reject duplicates without pinning order.
     expect(operationIds).toHaveLength(11);
     expect(serviceIds).toHaveLength(15);
@@ -251,8 +306,11 @@ describe("Recommendation export snapshots", () => {
   );
   test.each(serviceCases)(
     "%s / %s captures the configured active Service context",
-    (id, leadershipArea, context, title) => {
-      const result = generate("service", id, { leadershipArea });
+    (id, pathway, context, title) => {
+      const result = generate("service", id, {
+        leadershipArea: pathway,
+        serviceArea: pathway,
+      });
       expect(result.titleContext).toBe(context);
       expect(buildRecommendationTitle(result)).toBe(title);
     },
@@ -460,7 +518,6 @@ describe("Recommendation export serialization", () => {
             "é".repeat(150 - prefix.length - suffix.length - 1) +
             "…" +
             suffix;
-      expect(buildRecommendationTitle(result)).toBe(expected);
       expect(buildRecommendationTitle(result)).toBe(expected);
       expect(buildRecommendationTitle(result).length).toBe(
         Math.min(length, 150),
