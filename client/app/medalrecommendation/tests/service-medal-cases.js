@@ -1,4 +1,6 @@
 // Independent expected Service Medal contracts used as test oracles.
+// Published Service Medal wording and guidance:
+// https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 // Exact prose is intentional: production builders must not supply their own oracle.
 export const SERVICE_CATALOG_CASES = [
   {
@@ -198,14 +200,22 @@ export const SERVICE_CATALOG_CASES = [
     abbreviation: "DSM",
     ribbonUrl: "https://wiki.7cav.us/images/2/29/DSM.jpg",
     minimum: 4,
-    fields: ["Role", "Element", "Service Start", "Service End", "Narrative"],
+    // DSM criteria/guidance: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
+    fields: [
+      "Service Area",
+      "Role",
+      "Element",
+      "Service Start",
+      "Service End",
+      "Narrative",
+    ],
     criteria:
-      "Awarded for distinguished service in a primary non-leadership billet, or being selected as Battalion or Regimental Enlisted of the Year. Can only be awarded once per person, per year. Cannot be awarded to primary leadership billets.",
+      "Awarded for distinguished service in a primary non-leadership billet, or being selected as Battalion or Regimental Enlisted of the Year. Can also be awarded for attending 500 operations. Can only be awarded once per person, per year. Cannot be awarded for primary leadership billet service.",
     guidance:
       "Describe how the recipient demonstrated their distinguished service in a minimum of four professionally written sentences.",
     eligibility: [
-      "The recipient must have provided distinguished service in a primary non-leadership billet.",
-      "Service in a primary leadership billet does not qualify.",
+      "The recipient must have provided distinguished service in a primary non-leadership billet or attended 500 operations.",
+      "Primary leadership billet service does not qualify.",
       "The medal can only be awarded once per person, per year.",
     ],
   },
@@ -280,7 +290,7 @@ export const SERVICE_CITATION_CASES = [
     inputs: { "Non-Combat Department": "S1 Uniforms" },
     opening: "For providing outstanding service to S1 Uniforms.",
     closing:
-      "Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S1 Uniforms and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S1 Uniforms, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Humanitarian Service Medal",
@@ -304,7 +314,7 @@ export const SERVICE_CITATION_CASES = [
     inputs: { Unit: "S2 Intelligence" },
     opening: "For distinguished contributions to S2 Intelligence.",
     closing:
-      "Corporal John Smith’s dedication to duty and commitment to the Regiment is in great credit to themselves, S2 Intelligence and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith’s dedication to duty and commitment to the Regiment is in great credit to themselves, S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Joint Service Commendation Medal",
@@ -338,7 +348,7 @@ export const SERVICE_CITATION_CASES = [
     inputs: { Unit: "S2 Intelligence" },
     opening: "For exceptionally meritorious service to S2 Intelligence.",
     closing:
-      "Corporal John Smith's dedication to duty and exceptionally meritorious service are in great credit to themself and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and exceptionally meritorious service are in great credit to themselves and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Meritorious Service Medal",
@@ -351,7 +361,7 @@ export const SERVICE_CITATION_CASES = [
     narrativeVerb: "contributed",
     opening: "For exceptionally meritorious contributions to S2 Intelligence.",
     closing:
-      "Corporal John Smith's dedication to duty and exceptionally meritorious contributions are in great credit to themself and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and exceptionally meritorious contributions are in great credit to themselves and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Defense Meritorious Service Medal",
@@ -360,7 +370,7 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For a single, significant, and distinguished contribution to S2 Intelligence.",
     closing:
-      "Corporal John Smith's distinguished contribution is in great credit to themselves, the S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's distinguished contribution is in great credit to themselves, S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Soldier’s Medal",
@@ -374,7 +384,7 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For multiple, significant and distinguished meritorious service to S2 Intelligence.",
     closing:
-      "Corporal John Smith's dedication to duty and exceptionally meritorious service are in great credit to themself, the S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and exceptionally meritorious service are in great credit to themselves, S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Soldier’s Medal",
@@ -384,7 +394,7 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For multiple, significant and distinguished meritorious contributions to S2 Intelligence.",
     closing:
-      "Corporal John Smith's dedication to duty and exceptionally meritorious contributions are in great credit to themself, the S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and exceptionally meritorious contributions are in great credit to themselves, S2 Intelligence, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Legion of Merit",
@@ -398,7 +408,7 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For exceptional service in a secondary billet while serving as a clerk in S1 MILPACS during January 2025 to January 2026.",
     closing:
-      "Corporal John Smith's dedication to duty and commitment to their department is in great credit to themselves, the S1 MILPACS and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's dedication to duty and commitment to their department is in great credit to themselves, S1 MILPACS, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Defense Superior Service Medal",
@@ -413,7 +423,7 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For exceptionally meritorious leadership of a secondary billet while serving as 1IC, Military Police during January 2025 to January 2026.",
     closing:
-      "Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, the Military Police, and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, Military Police, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Defense Superior Service Medal",
@@ -428,11 +438,12 @@ export const SERVICE_CITATION_CASES = [
     opening:
       "For exceptionally meritorious leadership of operations while serving as AO Lead, S3 HLL Operations during January 2025 to January 2026.",
     closing:
-      "Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, the Hell Let Loose: Vietnam, and the 7th Cavalry Gaming Regiment.",
+      "Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, Hell Let Loose: Vietnam, and the 7th Cavalry Gaming Regiment.",
   },
   {
     name: "Distinguished Service Medal",
     path: "primary billet",
+    choices: { "Service Area": "Primary Billet" },
     inputs: {
       Role: "a trooper",
       Element: "A/2/B/3-7",

@@ -147,20 +147,20 @@ describe("inline and compact recipients", () => {
     ]);
   });
 
-  test("compact and expanded summaries use rank then full-name order while bulk retains working order", async () => {
+  test("compact and expanded summaries use S1 rank then surname order while bulk retains working order", async () => {
     const user = await setup(recommendationRoster);
     await confirmAll(user);
     const names = screen.getByRole("list", { name: "Confirmed recipients" });
     const orderedNames = [
       "Major General Adam Jarvis",
       "Captain Brent Swanson",
-      "First Lieutenant Darek Hazen",
       "First Lieutenant John D'Amico",
+      "First Lieutenant Darek Hazen",
       "First Sergeant Ruby Hansel",
-      "Staff Sergeant Eli Belmont",
-      "Staff Sergeant Jim Rhoden",
       "Staff Sergeant Ryan Beauchamp",
+      "Staff Sergeant Eli Belmont",
       "Staff Sergeant Wade Kenton",
+      "Staff Sergeant Jim Rhoden",
       "Specialist Tim Rhone",
     ];
     expect(
@@ -969,9 +969,9 @@ describe("one shared recommendation", () => {
         "Major General Adam Jarvis",
         "Captain Brent Swanson",
         "First Lieutenant Darek Hazen",
-        "Staff Sergeant Jim Rhoden",
         "Staff Sergeant Ryan Beauchamp",
         "Staff Sergeant Wade Kenton",
+        "Staff Sergeant Jim Rhoden",
         "Specialist Tim Rhone",
       ],
       "The recipients'",
@@ -1133,9 +1133,9 @@ describe("one shared recommendation", () => {
     await submitRecommendation(user);
     expectOneCitation();
     expect(generatedNames()).toEqual([
-      ...sixNames.slice(0, 3),
+      ...sixNames.slice(0, 5),
       "Staff Sergeant Jim Rhoden",
-      ...sixNames.slice(3),
+      ...sixNames.slice(5),
     ]);
     expect(getCitationText()).toBe(
       `${hsmOpening} The recipients distinguished themselves by ${continuation} The recipients' ${hsmClosing}`,

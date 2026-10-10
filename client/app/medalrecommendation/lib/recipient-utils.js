@@ -5,7 +5,7 @@ export const PASTE_CHARACTER_LIMIT_MESSAGE =
 export const RECIPIENT_INLINE_LIMIT = 8;
 // Editing a nonempty selection is allowed before an award's generation minimum.
 export const RECIPIENT_SELECTION_POLICY = Object.freeze({ minimum: 1 });
-// Application convention pending S1 guidance, shared with identity warnings.
+// S1-approved explicit citation boundary, shared with identity warnings.
 export const EXPLICIT_RECIPIENT_LIMIT = 6;
 
 // API IDs identify ranks; their numeric order does not describe seniority.
@@ -85,29 +85,41 @@ export function getRecipientRankAbbreviation(member) {
   return rank.abbreviation;
 }
 
+function parseRecipientName(fullName) {
+  const tokens = trimText(fullName).split(/\s+/).filter(Boolean);
+  return {
+    surname: tokens.at(-1) ?? "",
+    first: tokens.length > 1 ? tokens[0] : "",
+    middleNames: tokens.slice(1, -1).join(" "),
+  };
+}
+
 // Recommendation order is separate from the user's editable selection order.
 export function orderRecipientsForRecommendation(recipients) {
-  return [...recipients].sort(
-    (left, right) =>
+  return [...recipients].sort((left, right) => {
+    const leftName = parseRecipientName(left?.realName);
+    const rightName = parseRecipientName(right?.realName);
+    return (
       getRankOrder(left) - getRankOrder(right) ||
-      normalize(left?.realName).localeCompare(
-        normalize(right?.realName),
+      normalize(leftName.surname).localeCompare(
+        normalize(rightName.surname),
         "en",
       ) ||
-      normalize(left?.user?.username).localeCompare(
-        normalize(right?.user?.username),
+      normalize(leftName.first).localeCompare(
+        normalize(rightName.first),
         "en",
       ) ||
-      getRecipientId(left).localeCompare(getRecipientId(right), "en"),
-  );
+      normalize(leftName.middleNames).localeCompare(
+        normalize(rightName.middleNames),
+        "en",
+      )
+    );
+  });
 }
 
 export function getCitationName(fullName) {
-  const name = trimText(fullName);
-  const nameParts = name.split(/\s+/).filter(Boolean);
-  return nameParts.length < 2
-    ? name
-    : `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+  const { first, surname } = parseRecipientName(fullName);
+  return [first, surname].filter(Boolean).join(" ");
 }
 
 export function getRecipientIdentity(member) {

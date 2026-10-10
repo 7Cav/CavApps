@@ -97,12 +97,13 @@ describe("collective award wording", () => {
   test.each([
     ...SERVICE_CITATION_CASES,
     {
+      // AAM closing punctuation: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
       name: "Army Achievement Medal",
       path: "affected area",
       inputs: { "Affected Area of the Cav": "S6" },
       opening: "For contributions in S6.",
       closing:
-        "Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S6 and the 7th Cavalry Gaming Regiment.",
+        "Corporal John Smith's dedication to duty and commitment is in great credit to themselves, S6, and the 7th Cavalry Gaming Regiment.",
     },
   ])(
     "$name / $path uses one subject policy for its opening, starter and closing",
@@ -137,12 +138,10 @@ describe("collective award wording", () => {
         // The independent single-recipient oracle supplies only the unchanged award wording.
         const apostrophe = closing.match(/^Corporal John Smith(['’])s/)[1];
         expect(medal.buildClosing(context)).toBe(
-          closing
-            .replace(
-              /^Corporal John Smith['’]s/,
-              possessive.replace("'", apostrophe),
-            )
-            .replace(/\bthemself\b/g, "themselves"),
+          closing.replace(
+            /^Corporal John Smith['’]s/,
+            possessive.replace("'", apostrophe),
+          ),
         );
       }
     },
@@ -150,6 +149,30 @@ describe("collective award wording", () => {
 });
 
 describe("recommendation generation", () => {
+  // DSM Operations wording: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
+  test("DSM Operations opening and closing reuse Element", () => {
+    const medal = SERVICE_MEDALS.find(
+      (entry) => entry.id === "distinguished-service-medal",
+    );
+    const context = {
+      serviceArea: "operations",
+      role: "an officer",
+      element: "2nd Battalion",
+      serviceStart: "2020-10",
+      serviceEnd: "2026-10",
+      recipientSubject: {
+        subject: "Specialist John Smith",
+        isPlural: false,
+        isCollective: false,
+      },
+    };
+    expect(medal.buildOpening(context)).toBe(
+      "For distinguished service in operations while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
+    );
+    expect(medal.buildClosing(context)).toBe(
+      "Specialist John Smith's distinguished service and commitment is a great credit to themselves, 2nd Battalion, and the 7th Cavalry Gaming Regiment.",
+    );
+  });
   test("resolves all active citation choices by their field definitions and excludes inactive choices", () => {
     const worksheet = {
       recommendationTitleContext: { type: "none" },

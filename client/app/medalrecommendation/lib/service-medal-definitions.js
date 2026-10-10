@@ -222,16 +222,16 @@ export const SERVICE_MEDALS = [
     id: "distinguished-service-medal",
     name: "Distinguished Service Medal",
     abbreviation: "DSM",
-    worksheetProfile: "servicePrimaryPeriod",
+    worksheetProfile: "serviceDistinguishedService",
     ribbonUrl: "https://wiki.7cav.us/images/2/29/DSM.jpg",
     criteria:
-      "Awarded for distinguished service in a primary non-leadership billet, or being selected as Battalion or Regimental Enlisted of the Year. Can only be awarded once per person, per year. Cannot be awarded to primary leadership billets.",
+      "Awarded for distinguished service in a primary non-leadership billet, or being selected as Battalion or Regimental Enlisted of the Year. Can also be awarded for attending 500 operations. Can only be awarded once per person, per year. Cannot be awarded for primary leadership billet service.",
     narrativeGuidance:
       "Describe how the recipient demonstrated their distinguished service in a minimum of four professionally written sentences.",
     minimumNarrativeSentences: 4,
     eligibilityNotes: [
-      "The recipient must have provided distinguished service in a primary non-leadership billet.",
-      "Service in a primary leadership billet does not qualify.",
+      "The recipient must have provided distinguished service in a primary non-leadership billet or attended 500 operations.",
+      "Primary leadership billet service does not qualify.",
       "The medal can only be awarded once per person, per year.",
     ],
     buildOpening: buildDistinguishedServiceOpening,

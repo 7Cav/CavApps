@@ -6,8 +6,31 @@ import {
 } from "../lib/worksheet-profiles.js";
 import { getMedalFamily } from "../lib/medal-families";
 import { getOperationMedal } from "./operation-medal-cases.js";
+import { validateWorksheet } from "../lib/worksheet-validation.js";
 
 describe("Medal Recommendation Aid - worksheet profiles", () => {
+  test.each([
+    ["primary", true],
+    ["operations", true],
+    ["", false],
+    ["unsupported", false],
+    [undefined, false],
+  ])("DSM Service Area %s validates as %s", (serviceArea, expected) => {
+    const worksheet = resolveMedalWorksheet(
+      getMedalFamily("service").getMedalById("distinguished-service-medal"),
+    );
+    expect(
+      validateWorksheet(worksheet, { serviceArea }).fields.serviceArea,
+    ).toBe(expected);
+  });
+
+  test("DDSM criteria do not inherit DSM-specific operation counts", () => {
+    expect(
+      getMedalFamily("service").getMedalById(
+        "defense-distinguished-service-medal",
+      ).criteria,
+    ).not.toContain("500 operations");
+  });
   test("every medal inherits explicit title context from its worksheet profile", () => {
     for (const profile of Object.values(WORKSHEET_PROFILES)) {
       const context = profile.recommendationTitleContext;

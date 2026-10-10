@@ -104,6 +104,20 @@ const SERVICE_PERIOD = {
 const SECONDARY_PATHWAY = { field: "leadershipArea", equals: "secondary" };
 const OPERATIONS_PATHWAY = { field: "leadershipArea", equals: "operations" };
 
+function serviceRoleElementPeriodFields({
+  rolePlaceholder,
+  elementPlaceholder,
+}) {
+  return {
+    role: {
+      ...requiredText("Role", rolePlaceholder),
+      awardChange: "reset",
+    },
+    element: requiredText("Element", elementPlaceholder),
+    ...SERVICE_PERIOD,
+  };
+}
+
 function serviceWorksheet(recommendationTitleContext, contextFields = {}) {
   const fields = { ...contextFields, narrative: { ...SERVICE_NARRATIVE } };
   return {
@@ -345,16 +359,33 @@ export const WORKSHEET_PROFILES = {
       ...SERVICE_PERIOD,
     },
   ),
-  servicePrimaryPeriod: serviceWorksheet(
+  serviceDistinguishedService: serviceWorksheet(
     { type: "field", field: "element" },
     {
-      role: {
-        ...requiredText("Role", "a trooper, an infantryman, etc."),
+      serviceArea: {
+        type: "semanticChoice",
+        required: true,
+        defaultValue: "",
+        label: "Service Area",
+        placeholder: "Select service area",
+        options: [
+          { id: "primary", label: "Primary Billet" },
+          { id: "operations", label: "Operations" },
+        ],
         awardChange: "reset",
       },
-      element: requiredText("Element", "A/2/B/3-7, D/1/C/2-7, etc."),
-      ...SERVICE_PERIOD,
+      ...serviceRoleElementPeriodFields({
+        rolePlaceholder: "a trooper, an officer, etc.",
+        elementPlaceholder: "A/2/B/3-7, 2nd Battalion, etc.",
+      }),
     },
+  ),
+  servicePrimaryPeriod: serviceWorksheet(
+    { type: "field", field: "element" },
+    serviceRoleElementPeriodFields({
+      rolePlaceholder: "a trooper, an infantryman, etc.",
+      elementPlaceholder: "A/2/B/3-7, D/1/C/2-7, etc.",
+    }),
   ),
 };
 

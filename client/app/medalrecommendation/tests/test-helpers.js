@@ -25,6 +25,21 @@ export function makeRecipient(overrides = {}) {
   };
 }
 
+export function makeJohnSmithRecipient(middleNames = "") {
+  return makeRecipient({
+    realName: ["John", middleNames, "Smith"].filter(Boolean).join(" "),
+    user: {
+      userId: "smith-" + (middleNames || "john"),
+      username:
+        "Smith.J" +
+        middleNames
+          .split(/\s+/)
+          .map((name) => name[0] ?? "")
+          .join(""),
+    },
+  });
+}
+
 export function makeRecipientRoster(count) {
   return Array.from({ length: count }, (_, index) =>
     makeRecipient({

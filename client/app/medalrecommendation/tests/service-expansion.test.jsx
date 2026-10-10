@@ -30,6 +30,7 @@ const secondRecipient = makeRecipient({
   rank: { rankFull: "Sergeant", rankShort: "SGT", rankId: "18" },
   realName: "Alex Jones",
 });
+// Service ARCOM and DSSM closing oracles: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 const fixedOpening = "Corporal John Smith distinguished themselves by";
 const monthNames = [
   "January",
@@ -200,6 +201,78 @@ describe("Expanded Service Medal family", () => {
       expectMappedPreview(testCase.name);
     },
   );
+
+  test("DSM requires an intentional Service Area choice and preserves shared inputs when toggled", async () => {
+    vi.setSystemTime(new Date(2026, 9, 8, 12));
+    const { user } = await openWorksheet("Distinguished Service Medal");
+    expect(
+      screen.getByRole("combobox", { name: "Service Area" }),
+    ).toHaveTextContent("Select service area");
+    await selectRecipient(user);
+    await fillCase(user, {
+      inputs: {
+        Role: "an officer",
+        Element: "2nd Battalion",
+        "Service Start": "2020-10",
+        "Service End": "2026-10",
+        Narrative: SERVICE_CONTINUATION,
+      },
+    });
+    await submitRecommendation(user);
+    expect(preview()).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Service Area" }),
+    ).toHaveAttribute("aria-invalid", "true");
+    for (const [choice, opening] of [
+      [
+        "Primary Billet",
+        "For distinguished service in a primary billet while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
+      ],
+      [
+        "Operations",
+        "For distinguished service in operations while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
+      ],
+      [
+        "Primary Billet",
+        "For distinguished service in a primary billet while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
+      ],
+    ]) {
+      await selectComboboxOption(user, "Service Area", choice);
+      expect(preview()).not.toBeInTheDocument();
+      for (const [label, value] of Object.entries({
+        Role: "an officer",
+        Element: "2nd Battalion",
+        "Service Start Year": "2020",
+        "Service End Year": "2026",
+        Narrative: SERVICE_CONTINUATION,
+        Recipient: "Smith.J",
+      })) {
+        expect(screen.getByLabelText(label, { exact: true })).toHaveValue(
+          value,
+        );
+      }
+      for (const label of ["Service Start Month", "Service End Month"])
+        expect(screen.getByRole("combobox", { name: label })).toHaveTextContent(
+          "October",
+        );
+      await submitRecommendation(user);
+      expect(getCitationText()).toBe(
+        `${opening} Corporal John Smith distinguished themselves by ${SERVICE_CONTINUATION} Corporal John Smith's distinguished service and commitment is a great credit to themselves, 2nd Battalion, and the 7th Cavalry Gaming Regiment.`,
+      );
+      expect(screen.getByLabelText("Recommendation Title")).toHaveValue(
+        "Medal Recommendation - 2nd Battalion - DSM - CPL.Smith.J",
+      );
+    }
+    await selectAward(user, "Defense Distinguished Service Medal");
+    expect(
+      screen.queryByRole("combobox", { name: "Service Area" }),
+    ).not.toBeInTheDocument();
+    await enter(user, "Role", "Company Commander");
+    await submitRecommendation(user);
+    expect(getCitationText()).toBe(
+      `For exceptionally meritorious leadership of a primary billet while serving as Company Commander of 2nd Battalion during October 2020 to October 2026. Corporal John Smith distinguished themselves by ${SERVICE_CONTINUATION} Corporal John Smith's exemplary leadership demonstrates their commitment to their troopers and reflects great credit upon themselves, 2nd Battalion, and the 7th Cavalry Gaming Regiment.`,
+    );
+  });
 
   test.each(
     ["HSM", "MSM", "DSSM"].map((abbreviation) =>
@@ -445,7 +518,7 @@ describe("Expanded Service Medal family", () => {
       "For exceptionally meritorious leadership of a secondary billet while serving as 1IC, Military Police during September 2025 to September 2026.",
     );
     expect(getCitationText()).toContain(
-      "great credit to themselves, the Military Police, and the 7th Cavalry Gaming Regiment.",
+      "great credit to themselves, Military Police, and the 7th Cavalry Gaming Regiment.",
     );
     expect(getCitationText()).not.toContain("1IC of Military Police");
     await selectComboboxOption(
@@ -535,7 +608,7 @@ describe("Expanded Service Medal family", () => {
     await submitRecommendation(user);
     expect(preview()).toBeVisible();
     expect(getCitationText()).toBe(
-      `For exceptionally meritorious leadership of operations while serving as AO Lead, S3 HLL Operations during September 2025 to September 2026. ${fixedOpening} ${SERVICE_CONTINUATION} Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, the Hell Let Loose: Vietnam AO, and the 7th Cavalry Gaming Regiment.`,
+      `For exceptionally meritorious leadership of operations while serving as AO Lead, S3 HLL Operations during September 2025 to September 2026. ${fixedOpening} ${SERVICE_CONTINUATION} Corporal John Smith's exceptionally meritorious leadership is in great credit to themselves, Hell Let Loose: Vietnam AO, and the 7th Cavalry Gaming Regiment.`,
     );
     const closing = getCitationText().split(
       "Corporal John Smith's exceptionally meritorious leadership",
@@ -833,8 +906,12 @@ describe("Expanded Service Medal family", () => {
     );
 
     let previousRole = "a clerk";
-    for (const [award, nextRole] of [
-      ["Distinguished Service Medal", "a trooper"],
+    for (const [award, nextRole, choices] of [
+      [
+        "Distinguished Service Medal",
+        "a trooper",
+        { "Service Area": "Primary Billet" },
+      ],
       ["Defense Distinguished Service Medal", "Company Commander"],
     ]) {
       await selectAward(user, award);
@@ -854,6 +931,9 @@ describe("Expanded Service Medal family", () => {
         expect(
           screen.getByRole("textbox", { name: `${label} Year` }),
         ).toHaveValue(year);
+      }
+      for (const [label, choice] of Object.entries(choices ?? {})) {
+        await selectComboboxOption(user, label, choice);
       }
       await enter(user, "Element", "B/2-7");
       await submitRecommendation(user);
@@ -951,7 +1031,7 @@ describe("Expanded Service Medal family", () => {
     await enter(user, "Unit", "S2 Intelligence");
     await submitRecommendation(user);
     expect(getCitationText()).toBe(
-      `For distinguished contributions to S2 Intelligence. ${fixedOpening} ${SERVICE_CONTINUATION} Corporal John Smith’s dedication to duty and commitment to the Regiment is in great credit to themselves, S2 Intelligence and the 7th Cavalry Gaming Regiment.`,
+      `For distinguished contributions to S2 Intelligence. ${fixedOpening} ${SERVICE_CONTINUATION} Corporal John Smith’s dedication to duty and commitment to the Regiment is in great credit to themselves, S2 Intelligence, and the 7th Cavalry Gaming Regiment.`,
     );
   });
 });

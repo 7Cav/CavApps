@@ -13,6 +13,7 @@ import {
   validateRecipientEntries,
 } from "../lib/recipient-utils";
 import {
+  analyzeRecommendationNarrative,
   getGroupRecipientWarning,
   hasRecipientIdentity,
 } from "../lib/narrative-validation";
@@ -28,6 +29,7 @@ import {
   janeRecipient as jane,
   kentonRecipient,
   makeRecipient,
+  makeJohnSmithRecipient,
   makeRecipientEntries,
 } from "./test-helpers";
 
@@ -52,19 +54,19 @@ const currentPolicy = resolveMedalWorksheet(
 describe("recommendation recipient ordering", () => {
   test("orders Cav ranks without mutating the input or recipients", () => {
     const specialist = makeRecipient({
-      realName: "Tim Rhone",
+      realName: "Aaron Aardvark",
       rank: { rankId: "20", rankFull: "Specialist" },
     });
     const captain = makeRecipient({
-      realName: "Brent Swanson",
+      realName: "Zulu Zulu",
       rank: { rankId: "9", rankFull: "Captain", rankShort: "CPT" },
     });
     const sergeant = makeRecipient({
-      realName: "Wade Kenton",
+      realName: "Aaron Aaron",
       rank: { rankId: 17, rankFull: "Staff Sergeant", rankShort: "SSG" },
     });
     const lieutenant = makeRecipient({
-      realName: "Darek Hazen",
+      realName: "Alpha Alpha",
       rank: { rankId: 10, rankFull: "First Lieutenant", rankShort: "1LT" },
     });
     const members = [specialist, captain, sergeant, lieutenant];
@@ -83,7 +85,9 @@ describe("recommendation recipient ordering", () => {
     expect(lieutenant.rank.rankId).toBe(10);
   });
 
-  test("sorts the complete real name within a rank, beginning with first name rather than surname", () => {
+  // Same-rank surname ordering: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
+  // First/middle-name ties are application determinism, not an additional SOP rule.
+  test("sorts same-rank recipients by surname before first name", () => {
     const members = [
       "Wade Kenton",
       "Eli Belmont",
@@ -99,10 +103,49 @@ describe("recommendation recipient ordering", () => {
       orderRecipientsForRecommendation(members).map(
         (member) => member.realName,
       ),
-    ).toEqual(["Eli Belmont", "Jim Rhoden", "Ryan Beauchamp", "Wade Kenton"]);
+    ).toEqual(["Ryan Beauchamp", "Eli Belmont", "Wade Kenton", "Jim Rhoden"]);
   });
 
-  test("normalizes case and whitespace for name and username comparison, then breaks ties by stable userId", () => {
+  test.each([
+    [
+      "first name",
+      [makeJohnSmithRecipient(), makeRecipient({ realName: "Allen Smith" })],
+      ["Allen Smith", "John Smith"],
+    ],
+    [
+      "middle names",
+      [makeJohnSmithRecipient("Robert"), makeJohnSmithRecipient("Michael")],
+      ["John Michael Smith", "John Robert Smith"],
+    ],
+    [
+      "empty middle name",
+      [makeJohnSmithRecipient("Michael"), makeJohnSmithRecipient()],
+      ["John Smith", "John Michael Smith"],
+    ],
+    [
+      "all middle tokens",
+      [
+        makeJohnSmithRecipient("Michael Zed"),
+        makeJohnSmithRecipient("Michael Allen"),
+      ],
+      ["John Michael Allen Smith", "John Michael Zed Smith"],
+    ],
+  ])(
+    "breaks equal-rank surname ties by %s without rewriting roster names",
+    (_label, members, expected) => {
+      const names = members.map((member) => member.realName);
+      for (const member of members) Object.freeze(member);
+      Object.freeze(members);
+      expect(
+        orderRecipientsForRecommendation(members).map(
+          (member) => member.realName,
+        ),
+      ).toEqual(expected);
+      expect(members.map((member) => member.realName)).toEqual(names);
+    },
+  );
+
+  test("normalizes name case and whitespace without ordering equal names by username or userId", () => {
     const members = [
       makeRecipient({
         user: { userId: "c", username: " beta.USER " },
@@ -126,14 +169,15 @@ describe("recommendation recipient ordering", () => {
       }),
     ];
     const ordered = orderRecipientsForRecommendation(members);
-    expect(ordered.map((member) => member.user.userId)).toEqual([
-      "d",
-      "a",
-      "b",
-      "c",
+    expect(ordered).toEqual(members);
+    expect(orderRecipientsForRecommendation([...members].reverse())).toEqual([
+      members[2],
+      members[1],
+      members[0],
+      members[3],
     ]);
-    expect(ordered[0].realName).toBe("  adam  Jarvis ");
-    expect(ordered[1].user.username).toBe("  alpha.USER ");
+    expect(ordered[3].realName).toBe("  adam  Jarvis ");
+    expect(ordered[0].user.username).toBe(" beta.USER ");
   });
 
   test("safely orders malformed or missing ranks last but rejects them for recommendations", () => {
@@ -159,12 +203,12 @@ describe("recommendation recipient ordering", () => {
     expect(orderRecipientsForRecommendation(members)).toEqual([
       members[5],
       members[4],
-      members[2],
       members[1],
+      members[3],
+      members[2],
+      members[0],
       members[6],
       members[7],
-      members[3],
-      members[0],
     ]);
     for (const member of members.filter(
       (_, index) => ![4, 5].includes(index),
@@ -309,6 +353,66 @@ describe("recommendation prose subjects", () => {
 });
 
 describe("recipient group identity warnings", () => {
+  test.each([
+    ["James Wayne Jackson", "Private First Class James Wayne Jackson", null],
+    ["James Wayne Jackson", "Private First Class James Jackson", null],
+    ["James Wayne Jackson", "PRIVATE  FIRST CLASS james\nwayne JACKSON", null],
+    [
+      "James Wayne Allen Jackson",
+      "Private First Class James Wayne Allen Jackson",
+      null,
+    ],
+    [
+      "James Wayne Jackson",
+      "Private First Class James RandomUnrelatedWord Jackson",
+      "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
+    ],
+  ])(
+    "roster %s accepts only its exact full or citation identity: %s",
+    (realName, identity, expected) => {
+      const recipients = [
+        makeRecipient({
+          realName,
+          rank: {
+            rankId: "21",
+            rankShort: "PFC",
+            rankFull: "Private First Class",
+          },
+        }),
+        makeRecipient({
+          realName: "Robbie Camcrow",
+          user: { userId: "camcrow", username: "Camcrow.R" },
+          rank: { rankId: "22", rankShort: "PVT", rankFull: "Private" },
+        }),
+      ];
+      const warning = getGroupRecipientWarning(
+        "Both " +
+          identity +
+          " and Private Robbie Camcrow advanced. The team held. The mission succeeded.",
+        recipients,
+        {},
+      );
+      expect(warning?.message ?? null).toBe(expected);
+    },
+  );
+
+  test("a single recipient may also use their exact full roster identity", () => {
+    const member = makeRecipient({
+      realName: "James Wayne Jackson",
+      rank: { rankId: "21", rankShort: "PFC", rankFull: "Private First Class" },
+    });
+    const analysis = analyzeRecommendationNarrative(
+      "Private First Class James Wayne Jackson advanced. The team held. The mission succeeded.",
+      [member],
+      "",
+      { minimumNarrativeSentences: 3 },
+      [],
+      {},
+    );
+    expect(analysis.warnings.map((warning) => warning.key)).not.toContain(
+      "recipient-mention",
+    );
+  });
   const members = [
     "Alpha One",
     "Bravo Two",
@@ -490,6 +594,9 @@ describe("recipient collection and identity", () => {
     });
     expect(getCitationName("  Taylor  ")).toBe("Taylor");
     expect(getCitationName("Wade   Kenton")).toBe("Wade Kenton");
+    expect(getCitationName("  James\n Wayne\tAllen Jackson  ")).toBe(
+      "James Jackson",
+    );
   });
 
   test("detects a multiword rank and identity across whitespace and newline boundaries", () => {
