@@ -6,6 +6,14 @@ let pool;
 
 async function initDatabase() {
   pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  // A connection idling in the pool can close through a Postgres restart, a
+  // failover, pg_terminate_backend, or a network drop. pg-pool drops that
+  // client, opens a new one on the next query, and emits 'error' on the pool.
+  // With no listener, that event exits the process and takes every route
+  // with it.
+  pool.on("error", (err) => {
+    console.error("Lost an idle Postgres connection:", err.message);
+  });
   await pool.query("SELECT 1"); // ping
 
   await migrate({
