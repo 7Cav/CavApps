@@ -124,4 +124,10 @@ const startServer = async () => {
   }
 };
 
-startServer();
+// `node server.js` starts the server. Requiring it only builds the app, so the
+// route tests can serve it without warming the cache or starting the poller.
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = app;
