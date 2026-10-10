@@ -24,7 +24,7 @@ const VALID_ROSTER_TYPES = new Set([
 
 // A YYYY-MM-DD string naming a day on the calendar. Date rolls 2026-02-30 over
 // to 2026-03-02, so the parsed day has to print back as the same string.
-function isDate(value) {
+function isCalendarDay(value) {
   const day = new Date(`${value}T00:00:00Z`);
   return !isNaN(day) && day.toISOString().slice(0, 10) === value;
 }
@@ -47,9 +47,9 @@ router.get("/diffs", async (req, res) => {
 router.get("/diffs/range", async (req, res) => {
   const { from, to } = req.query;
   if (!to) return res.status(400).json({ error: "to query param required" });
-  if (!isDate(to))
+  if (!isCalendarDay(to))
     return res.status(400).json({ error: "to must be YYYY-MM-DD" });
-  if (from != null && !isDate(from))
+  if (from != null && !isCalendarDay(from))
     return res.status(400).json({ error: "from must be YYYY-MM-DD" });
   const rosterType = parseRosterType(req.query);
   if (rosterType === "INVALID")
@@ -61,7 +61,7 @@ router.get("/diffs/range", async (req, res) => {
 // GET /diffs/:date[?roster_type=X]
 router.get("/diffs/:date", async (req, res) => {
   const { date } = req.params;
-  if (!isDate(date))
+  if (!isCalendarDay(date))
     return res.status(400).json({ error: "date must be YYYY-MM-DD" });
   const rosterType = parseRosterType(req.query);
   if (rosterType === "INVALID")

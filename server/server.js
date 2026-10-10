@@ -90,9 +90,11 @@ app.use("/roster", checkToken, middleware);
 // token check as /roster; the client sends NEXT_PUBLIC_CLIENT_TOKEN.
 app.use(checkToken, diffRoutes);
 
-// Terminal error handler — backstop for anything a route's own try/catch misses
-// (incl. sync throws and the CORS origin rejection). Without this, an uncaught
-// error hangs the request with no response or log.
+// Terminal error handler. The diff routes leave their failures to it, and it
+// catches whatever another route's own try/catch misses, including sync throws
+// and the CORS origin rejection. It logs the error and answers a bare 500, so no
+// database text reaches the caller. Without it, an uncaught error hangs the
+// request with no response or log.
 app.use((err, req, res, next) => {
   console.error(
     `${req.method} ${req.originalUrl} unhandled:`,
