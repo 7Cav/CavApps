@@ -387,7 +387,7 @@ describe("Service worksheet capabilities", () => {
     ],
     [
       "distinguished-service-medal",
-      { role: "a trooper", element: "A/2/B/3-7" },
+      { serviceArea: "primary", role: "a trooper", element: "A/2/B/3-7" },
     ],
     [
       "defense-distinguished-service-medal",

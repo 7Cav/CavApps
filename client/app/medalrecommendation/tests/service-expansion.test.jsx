@@ -30,7 +30,7 @@ const secondRecipient = makeRecipient({
   rank: { rankFull: "Sergeant", rankShort: "SGT", rankId: "18" },
   realName: "Alex Jones",
 });
-// Service ARCOM and DSSM closing oracles use the S1-approved October 2026 corrections.
+// Service ARCOM and DSSM closing oracles: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 const fixedOpening = "Corporal John Smith distinguished themselves by";
 const monthNames = [
   "January",
@@ -160,11 +160,9 @@ describe("Expanded Service Medal family", () => {
             .getAllByRole("listitem")
             .map((item) => item.textContent),
         ).toEqual(eligibility);
-        // DSM's approved guidance now explicitly includes Enlisted of the Year.
-        if (name !== "Distinguished Service Medal")
-          expect(list.textContent).not.toMatch(
-            /of the quarter|of the year|EOTQ|EOTY/i,
-          );
+        expect(list.textContent).not.toMatch(
+          /of the quarter|of the year|EOTQ|EOTY/i,
+        );
       } else {
         expect(heading).not.toBeInTheDocument();
       }
@@ -204,12 +202,12 @@ describe("Expanded Service Medal family", () => {
     },
   );
 
-  test("DSM Primary Billet -> Operations -> Primary Billet preserves shared inputs and Element title/closing", async () => {
+  test("DSM requires an intentional Service Area choice and preserves shared inputs when toggled", async () => {
     vi.setSystemTime(new Date(2026, 9, 8, 12));
     const { user } = await openWorksheet("Distinguished Service Medal");
     expect(
       screen.getByRole("combobox", { name: "Service Area" }),
-    ).toHaveTextContent("Primary Billet");
+    ).toHaveTextContent("Select service area");
     await selectRecipient(user);
     await fillCase(user, {
       inputs: {
@@ -221,10 +219,15 @@ describe("Expanded Service Medal family", () => {
       },
     });
     await submitRecommendation(user);
-    expect(getCitationText()).toContain(
-      "For distinguished service in a primary billet while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
-    );
+    expect(preview()).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("combobox", { name: "Service Area" }),
+    ).toHaveAttribute("aria-invalid", "true");
     for (const [choice, opening] of [
+      [
+        "Primary Billet",
+        "For distinguished service in a primary billet while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
+      ],
       [
         "Operations",
         "For distinguished service in operations while serving as an officer in 2nd Battalion during October 2020 to October 2026.",
@@ -903,8 +906,12 @@ describe("Expanded Service Medal family", () => {
     );
 
     let previousRole = "a clerk";
-    for (const [award, nextRole] of [
-      ["Distinguished Service Medal", "a trooper"],
+    for (const [award, nextRole, choices] of [
+      [
+        "Distinguished Service Medal",
+        "a trooper",
+        { "Service Area": "Primary Billet" },
+      ],
       ["Defense Distinguished Service Medal", "Company Commander"],
     ]) {
       await selectAward(user, award);
@@ -924,6 +931,9 @@ describe("Expanded Service Medal family", () => {
         expect(
           screen.getByRole("textbox", { name: `${label} Year` }),
         ).toHaveValue(year);
+      }
+      for (const [label, choice] of Object.entries(choices ?? {})) {
+        await selectComboboxOption(user, label, choice);
       }
       await enter(user, "Element", "B/2-7");
       await submitRecommendation(user);

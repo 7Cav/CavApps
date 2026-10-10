@@ -115,12 +115,17 @@ export function hasRecipientIdentity(
   text,
   recipientRank,
   recipientCitationName,
+  recipientFullName,
 ) {
-  const fullIdentityPattern = new RegExp(
-    `${buildFlexiblePhrasePattern(recipientRank)}\\s+${buildFlexiblePhrasePattern(recipientCitationName)}`,
-    "i",
-  );
-  return fullIdentityPattern.test(text);
+  return [recipientCitationName, recipientFullName]
+    .filter(Boolean)
+    .some((name) => {
+      const fullIdentityPattern = new RegExp(
+        `${buildFlexiblePhrasePattern(recipientRank)}\\s+${buildFlexiblePhrasePattern(name)}`,
+        "i",
+      );
+      return fullIdentityPattern.test(text);
+    });
 }
 
 export function getGroupRecipientWarning(
@@ -143,6 +148,7 @@ export function getGroupRecipientWarning(
       narrative,
       recipientRank,
       recipientCitationName,
+      member.realName,
     );
   }).length;
 
@@ -159,6 +165,7 @@ export function analyzeNarrative(
   {
     recipientRank,
     recipientCitationName,
+    recipientFullName,
     rankEntries,
     minimumNarrativeSentences = 3,
   },
@@ -168,7 +175,14 @@ export function analyzeNarrative(
   const highlightRanges = [];
 
   if (recipientRank && recipientCitationName) {
-    if (!hasRecipientIdentity(text, recipientRank, recipientCitationName)) {
+    if (
+      !hasRecipientIdentity(
+        text,
+        recipientRank,
+        recipientCitationName,
+        recipientFullName,
+      )
+    ) {
       addWarning(
         warnings,
         "recipient-mention",
@@ -353,7 +367,10 @@ export function analyzeRecommendationNarrative(
     ...(narrativeField?.recipientIdentityChecks !== false &&
     !systemOwnedNarrativeOpening &&
     recipients.length === 1
-      ? getRecipientIdentity(recipients[0])
+      ? {
+          ...getRecipientIdentity(recipients[0]),
+          recipientFullName: recipients[0].realName,
+        }
       : {}),
     rankEntries,
     minimumNarrativeSentences: medal.minimumNarrativeSentences,

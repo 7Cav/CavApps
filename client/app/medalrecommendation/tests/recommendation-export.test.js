@@ -15,7 +15,7 @@ import {
 } from "./unit-award-cases";
 
 // Independent title/body/header oracles from Awards and Decorations,
-// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17782
+// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 // Keep expected strings independent of production definitions and serializers.
 const operationCases = [
   ["army-commendation-medal", "ARCOM", 1],
@@ -193,7 +193,7 @@ function snapshot(overrides = {}) {
 }
 
 describe("Recommendation export snapshots", () => {
-  // S1-approved October 2026 confirms Multiple and the context-free HSM exception.
+  // Multiple titles and HSM's context-free exception: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
   test.each([
     [
       "operation",

@@ -1,6 +1,6 @@
 // Independent expected Service Medal contracts used as test oracles.
-// S1-approved October 2026 supersedes prior Wiki closings for OVSM, Service ARCOM,
-// MSM, DMSM, Soldier’s Medal, LOM and both DSSM pathways; other oracles remain unchanged.
+// Published Service Medal wording and guidance:
+// https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 // Exact prose is intentional: production builders must not supply their own oracle.
 export const SERVICE_CATALOG_CASES = [
   {
@@ -200,7 +200,7 @@ export const SERVICE_CATALOG_CASES = [
     abbreviation: "DSM",
     ribbonUrl: "https://wiki.7cav.us/images/2/29/DSM.jpg",
     minimum: 4,
-    // DSM criteria/guidance reflect the separately supplied current Wiki wording.
+    // DSM criteria/guidance: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
     fields: [
       "Service Area",
       "Role",
@@ -443,6 +443,7 @@ export const SERVICE_CITATION_CASES = [
   {
     name: "Distinguished Service Medal",
     path: "primary billet",
+    choices: { "Service Area": "Primary Billet" },
     inputs: {
       Role: "a trooper",
       Element: "A/2/B/3-7",

@@ -85,36 +85,41 @@ export function getRecipientRankAbbreviation(member) {
   return rank.abbreviation;
 }
 
-// Recommendation order is separate from the user's editable selection order.
-function getRecommendationNameParts(member) {
-  const tokens = normalize(member?.realName).split(" ");
-  return [tokens.at(-1), tokens[0], tokens.slice(1, -1).join(" ")];
+function parseRecipientName(fullName) {
+  const tokens = trimText(fullName).split(/\s+/).filter(Boolean);
+  return {
+    surname: tokens.at(-1) ?? "",
+    first: tokens.length > 1 ? tokens[0] : "",
+    middleNames: tokens.slice(1, -1).join(" "),
+  };
 }
 
+// Recommendation order is separate from the user's editable selection order.
 export function orderRecipientsForRecommendation(recipients) {
   return [...recipients].sort((left, right) => {
-    const leftName = getRecommendationNameParts(left);
-    const rightName = getRecommendationNameParts(right);
+    const leftName = parseRecipientName(left?.realName);
+    const rightName = parseRecipientName(right?.realName);
     return (
       getRankOrder(left) - getRankOrder(right) ||
-      leftName[0].localeCompare(rightName[0], "en") ||
-      leftName[1].localeCompare(rightName[1], "en") ||
-      leftName[2].localeCompare(rightName[2], "en") ||
-      normalize(left?.user?.username).localeCompare(
-        normalize(right?.user?.username),
+      normalize(leftName.surname).localeCompare(
+        normalize(rightName.surname),
         "en",
       ) ||
-      getRecipientId(left).localeCompare(getRecipientId(right), "en")
+      normalize(leftName.first).localeCompare(
+        normalize(rightName.first),
+        "en",
+      ) ||
+      normalize(leftName.middleNames).localeCompare(
+        normalize(rightName.middleNames),
+        "en",
+      )
     );
   });
 }
 
 export function getCitationName(fullName) {
-  const name = trimText(fullName);
-  const nameParts = name.split(/\s+/).filter(Boolean);
-  return nameParts.length < 2
-    ? name
-    : `${nameParts[0]} ${nameParts[nameParts.length - 1]}`;
+  const { first, surname } = parseRecipientName(fullName);
+  return [first, surname].filter(Boolean).join(" ");
 }
 
 export function getRecipientIdentity(member) {

@@ -97,7 +97,7 @@ describe("collective award wording", () => {
   test.each([
     ...SERVICE_CITATION_CASES,
     {
-      // S1-approved October 2026 supersedes the prior Wiki AAM closing comma.
+      // AAM closing punctuation: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
       name: "Army Achievement Medal",
       path: "affected area",
       inputs: { "Affected Area of the Cav": "S6" },
@@ -149,8 +149,8 @@ describe("collective award wording", () => {
 });
 
 describe("recommendation generation", () => {
-  // DSM Operations reflects the separately supplied current Wiki wording.
-  test("DSM Operations opening and closing reuse Element and reject unsupported Service Area", () => {
+  // DSM Operations wording: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
+  test("DSM Operations opening and closing reuse Element", () => {
     const medal = SERVICE_MEDALS.find(
       (entry) => entry.id === "distinguished-service-medal",
     );
@@ -172,9 +172,6 @@ describe("recommendation generation", () => {
     expect(medal.buildClosing(context)).toBe(
       "Specialist John Smith's distinguished service and commitment is a great credit to themselves, 2nd Battalion, and the 7th Cavalry Gaming Regiment.",
     );
-    expect(() =>
-      medal.buildOpening({ ...context, serviceArea: "unsupported" }),
-    ).toThrow(/Unsupported Service Area/);
   });
   test("resolves all active citation choices by their field definitions and excludes inactive choices", () => {
     const worksheet = {

@@ -13,6 +13,7 @@ import {
   validateRecipientEntries,
 } from "../lib/recipient-utils";
 import {
+  analyzeRecommendationNarrative,
   getGroupRecipientWarning,
   hasRecipientIdentity,
 } from "../lib/narrative-validation";
@@ -28,6 +29,7 @@ import {
   janeRecipient as jane,
   kentonRecipient,
   makeRecipient,
+  makeJohnSmithRecipient,
   makeRecipientEntries,
 } from "./test-helpers";
 
@@ -83,7 +85,8 @@ describe("recommendation recipient ordering", () => {
     expect(lieutenant.rank.rankId).toBe(10);
   });
 
-  // S1-approved October 2026 ordering supersedes the first-name-first oracle.
+  // Same-rank surname ordering: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
+  // First/middle-name ties are application determinism, not an additional SOP rule.
   test("sorts same-rank recipients by surname before first name", () => {
     const members = [
       "Wade Kenton",
@@ -106,35 +109,32 @@ describe("recommendation recipient ordering", () => {
   test.each([
     [
       "first name",
-      ["John Smith", "Allen Smith"],
+      [makeJohnSmithRecipient(), makeRecipient({ realName: "Allen Smith" })],
       ["Allen Smith", "John Smith"],
     ],
     [
       "middle names",
-      ["John Robert Smith", "John Michael Smith"],
+      [makeJohnSmithRecipient("Robert"), makeJohnSmithRecipient("Michael")],
       ["John Michael Smith", "John Robert Smith"],
     ],
     [
       "empty middle name",
-      ["John Michael Smith", "John Smith"],
+      [makeJohnSmithRecipient("Michael"), makeJohnSmithRecipient()],
       ["John Smith", "John Michael Smith"],
     ],
     [
       "all middle tokens",
-      ["John Michael Zed Smith", "John Michael Allen Smith"],
+      [
+        makeJohnSmithRecipient("Michael Zed"),
+        makeJohnSmithRecipient("Michael Allen"),
+      ],
       ["John Michael Allen Smith", "John Michael Zed Smith"],
     ],
   ])(
     "breaks equal-rank surname ties by %s without rewriting roster names",
-    (_label, names, expected) => {
-      const members = names.map((realName, index) =>
-        Object.freeze(
-          makeRecipient({
-            realName,
-            user: { userId: String(index), username: `Tie.${index}` },
-          }),
-        ),
-      );
+    (_label, members, expected) => {
+      const names = members.map((member) => member.realName);
+      for (const member of members) Object.freeze(member);
       Object.freeze(members);
       expect(
         orderRecipientsForRecommendation(members).map(
@@ -145,7 +145,7 @@ describe("recommendation recipient ordering", () => {
     },
   );
 
-  test("normalizes case and whitespace for name and username comparison, then breaks ties by stable userId", () => {
+  test("normalizes name case and whitespace without ordering equal names by username or userId", () => {
     const members = [
       makeRecipient({
         user: { userId: "c", username: " beta.USER " },
@@ -169,14 +169,15 @@ describe("recommendation recipient ordering", () => {
       }),
     ];
     const ordered = orderRecipientsForRecommendation(members);
-    expect(ordered.map((member) => member.user.userId)).toEqual([
-      "a",
-      "b",
-      "c",
-      "d",
+    expect(ordered).toEqual(members);
+    expect(orderRecipientsForRecommendation([...members].reverse())).toEqual([
+      members[2],
+      members[1],
+      members[0],
+      members[3],
     ]);
     expect(ordered[3].realName).toBe("  adam  Jarvis ");
-    expect(ordered[0].user.username).toBe("  alpha.USER ");
+    expect(ordered[0].user.username).toBe(" beta.USER ");
   });
 
   test("safely orders malformed or missing ranks last but rejects them for recommendations", () => {
@@ -352,6 +353,66 @@ describe("recommendation prose subjects", () => {
 });
 
 describe("recipient group identity warnings", () => {
+  test.each([
+    ["James Wayne Jackson", "Private First Class James Wayne Jackson", null],
+    ["James Wayne Jackson", "Private First Class James Jackson", null],
+    ["James Wayne Jackson", "PRIVATE  FIRST CLASS james\nwayne JACKSON", null],
+    [
+      "James Wayne Allen Jackson",
+      "Private First Class James Wayne Allen Jackson",
+      null,
+    ],
+    [
+      "James Wayne Jackson",
+      "Private First Class James RandomUnrelatedWord Jackson",
+      "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
+    ],
+  ])(
+    "roster %s accepts only its exact full or citation identity: %s",
+    (realName, identity, expected) => {
+      const recipients = [
+        makeRecipient({
+          realName,
+          rank: {
+            rankId: "21",
+            rankShort: "PFC",
+            rankFull: "Private First Class",
+          },
+        }),
+        makeRecipient({
+          realName: "Robbie Camcrow",
+          user: { userId: "camcrow", username: "Camcrow.R" },
+          rank: { rankId: "22", rankShort: "PVT", rankFull: "Private" },
+        }),
+      ];
+      const warning = getGroupRecipientWarning(
+        "Both " +
+          identity +
+          " and Private Robbie Camcrow advanced. The team held. The mission succeeded.",
+        recipients,
+        {},
+      );
+      expect(warning?.message ?? null).toBe(expected);
+    },
+  );
+
+  test("a single recipient may also use their exact full roster identity", () => {
+    const member = makeRecipient({
+      realName: "James Wayne Jackson",
+      rank: { rankId: "21", rankShort: "PFC", rankFull: "Private First Class" },
+    });
+    const analysis = analyzeRecommendationNarrative(
+      "Private First Class James Wayne Jackson advanced. The team held. The mission succeeded.",
+      [member],
+      "",
+      { minimumNarrativeSentences: 3 },
+      [],
+      {},
+    );
+    expect(analysis.warnings.map((warning) => warning.key)).not.toContain(
+      "recipient-mention",
+    );
+  });
   const members = [
     "Alpha One",
     "Bravo Two",
@@ -533,6 +594,9 @@ describe("recipient collection and identity", () => {
     });
     expect(getCitationName("  Taylor  ")).toBe("Taylor");
     expect(getCitationName("Wade   Kenton")).toBe("Wade Kenton");
+    expect(getCitationName("  James\n Wayne\tAllen Jackson  ")).toBe(
+      "James Jackson",
+    );
   });
 
   test("detects a multiword rank and identity across whitespace and newline boundaries", () => {

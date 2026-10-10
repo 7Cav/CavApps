@@ -6,6 +6,8 @@ import {
   getCitationText,
   getHighlightTexts,
   makeRecipient,
+  makeJohnSmithRecipient,
+  kentonRecipient,
   renderClient,
   renderPageWithRoster,
   selectAward,
@@ -15,7 +17,7 @@ import {
 } from "./test-helpers";
 
 // Independent title/body/header oracles from Awards and Decorations,
-// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17782
+// pinned revision: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
 // Keep expected strings independent of production definitions and serializers.
 const citation =
   "For a single act of heroism or skill under enemy fire while serving as a rifleman in the 7th Cavalry Regiment during combat in Operation Overlord near Normandy on 11 August 2026. Specialist John Smith advanced. The team held. The mission succeeded. Specialist John Smith's heroism and skill reflect great credit upon themselves and the 7th Cavalry Gaming Regiment.";
@@ -63,24 +65,68 @@ async function ready({
 describe("Recommendation submission", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  // Recipient order and titles: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
   test.each([
-    [
-      2,
-      "Humanitarian Service Medal",
-      [0, 1],
-      "Specialist Taylor Smith and Specialist Aaron Young",
-    ],
-    [
-      6,
-      "Humanitarian Service Medal",
-      [2, 3, 5, 4, 0, 1],
-      "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young",
-    ],
-    [7, "Humanitarian Service Medal", [2, 3, 6, 5, 4, 0, 1], "The recipients"],
-    [7, "Superior Unit Award", [2, 3, 6, 5, 4, 0, 1], "S6 Development"],
+    {
+      count: 2,
+      award: "Humanitarian Service Medal",
+      expectedOrder: [0, 1],
+      expectedSubject: "Specialist Taylor Smith and Specialist Aaron Young",
+      worksheetInputs: {},
+      worksheetChoices: {},
+      expectedClosingFragment:
+        "Specialist Taylor Smith and Specialist Aaron Young's dedication to duty",
+      expectedTitle: "Medal Recommendation - HSM - Multiple",
+    },
+    {
+      count: 6,
+      award: "Humanitarian Service Medal",
+      expectedOrder: [2, 3, 5, 4, 0, 1],
+      expectedSubject:
+        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young",
+      worksheetInputs: {},
+      worksheetChoices: {},
+      expectedClosingFragment:
+        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young's dedication to duty",
+      expectedTitle: "Medal Recommendation - HSM - Multiple",
+    },
+    {
+      count: 7,
+      award: "Humanitarian Service Medal",
+      expectedOrder: [2, 3, 6, 5, 4, 0, 1],
+      expectedSubject: "The recipients",
+      worksheetInputs: {},
+      worksheetChoices: {},
+      expectedClosingFragment: "The recipients' dedication to duty",
+      expectedTitle: "Medal Recommendation - HSM - Multiple",
+    },
+    {
+      count: 7,
+      award: "Superior Unit Award",
+      expectedOrder: [2, 3, 6, 5, 4, 0, 1],
+      expectedSubject: "S6 Development",
+      worksheetInputs: {
+        "Benefitted Unit": "2/B/2-7",
+        "Awarded Department / Unit": "S6 Development",
+      },
+      worksheetChoices: {
+        "Service / Contributions": "Service",
+      },
+      expectedClosingFragment: "Their dedication to duty",
+      expectedTitle: "Medal Recommendation - 2/B/2-7 - SUA - Multiple",
+    },
   ])(
-    "%i recipients / %s carries canonical order into the citation, preview and BBCode without reordering selection",
-    async (count, award, order, subject) => {
+    "$count recipients / $award carries canonical order into the citation, preview and BBCode without reordering selection",
+    async ({
+      count,
+      award,
+      expectedOrder,
+      expectedSubject,
+      worksheetInputs,
+      worksheetChoices,
+      expectedClosingFragment,
+      expectedTitle,
+    }) => {
       const members = [
         makeRecipient({
           realName: "Taylor Morgan Smith",
@@ -95,23 +141,10 @@ describe("Recommendation submission", () => {
           user: { userId: "z", username: "Zulu.Z" },
           rank: { rankId: 9, rankShort: "CPT", rankFull: "Captain" },
         }),
-        makeRecipient({
-          realName: "Wade Kenton",
-          user: { userId: "w", username: "Kenton.W" },
-          rank: { rankId: 17, rankShort: "SSG", rankFull: "Staff Sergeant" },
-        }),
-        makeRecipient({
-          realName: "John Robert Smith",
-          user: { userId: "r", username: "Smith.JR" },
-        }),
-        makeRecipient({
-          realName: "John Michael Smith",
-          user: { userId: "m", username: "Smith.JM" },
-        }),
-        makeRecipient({
-          realName: "John Smith",
-          user: { userId: "j", username: "Smith.J" },
-        }),
+        kentonRecipient,
+        makeJohnSmithRecipient("Robert"),
+        makeJohnSmithRecipient("Michael"),
+        makeJohnSmithRecipient(),
       ].slice(0, count);
       const fullNames = [
         "Specialist Taylor Morgan Smith",
@@ -134,11 +167,10 @@ describe("Recommendation submission", () => {
       await user.click(
         screen.getByRole("button", { name: "Confirm Recipients" }),
       );
-      if (award === "Superior Unit Award") {
-        enter("Benefitted Unit", "2/B/2-7");
-        enter("Awarded Department / Unit", "S6 Development");
-        await selectComboboxOption(user, "Service / Contributions", "Service");
-      }
+      for (const [label, value] of Object.entries(worksheetInputs))
+        enter(label, value);
+      for (const [label, choice] of Object.entries(worksheetChoices))
+        await selectComboboxOption(user, label, choice);
       enter(
         "Narrative",
         "supporting the unit. Readiness improved. The mission succeeded.",
@@ -151,28 +183,22 @@ describe("Recommendation submission", () => {
         within(preview)
           .getAllByRole("link")
           .map((link) => link.textContent),
-      ).toEqual(order.map((index) => fullNames[index]));
+      ).toEqual(expectedOrder.map((index) => fullNames[index]));
       const exported = screen.getByLabelText("Recommendation Body").value;
       expect(
         exported.split("\n").filter((line) => line.startsWith("[B][URL=")),
       ).toEqual(
-        order.map(
+        expectedOrder.map(
           (index) =>
             `[B][URL=https://7cav.us/rosters/profile/${members[index].profileId}/]${fullNames[index]}[/URL][/B]`,
         ),
       );
       expect(getCitationText()).toContain(
-        `${subject} distinguished themselves by supporting the unit.`,
+        `${expectedSubject} distinguished themselves by supporting the unit.`,
       );
-      expect(getCitationText()).toContain(
-        award === "Superior Unit Award"
-          ? "Their dedication to duty"
-          : `${subject}${count > 6 ? "'" : "'s"} dedication to duty`,
-      );
+      expect(getCitationText()).toContain(expectedClosingFragment);
       expect(screen.getByLabelText("Recommendation Title")).toHaveValue(
-        award === "Superior Unit Award"
-          ? "Medal Recommendation - 2/B/2-7 - SUA - Multiple"
-          : "Medal Recommendation - HSM - Multiple",
+        expectedTitle,
       );
       expect(
         screen
