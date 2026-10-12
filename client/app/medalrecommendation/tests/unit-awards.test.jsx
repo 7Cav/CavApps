@@ -1,6 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import MedalRecommendationPage from "../page";
 import {
   enterWorksheetField as enter,
   getCitationText,
@@ -87,16 +86,6 @@ describe("Unit award worksheets", () => {
     vi.setSystemTime(new Date(2026, 8, 27, 12));
   });
   afterEach(() => vi.useRealTimers());
-
-  test("Unit awards use the two existing family links without a third navigation route", () => {
-    render(<MedalRecommendationPage />);
-    expect(
-      screen.getAllByRole("link").map((link) => link.getAttribute("href")),
-    ).toEqual([
-      "/medalrecommendation/operation",
-      "/medalrecommendation/service",
-    ]);
-  });
 
   test.each(["operation", "service"])(
     "%s visibly groups every existing Individual award and its two Unit awards",

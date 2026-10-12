@@ -1,6 +1,9 @@
 import { render, screen, within } from "@testing-library/react";
 import MedalRecommendationPage from "../page";
 
+// Next.js loads fonts at build time; these tests exercise page behavior.
+vi.mock("next/font/google", () => ({ Oswald: () => ({ className: "" }) }));
+
 describe("Medal Recommendation Aid landing page", () => {
   test("exposes the two worksheet families as accessible workflow links", () => {
     render(<MedalRecommendationPage />);
@@ -9,7 +12,7 @@ describe("Medal Recommendation Aid landing page", () => {
       screen.getByRole("heading", { name: "Medal Recommendation Aid" }),
     ).toBeVisible();
     expect(
-      screen.getByText("Create and review a medal recommendation."),
+      screen.getByText("Making Medal Recommendations Easier"),
     ).toBeVisible();
 
     const operationLink = screen.getByRole("link", {
@@ -43,5 +46,21 @@ describe("Medal Recommendation Aid landing page", () => {
         "Create recommendations recognizing service and contributions to the Regiment.",
       ),
     ).toBeVisible();
+
+    const howTo = screen.getByRole("link", { name: "How to Use This Tool" });
+    expect(howTo).toHaveAttribute("href", "/medalrecommendation/how-to-use");
+    expect(howTo).not.toHaveAttribute("aria-disabled", "true");
+    expect(howTo).not.toHaveAttribute("disabled");
+    for (const [link, asset] of [
+      [operationLink, "bronze-star.png"],
+      [serviceLink, "distinguished-service-medal.png"],
+    ]) {
+      const medal = within(link).getByRole("presentation", { hidden: true });
+      expect(medal).toHaveAttribute("src", `/medalrecommendation/${asset}`);
+      expect(medal).toHaveAttribute("alt", "");
+      expect(
+        link.compareDocumentPosition(howTo) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    }
   });
 });

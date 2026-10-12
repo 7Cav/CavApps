@@ -4,6 +4,13 @@ import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   TooltipProvider,
@@ -314,6 +321,7 @@ export default function MedalRecommendationClient({
     { slotId: 0, query: "", member: null },
   ]);
   const nextSlotId = useRef(1);
+  const [recipientEditorKey, setRecipientEditorKey] = useState(0);
 
   const [worksheetValues, setWorksheetValues] = useState({});
 
@@ -321,6 +329,9 @@ export default function MedalRecommendationClient({
 
   const [recommendation, setRecommendation] = useState(null);
   const generationId = useRef(0);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const clearWorksheetButtonRef = useRef(null);
+  const cancelClearButtonRef = useRef(null);
 
   const rosterMembers = useMemo(
     () => uniqueRecipients(recipientRoster ?? []),
@@ -516,6 +527,15 @@ export default function MedalRecommendationClient({
     );
   }
 
+  function handleClearWorksheet() {
+    setRecipientEntries([{ slotId: 0, query: "", member: null }]);
+    nextSlotId.current = 1;
+    setRecipientEditorKey((key) => key + 1);
+    setWorksheetValues(applyAwardChange(null, selectedWorksheet, {}));
+    setHasAttemptedGenerate(false);
+    setRecommendation(null);
+  }
+
   return (
     <main className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8">
       <Link
@@ -647,6 +667,7 @@ export default function MedalRecommendationClient({
                 </section>
 
                 <RecipientManager
+                  key={recipientEditorKey}
                   entries={recipientEntries}
                   selected={recipients}
                   recommendationRecipients={recommendationRecipients}
@@ -727,9 +748,70 @@ export default function MedalRecommendationClient({
                   );
                 })}
 
-                <Button type="button" onClick={handleGenerate}>
-                  Generate Recommendation
-                </Button>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <Button
+                    type="button"
+                    className="max-w-full sm:w-80"
+                    onClick={handleGenerate}
+                  >
+                    Generate Recommendation
+                  </Button>
+                  <Dialog
+                    open={clearDialogOpen}
+                    onOpenChange={setClearDialogOpen}
+                  >
+                    <Button
+                      ref={clearWorksheetButtonRef}
+                      type="button"
+                      variant="secondary"
+                      className="ml-auto"
+                      onClick={() => setClearDialogOpen(true)}
+                    >
+                      Clear Worksheet
+                    </Button>
+                    <DialogContent
+                      className="max-w-md"
+                      onOpenAutoFocus={(event) => {
+                        event.preventDefault();
+                        cancelClearButtonRef.current?.focus();
+                      }}
+                      onCloseAutoFocus={(event) => {
+                        event.preventDefault();
+                        clearWorksheetButtonRef.current?.focus();
+                      }}
+                    >
+                      <DialogTitle className="pr-8 text-xl font-semibold text-primary">
+                        Clear worksheet?
+                      </DialogTitle>
+                      <DialogDescription className="mt-2 text-sm leading-6 text-muted-foreground">
+                        This will remove all entered information, recipients,
+                        and generated recommendation content. Your selected
+                        medal will remain unchanged.
+                      </DialogDescription>
+                      <div className="mt-6 flex flex-wrap justify-end gap-3">
+                        <DialogClose asChild>
+                          <Button
+                            ref={cancelClearButtonRef}
+                            type="button"
+                            variant="outline"
+                          >
+                            Cancel
+                          </Button>
+                        </DialogClose>
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          onClick={() => {
+                            setClearDialogOpen(false);
+                            handleClearWorksheet();
+                          }}
+                        >
+                          Clear Worksheet
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
 
                 {hasAttemptedGenerate && !isComplete && (
                   <p role="alert" className="text-sm font-medium">
@@ -742,11 +824,11 @@ export default function MedalRecommendationClient({
           </CardContent>
         </Card>
 
-        <aside className="self-start lg:sticky lg:top-6">
+        <aside className="self-start lg:sticky lg:top-20">
           <Card className="overflow-hidden border-border/70 bg-card/70 shadow-none">
             <CardHeader className="border-b border-border/70 p-5 sm:p-6">
               <h2 className="text-xl font-semibold text-foreground">
-                Review &amp; Output
+                Recommendation Output
               </h2>
             </CardHeader>
 
@@ -754,7 +836,7 @@ export default function MedalRecommendationClient({
               <section className="space-y-2" aria-labelledby="status-heading">
                 <h3
                   id="status-heading"
-                  className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase"
+                  className="font-semibold text-foreground"
                 >
                   Status
                 </h3>
@@ -774,7 +856,7 @@ export default function MedalRecommendationClient({
               </section>
 
               <section className="space-y-4 border-t border-border/70 pt-6">
-                <h3 className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase">
+                <h3 className="font-semibold text-foreground">
                   Recommendation Preview
                 </h3>
 
