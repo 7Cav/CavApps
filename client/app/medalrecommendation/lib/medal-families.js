@@ -23,7 +23,7 @@ const MEDAL_FAMILIES = Object.freeze({
     getMedalById: getOperationMedalById,
     awardPlaceholder: "Select an Operation Medal",
     pageTitle: "Operation Medal Recommendation",
-    pageDescription: "Prepare and review an Operation Medal recommendation.",
+    pageDescription: "Prepare a recommendation to recognize a fellow trooper.",
   }),
   [MEDAL_FAMILY_IDS.SERVICE]: Object.freeze({
     id: MEDAL_FAMILY_IDS.SERVICE,
@@ -35,7 +35,7 @@ const MEDAL_FAMILIES = Object.freeze({
     getMedalById: getServiceMedalById,
     awardPlaceholder: "Select a Service Medal",
     pageTitle: "Service Medal Recommendation",
-    pageDescription: "Prepare and review a Service Medal recommendation.",
+    pageDescription: "Prepare a recommendation to recognize a fellow trooper.",
   }),
 });
 
