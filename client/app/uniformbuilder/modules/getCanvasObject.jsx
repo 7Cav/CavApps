@@ -34,6 +34,7 @@ export default async function GetCanvasObject(userName) {
   let tabCount = 0;
 
   const awardMap = new Map();
+  const departmentCrests = new Map();
   const AwardRegistryInstance = new AwardRegistry();
 
   for (let i in data.awards) {
@@ -250,12 +251,20 @@ export default async function GetCanvasObject(userName) {
 
   weaponQual = weaponQual ?? 0;
 
+  //search API call for billets which contain department crests
+  for (billet in data.primary) {
+    // TODO: IMPLEMENT
+  }
+
   arr.push(ribbons.sort((a, b) => a.awardPriority - b.awardPriority));
   arr.push(unitCitations.sort((a, b) => a.awardPriority - b.awardPriority));
   arr.push(medals.sort((a, b) => a.awardPriority - b.awardPriority));
   arr.push(combatBadge);
   arr.push(weaponQual);
   arr.push(tabs.sort((a, b) => a.awardPriority - b.awardPriority));
+  arr.push(departmentCrests.size());
+
+  console.log(arr);
 
   return arr;
 }

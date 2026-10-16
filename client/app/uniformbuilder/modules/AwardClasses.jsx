@@ -238,10 +238,6 @@ export class MedalTiered extends Medal {
   }
 }
 
-export class Badge extends Award {
-  // Do things
-}
-
 // A member wears one combat badge: the highest-ranked of those they hold and
 // their MOS may display. Eligibility is settled before construction, in
 // getCanvasObject.jsx — every award reaching this class is one the member may
@@ -355,5 +351,25 @@ export class Tab extends Award {
     super(data);
     const registryDetails = AwardRegistry.getAwardDetails(data.awardName);
     this.awardPriority = registryDetails.awardPriority;
+  }
+}
+
+export class DepartmentCrest {
+
+  crestName = "";
+  crestImage = "";
+  isActiveBillet = false;
+
+  constructor(crestName) {
+    this.crestName = crestName; 
+  }
+
+  constructor(crestName, isActiveBillet) {
+    this(crestName);
+    this.isActiveBillet = isActiveBillet;
+  }
+
+  setActiveBillet() {
+    this.isActiveBillet = true;
   }
 }
