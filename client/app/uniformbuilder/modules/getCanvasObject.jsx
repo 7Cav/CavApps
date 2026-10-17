@@ -62,19 +62,10 @@ export default async function GetCanvasObject(userName) {
     );
 
     if (registryDetails.awardType == AwardType.MedalGrantsCrest && medalCrest) {
-      console.log(data.awards[i].awardDetails);
-
       const crest = new DepartmentCrest(
         medalCrest.crestName,
         false,
         medalCrest.crestImage,
-      );
-
-      console.log(
-        "Found Crest Medal:",
-        crest.crestName,
-        crest.crestImage,
-        crest,
       );
 
       departmentCrests.set(crest.crestName, crest);
