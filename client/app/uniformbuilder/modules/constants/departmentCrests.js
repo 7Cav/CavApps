@@ -36,4 +36,4 @@ export const DEPARTMENT_CREST_TITLE_EXCEPTIONS = [
   },
 ];
 
-export const DEPARTMENT_CREST_REGEX = /^(ODS|NCOA|RRD|RTC|[S]+\d+)\b/i;
+export const DEPARTMENT_CREST_REGEX = /(ODS|NCOA|RRD|RTC|[S]+\d+)\b/i;
