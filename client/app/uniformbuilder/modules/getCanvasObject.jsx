@@ -288,7 +288,22 @@ export default async function GetCanvasObject(userName) {
       true,
       primaryBilletCrest.crestImage,
     );
-    departmentCrests.set(primaryBilletCrest.crestName, crest);
+    departmentCrests.set(crest.crestName, crest);
+  }
+
+  for (let i in data.secondaries) {
+    const secondaryBillet = data.secondaries[i].positionTitle;
+    const secondaryBilletCrest =
+      UnitCrestRegistery.getCrestByPosition(secondaryBillet);
+
+    if (secondaryBilletCrest) {
+      const crest = new DepartmentCrest(
+        secondaryBilletCrest.crestName,
+        false,
+        secondaryBilletCrest.crestImage,
+      );
+      departmentCrests.set(crest.crestName, crest);
+    }
   }
 
   arr.push(ribbons.sort((a, b) => a.awardPriority - b.awardPriority));
