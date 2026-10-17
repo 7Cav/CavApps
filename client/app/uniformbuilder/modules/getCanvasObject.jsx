@@ -315,7 +315,7 @@ export default async function GetCanvasObject(userName) {
   arr.push(combatBadge);
   arr.push(weaponQual);
   arr.push(tabs.sort((a, b) => a.awardPriority - b.awardPriority));
-  arr.push(departmentCrests.size);
+  arr.push([...departmentCrests.values()]);
 
   console.log(arr);
 
