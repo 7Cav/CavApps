@@ -68,10 +68,14 @@ const { test, report } = createHarness();
 const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
 const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
 
+// Every member with a MILPAC holds a primary billet. The API sends an empty
+// secondaries list for a member who holds none.
 const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
   rank,
   mos,
+  primary: { positionTitle: "Trooper 3/2/A/1-7" },
+  secondaries: [],
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
