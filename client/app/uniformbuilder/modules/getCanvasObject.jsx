@@ -1,4 +1,5 @@
 import { AwardRegistry } from "./AwardRegistry";
+import { DepartmentCrestRegistry } from "./DepartmentCrestRegistry";
 import GetIndividual from "../../reusableModules/getIndividual";
 import {
   Award,
@@ -12,6 +13,7 @@ import {
   BadgeCombat,
   WeaponQual,
   Tab,
+  DepartmentCrest,
 } from "./AwardClasses";
 import GetUserInfo from "./GetUserInfo";
 import {
@@ -36,6 +38,7 @@ export default async function GetCanvasObject(userName) {
   const awardMap = new Map();
   const departmentCrests = new Map();
   const AwardRegistryInstance = new AwardRegistry();
+  const UnitCrestRegistery = new DepartmentCrestRegistry();
 
   for (let i in data.awards) {
     //Check to see if the API medal is one with valor. If so, flag it w/ hasValorDevice.
@@ -252,8 +255,18 @@ export default async function GetCanvasObject(userName) {
   weaponQual = weaponQual ?? 0;
 
   //search API call for billets which contain department crests
-  for (billet in data.primary) {
-    // TODO: IMPLEMENT
+  const primaryBillet = data.primary.positionTitle;
+  const primaryBilletCrest =
+    UnitCrestRegistery.getCrestByPosition(primaryBillet);
+
+  if (primaryBilletCrest) {
+    //make a new crest, add it to the set
+    const crest = new DepartmentCrest(
+      primaryBilletCrest.crestName,
+      true,
+      primaryBilletCrest.crestImage,
+    );
+    departmentCrests.set(primaryBilletCrest.crestName, crest);
   }
 
   arr.push(ribbons.sort((a, b) => a.awardPriority - b.awardPriority));
@@ -262,7 +275,7 @@ export default async function GetCanvasObject(userName) {
   arr.push(combatBadge);
   arr.push(weaponQual);
   arr.push(tabs.sort((a, b) => a.awardPriority - b.awardPriority));
-  arr.push(departmentCrests.size());
+  arr.push(departmentCrests.size);
 
   console.log(arr);
 

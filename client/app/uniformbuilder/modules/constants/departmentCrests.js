@@ -29,13 +29,11 @@ export const DEPARTMENT_CRESTS = [
   },
 ];
 
-//We test our search by checking against longer phrases. Once that is done, we check against more primitive phrases
-//I dont like the look of this either, but I think this is the best compromise considering the vast amount of billets we use.
-export const DEPARTMENT_CREST_MAPPING_RULES = [
-  { test: (str) => /Regimental Technical Aide/i.test(str), crestName: "S6" },
+export const DEPARTMENT_CREST_TITLE_EXCEPTIONS = [
   {
-    test: (str) => /^(ODS|NCOA|RRD|RTC|[A-Z]+\d+)\b/i.test(str),
-    crestName: (str) =>
-      str.match(/^(ODS|NCOA|RRD|RTC|[A-Z]+\d+)\b/i)[1].toUpperCase(),
+    positionTitle: "Regimental Technical Aide",
+    alias: "S6",
   },
 ];
+
+export const DEPARTMENT_CREST_REGEX = /^(ODS|NCOA|RRD|RTC|[S]+\d+)\b/i;
