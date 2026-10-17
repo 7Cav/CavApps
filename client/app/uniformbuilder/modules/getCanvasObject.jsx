@@ -55,6 +55,31 @@ export default async function GetCanvasObject(userName) {
     const registryDetails = AwardRegistryInstance.getAwardDetails(key);
     const awardType = registryDetails.awardType;
 
+    //Check to see if a medal is a crest granting one, if so we add the crest to the crest set.
+
+    const medalCrest = UnitCrestRegistery.getCrestByPosition(
+      data.awards[i].awardDetails,
+    );
+
+    if (registryDetails.awardType == AwardType.MedalGrantsCrest && medalCrest) {
+      console.log(data.awards[i].awardDetails);
+
+      const crest = new DepartmentCrest(
+        medalCrest.crestName,
+        false,
+        medalCrest.crestImage,
+      );
+
+      console.log(
+        "Found Crest Medal:",
+        crest.crestName,
+        crest.crestImage,
+        crest,
+      );
+
+      departmentCrests.set(crest.crestName, crest);
+    }
+
     //A member can hold a combat badge their MOS does not wear — an aircrew
     //badge earned by a medic, say. It stays on their record; it just never
     //reaches the uniform.
@@ -180,19 +205,6 @@ export default async function GetCanvasObject(userName) {
             );
             awardMap.set(key, newMedalGrantsCrest);
             totalRibbonCount++;
-
-            //then get the crest to be added
-
-            const medalCrest = UnitCrestRegistery.getCrestByPosition(
-              newMedalGrantsCrest.awardDetail,
-            );
-
-            const crest = new DepartmentCrest(
-              medalCrest.crestName,
-              false,
-              medalCrest.crestImage,
-            );
-            departmentCrests.set(crest.crestName, crest);
             break;
           case AwardType.UnitCitation:
             const newUnitCitation = new UnitCitation(
