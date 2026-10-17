@@ -95,6 +95,17 @@ export class MedalWithValor extends Medal {
   }
 }
 
+// Contains the award detail which is ran against the unit crest registry in getCanvasObject
+// for now this is only used for the AFSM, but if that changes this can be renamed to MedalWithDetial
+export class MedalGrantsCrest extends Medal {
+  awardDetail;
+
+  constructor(data, AwardRegistry) {
+    super(data, AwardRegistry);
+    this.awardDetail = data.awardDetails;
+  }
+}
+
 export class RibbonDonationLogic extends Ribbon {
   constructor(data, AwardRegistry) {
     super(data, AwardRegistry);

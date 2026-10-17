@@ -203,7 +203,7 @@ export const AWARD_CATALOG = [
     awardPriority: 27,
     medalPriority: 27,
     awardAttachmentType: AwardAttachmentType.STARS,
-    awardType: AwardType.Medal,
+    awardType: AwardType.MedalGrantsCrest,
   },
   {
     name: "Humanitarian Service Medal",
@@ -224,14 +224,14 @@ export const AWARD_CATALOG = [
     medalPriority: 29,
     awardAttachmentType: AwardAttachmentType.STARS,
     awardType: AwardType.MedalTiered,
-  }, // Fuck you, whoever put this into SOP
+  },
   {
     name: "StackUp Donation Medal",
     awardPriority: 31,
     medalPriority: 30,
     awardAttachmentType: AwardAttachmentType.GC_NOTCHES,
     awardType: AwardType.MedalTiered,
-  }, // and again
+  },
   {
     name: "Outstanding Volunteer Service Medal",
     awardPriority: 32,
