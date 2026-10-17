@@ -13,8 +13,11 @@ export class DepartmentCrestRegistry {
   }
 
   initalizeCrests() {
-    for (const { crestName, ...details } of DEPARTMENT_CRESTS) {
-      this.crests.set(crestName, details);
+    for (const crest of DEPARTMENT_CRESTS) {
+      this.crests.set(crest.crestName, {
+        crestName: crest.crestName,
+        crestImage: crest.crestImage,
+      });
     }
   }
 
@@ -42,7 +45,7 @@ export class DepartmentCrestRegistry {
 
   checkForAlias(positionName) {
     if (this.positionAliases.has(positionName)) {
-      return this.positionAliases.get(positionName);
+      return this.crests.get(this.positionAliases.get(positionName));
     }
     return null;
   }
