@@ -21,6 +21,10 @@
  * and marksman arrays) and draws one plate per entry, top to bottom, in array
  * order. The order of that array is what the weapon qual tests assert.
  *
+ * Department crests come out in data[7], one object per crest. The canvas does
+ * not draw them yet. The crest cases read two fields off each crest: crestName,
+ * the department code, and isActiveBillet, the builder's best guess.
+ *
  * The only stub is globalThis.fetch, the outermost network adapter. No
  * internal collaborator is mocked.
  *
@@ -68,10 +72,14 @@ const { test, report } = createHarness();
 const ENLISTED = { rankShort: "SPC", rankId: "19" }; // E4, Specialist
 const OFFICER = { rankShort: "CPT", rankId: "9" }; // O3, Captain
 
+// Every member with a MILPAC holds a primary billet. The API sends an empty
+// secondaries list for a member who holds none.
 const rosterResponse = (mos, awardNames, rank = ENLISTED) => ({
   user: { username: "Weather.J" },
   rank,
   mos,
+  primary: { positionTitle: "Trooper 3/2/A/1-7" },
+  secondaries: [],
   awards: awardNames.map((awardName) => ({ awardName, awardDetails: "" })),
 });
 
@@ -428,6 +436,123 @@ await test("Mk-82 Marksman is filed under marksman quals", async () => {
     (await weaponQualsFor(["Mk-82 Marksman"])).marksmanQuals,
     ["mk82"],
   );
+});
+
+// ── Department crests: billets and the AFSM ──────────────────────────────────
+// A member's staff department crests come from three sources: the primary
+// billet's title, each secondary billet's title, and the details of each Armed
+// Forces Service Medal. The canvas will list the crests in a dropdown and
+// preselect the builder's best guess, the one marked isActiveBillet. For now
+// the best guess is the primary billet's crest.
+//
+// Every title and details string here comes from MILPAC as written. The
+// expected department codes are typed by hand, never read from the crest
+// constants. Both readouts are sorted, so the order the sources are read in
+// cannot fail a test. They keep duplicates, so a crest found twice does.
+
+const AFSM = "Armed Forces Service Medal";
+
+/**
+ * The department codes of a member's crests, and of the crests the builder
+ * marks as its best guess. With no primary given, the member holds the
+ * fixture's line billet, which names no department.
+ */
+const crestsFor = async ({ primary, secondaries = [], awards = [] }) => {
+  const payload = {
+    ...rosterResponse("11B", []),
+    ...(primary && { primary: { positionTitle: primary } }),
+    secondaries: secondaries.map((positionTitle) => ({ positionTitle })),
+    awards: awards.map(([awardName, awardDetails]) => ({
+      awardName,
+      awardDetails,
+    })),
+  };
+  globalThis.fetch = async () => ({ status: 200, json: async () => payload });
+  const crests = (await GetCanvasObject(payload.user.username))[7];
+  const codes = (list) => list.map((crest) => crest.crestName).sort();
+  return {
+    crests: codes(crests),
+    bestGuess: codes(crests.filter((crest) => crest.isActiveBillet)),
+  };
+};
+
+await test("an S1 primary billet gives the S1 crest", async () => {
+  const { crests } = await crestsFor({ primary: "S1 Milpacs Clerk" });
+  assert.deepStrictEqual(crests, ["S1"]);
+});
+
+await test("the Regimental Technical Aide gets the S6 crest though the title names no department", async () => {
+  const { crests } = await crestsFor({ primary: "Regimental Technical Aide" });
+  assert.deepStrictEqual(crests, ["S6"]);
+});
+
+await test("a line trooper with an S6 secondary billet gets the S6 crest", async () => {
+  const { crests } = await crestsFor({ secondaries: ["S6 Forums Staff"] });
+  assert.deepStrictEqual(crests, ["S6"]);
+});
+
+await test("a line trooper with an S2 AFSM gets the S2 crest", async () => {
+  const { crests } = await crestsFor({
+    awards: [[AFSM, "For S2 Department 30APR19 - 30APR20"]],
+  });
+  assert.deepStrictEqual(crests, ["S2"]);
+});
+
+await test("every AFSM a member holds gives its crest, not only the first", async () => {
+  // MILPAC records one AFSM per stint in a department, so long-serving
+  // members hold several.
+  const { crests } = await crestsFor({
+    awards: [
+      [AFSM, "For S1 Dept. 01OCT12 - 30MAR13"],
+      [AFSM, "S5 - 06OCT2022 - 06OCT2023"],
+    ],
+  });
+  assert.deepStrictEqual(crests, ["S1", "S5"]);
+});
+
+await test("S1 from the primary, a secondary and an AFSM gives one S1 crest", async () => {
+  const { crests } = await crestsFor({
+    primary: "S1 1IC",
+    secondaries: ["S1 Milpacs Lead"],
+    awards: [[AFSM, "For S1 Dept. 01OCT12 - 30MAR13"]],
+  });
+  assert.deepStrictEqual(crests, ["S1"]);
+});
+
+await test("a secondary billet in the primary's department keeps the primary's crest the best guess", async () => {
+  const { bestGuess } = await crestsFor({
+    primary: "S1 1IC",
+    secondaries: ["S1 Milpacs Lead"],
+  });
+  assert.deepStrictEqual(bestGuess, ["S1"]);
+});
+
+// One department from each source. The primary is a 1IC billet, so its crest
+// stays the best guess if the builder later ranks billets with 1IC first.
+const ONE_CREST_FROM_EACH_SOURCE = {
+  primary: "S1 1IC",
+  secondaries: ["S6 Forums Staff"],
+  awards: [[AFSM, "S3 - FEB23 to FEB24"]],
+};
+
+await test("crests from the primary, a secondary and an AFSM all reach the uniform", async () => {
+  const { crests } = await crestsFor(ONE_CREST_FROM_EACH_SOURCE);
+  assert.deepStrictEqual(crests, ["S1", "S3", "S6"]);
+});
+
+await test("only the primary billet's crest is the best guess", async () => {
+  const { bestGuess } = await crestsFor(ONE_CREST_FROM_EACH_SOURCE);
+  assert.deepStrictEqual(bestGuess, ["S1"]);
+});
+
+await test("a department named in another award's details gives no crest", async () => {
+  // Hundreds of MILPAC awards besides the AFSM name a department in their
+  // details. This member holds no crest-granting billet or AFSM, so the
+  // builder hands the canvas an empty list.
+  const { crests } = await crestsFor({
+    awards: [["Meritorious Service Medal", "S3 Department"]],
+  });
+  assert.deepStrictEqual(crests, []);
 });
 
 report();
