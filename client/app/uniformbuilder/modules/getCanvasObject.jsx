@@ -14,6 +14,7 @@ import {
   WeaponQual,
   Tab,
   DepartmentCrest,
+  MedalGrantsCrest,
 } from "./AwardClasses";
 import GetUserInfo from "./GetUserInfo";
 import {
@@ -171,6 +172,27 @@ export default async function GetCanvasObject(userName) {
             );
             awardMap.set(key, newMedalWithValor);
             totalRibbonCount++;
+            break;
+          case AwardType.MedalGrantsCrest:
+            const newMedalGrantsCrest = new MedalGrantsCrest(
+              data.awards[i],
+              AwardRegistryInstance,
+            );
+            awardMap.set(key, newMedalGrantsCrest);
+            totalRibbonCount++;
+
+            //then get the crest to be added
+
+            const medalCrest = UnitCrestRegistery.getCrestByPosition(
+              newMedalGrantsCrest.awardDetail,
+            );
+
+            const crest = new DepartmentCrest(
+              medalCrest.crestName,
+              false,
+              medalCrest.crestImage,
+            );
+            departmentCrests.set(crest.crestName, crest);
             break;
           case AwardType.UnitCitation:
             const newUnitCitation = new UnitCitation(
