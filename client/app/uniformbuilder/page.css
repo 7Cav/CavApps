@@ -3,10 +3,12 @@
   width: 100vw;
 }
 
-/* Next.js keeps this stylesheet loaded after client-side navigation to
-   another app, so the element rules here only match inside
-   .masterboxbuilder. :where() adds no specificity, which lets the a:hover
-   underline in globals.css still win. */
+/*
+  Next.js keeps this stylesheet loaded after client-side navigation to
+  another app, so each element rule here only matches inside
+  .masterboxbuilder. :where() adds no specificity, which lets the a:hover
+  underline in globals.css still win.
+*/
 :where(.masterboxbuilder) a {
   color: #ebc729;
   font-weight: 700;
@@ -120,6 +122,7 @@
   text-align: center;
 }
 
+/* Only matches inside .masterboxbuilder. See the note above the a rule. */
 :where(.masterboxbuilder) input {
   font-size: 14px;
   color: #f1f1f1;
