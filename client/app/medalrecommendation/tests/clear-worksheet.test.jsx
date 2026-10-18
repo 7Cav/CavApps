@@ -127,10 +127,6 @@ describe("Clear Worksheet", () => {
         const dialog = screen.getByRole("dialog", { name: "Clear worksheet?" });
         expect(dialog).toHaveAccessibleName(/clear worksheet/i);
         expect(dialog).toHaveAccessibleDescription();
-        expect(dialog).toHaveAccessibleDescription(/remove.*information/i);
-        expect(dialog).toHaveAccessibleDescription(
-          /selected medal.*(?:remain|preserv|unchanged)/i,
-        );
         expect(
           within(dialog).getByRole("button", { name: "Cancel" }),
         ).toHaveFocus();

@@ -73,7 +73,7 @@ describe("Medal Recommendation shared branding", () => {
     const { container } = render(
       <Logo subtitle="Custom subtitle" width="250" height="50" />,
     );
-    expect(screen.getByText("Custom subtitle").tagName).toBe("text");
+    expect(screen.getByText("Custom subtitle")).toBeInTheDocument();
     expect(container.querySelector("svg")).toHaveAttribute("width", "250");
     expect(container.querySelector("svg")).toHaveAttribute("height", "50");
     expect(

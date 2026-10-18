@@ -42,12 +42,6 @@ const steps = [
           eyewitness statements and the operation's OIC approval.
         </p>
         <p>
-          If submitting on someone else's behalf, link the original author's
-          MILPAC, state that they have signed off, and accept responsibility for
-          the recommendation and its compliance with medal standards. Consult
-          the SOP or your chain of command about exceptions.
-        </p>
-        <p>
           <strong>Submission Deadlines:</strong> Combat Medal recommendations
           must be prepared within one week of the After Action Report (AAR)
           posting. For Service Medals, the recognized action must have occurred
@@ -211,8 +205,9 @@ const steps = [
         </p>
         <p>
           If S1 returns your recommendation for egregious errors, you have up to
-          <strong> three days</strong> to correct them before the ticket is closed.
-          Monitor your submitted ticket for requests or required corrections.
+          <strong> three days</strong> to correct them before the ticket is
+          closed. Monitor your submitted ticket for requests or required
+          corrections.
         </p>
       </>
     ),

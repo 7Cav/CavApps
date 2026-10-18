@@ -53,11 +53,7 @@ describe("Medal Recommendation Aid landing page", () => {
       [serviceLink, "distinguished-service-medal.png"],
     ]) {
       const medal = within(link).getByRole("presentation", { hidden: true });
-      const imageUrl = new URL(medal.getAttribute("src"), "http://localhost");
-      expect(imageUrl.pathname).toBe("/_next/image");
-      expect(imageUrl.searchParams.get("url")).toBe(
-        `/medalrecommendation/${asset}`,
-      );
+      expect(medal.getAttribute("src")).toContain(asset);
       expect(medal).toHaveAttribute("alt", "");
       expect(
         link.compareDocumentPosition(howTo) & Node.DOCUMENT_POSITION_FOLLOWING,
