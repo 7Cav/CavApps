@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import MedalHowToUsePage from "../how-to-use/page";
 
 describe("Medal Recommendation How to Use guide", () => {
-  test("introduces the guide with the approved approval, follow-up, and SOP guidance", () => {
+  test("explains eligibility, approval, follow-up responsibilities and links to the SOP", () => {
     render(<MedalHowToUsePage />);
 
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
@@ -18,13 +18,17 @@ describe("Medal Recommendation How to Use guide", () => {
     const introduction = screen.getByRole("region", {
       name: "Before You Begin",
     });
-    expect(
-      within(introduction).getByText(
-        "The Medal Recommendation Aid helps you prepare a recommendation, but successfully generating one does not guarantee approval. All recommendations remain subject to the Regiment's eligibility requirements, review, and approval procedures. After submitting your recommendation, you may be asked to provide supporting evidence, additional justification, or witnesses, so be sure to monitor your ticket and respond to any follow-up requests.",
-      ),
-    ).toBeVisible();
     expect(introduction).toHaveTextContent(
-      "Before starting, familiarize yourself with the current Awards & Decorations SOP on the 7th Cavalry Wiki. If you have questions about eligibility, award selection, or submission procedures, consult your chain of command.",
+      /does not.*eligibility.*guarantee approval/i,
+    );
+    expect(introduction).toHaveTextContent(/comply.*Awards & Decorations SOP/i);
+    expect(introduction).toHaveTextContent(/subject to review and approval/i);
+    expect(introduction).toHaveTextContent(
+      /monitor.*ticket.*respond promptly/i,
+    );
+    expect(introduction).toHaveTextContent(/supporting evidence.*corrections/i);
+    expect(introduction).toHaveTextContent(
+      /questions.*eligibility.*award selection.*submission.*chain of command/i,
     );
     const sop = within(introduction).getByRole("link", {
       name: "Awards & Decorations SOP",
@@ -68,9 +72,7 @@ describe("Medal Recommendation How to Use guide", () => {
       for (const name of ["What You Do", "What the Tool Does"]) {
         expect(within(step).getByRole("region", { name })).toBeVisible();
       }
-      expect(within(step).queryByRole("link")).not.toBeInTheDocument();
     });
-    expect(screen.queryByText(/Clear Worksheet/i)).not.toBeInTheDocument();
   });
 
   test("preserves article guidance, conditional Service starters, and the manual submission boundary", () => {
@@ -78,24 +80,105 @@ describe("Medal Recommendation How to Use guide", () => {
     const steps = within(
       screen.getByRole("list", { name: "Recommendation steps" }),
     ).getAllByRole("listitem");
-    expect(steps[3]).toHaveTextContent(
-      'Some entries become part of a generated sentence and may require you to include the appropriate article, such as "a" or "an." Pay close attention to each field\'s placeholder text and ensure your entries make grammatical sense.',
-    );
-    expect(steps[4]).toHaveTextContent(
-      "For Service Medals that provide a required sentence starter, continue directly from the displayed text. Do not repeat the starter or begin an unrelated sentence. Your narrative should complete the opening naturally.",
-    );
+    expect(steps[3]).toHaveTextContent(/article.*\ba\b.*\ban\b/i);
+    expect(steps[3]).toHaveTextContent(/placeholder.*grammatical/i);
+    expect(steps[4]).toHaveTextContent(/Service Medals.*sentence starter/i);
+    expect(steps[4]).toHaveTextContent(/continue directly.*displayed text/i);
+    expect(steps[4]).toHaveTextContent(/do not repeat the starter/i);
     expect(steps[5]).toHaveTextContent(
-      "Generating a recommendation does not submit it or indicate approval.",
+      /generating.*does not submit.*approval/i,
     );
     expect(steps[6]).toHaveTextContent(
-      "Copy the generated Recommendation Title, then select Open Medal Recommendation Ticket. Paste the title into the appropriate ticket field.",
+      /copy.*Recommendation Title.*Open Medal Recommendation Ticket.*paste.*title/i,
     );
     expect(steps[6]).toHaveTextContent(
-      "Return to the Aid, copy the Recommendation Body, and paste it into the ticket's message field. Review the completed ticket before submitting it through the forums.",
+      /return to the Aid.*copy.*Recommendation Body.*paste.*message field/i,
     );
-    expect(steps[6]).toHaveTextContent(
-      "The Aid does not automatically create, send, or submit the ticket. You must complete the final submission yourself.",
+    expect(steps[6]).toHaveTextContent(/BBCode-formatted Body/i);
+    expect(steps[6]).toHaveTextContent(/review.*ticket.*before submitting/i);
+    expect(steps[6]).toHaveTextContent(/does not automatically.*submit/i);
+    expect(steps[6]).toHaveTextContent(/final submission yourself/i);
+  });
+
+  test("explains recommender authority, restricted exceptions and distinct combat and service deadlines", () => {
+    render(<MedalHowToUsePage />);
+    const requirements = within(
+      screen.getByRole("region", {
+        name: /Review the Medal Requirements$/,
+      }),
+    ).getByRole("region", { name: "What You Do" });
+    expect(requirements).toHaveTextContent(
+      /outrank the recipient by Regiment billet/i,
     );
+    expect(requirements).toHaveTextContent(/witnessed the action/i);
+    expect(requirements).toHaveTextContent(
+      /temporary operation billets do not override Regiment billets/i,
+    );
+    expect(requirements).toHaveTextContent(
+      /lower- or equal-billet.*superiors.*combat medals/i,
+    );
+    expect(requirements).toHaveTextContent(
+      /three independent eyewitness statements/i,
+    );
+    expect(requirements).toHaveTextContent(/operation's OIC approval/i);
+    expect(requirements).toHaveTextContent(
+      /submitting on someone else's behalf/i,
+    );
+    expect(requirements).toHaveTextContent(
+      /link the original author's MILPAC/i,
+    );
+    expect(requirements).toHaveTextContent(/state that they have signed off/i);
+    expect(requirements).toHaveTextContent(
+      /accept responsibility.*recommendation.*compliance with medal standards/i,
+    );
+    expect(requirements).toHaveTextContent(/SOP.*chain of command.*exception/i);
+    expect(requirements).toHaveTextContent(
+      /Combat Medal.*one week.*After Action Report \(AAR\) posting/i,
+    );
+    expect(requirements).toHaveTextContent(
+      /Service Medals.*action.*last 30 days.*waived.*Chief of Staff \(COS\).*designate/i,
+    );
+    expect(requirements).toHaveTextContent(
+      /medal's criteria.*narrative guidance.*eligibility guidance/i,
+    );
+    expect(
+      screen.getByRole("region", { name: /Review the Medal Requirements$/ }),
+    ).toHaveTextContent(
+      /cannot independently determine.*deserves an award.*eligibility/i,
+    );
+  });
+
+  test("requires review of nonblocking warnings and directs copying to the Title and Body controls", () => {
+    render(<MedalHowToUsePage />);
+    const review = within(
+      screen.getByRole("region", {
+        name: /Generate and Review Your Recommendation$/,
+      }),
+    ).getByRole("region", { name: "What You Do" });
+    expect(review).toHaveTextContent(
+      /review all validation warnings.*do not prevent.*generated/i,
+    );
+    expect(review).toHaveTextContent(/do not copy.*Recommendation Preview/i);
+    expect(review).toHaveTextContent(
+      /use.*Recommendation Title.*Recommendation Body copy controls/i,
+    );
+    expect(review).toHaveTextContent(/corrections.*generate.*again/i);
+  });
+
+  test("places witness information and the egregious-error correction deadline in submission guidance", () => {
+    render(<MedalHowToUsePage />);
+    const submission = within(
+      screen.getByRole("region", { name: /Submit Your Recommendation$/ }),
+    ).getByRole("region", { name: "What You Do" });
+    expect(submission).toHaveTextContent(/include the names.*witnesses/i);
+    expect(submission).toHaveTextContent(
+      /supporting witness statements required by the SOP/i,
+    );
+    expect(submission).toHaveTextContent(/does not collect.*automatically/i);
+    expect(submission).toHaveTextContent(
+      /S1.*egregious errors.*up to three days.*correct.*ticket is closed/i,
+    );
+    expect(submission).toHaveTextContent(/monitor.*ticket.*corrections/i);
   });
 
   test("provides feature-home links above the guide and after the final step", () => {

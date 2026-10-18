@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -46,6 +47,8 @@ import {
 import { validateWorksheet } from "./lib/worksheet-validation";
 import { generateRecommendation } from "./lib/recommendation-generation";
 import { buildMilpacsUrl } from "./lib/recommendation-export";
+import { oswald } from "./lib/fonts";
+import { FEATURE_HOME_LINK_CLASS_NAME } from "./lib/navigation-styles";
 import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
@@ -330,8 +333,6 @@ export default function MedalRecommendationClient({
   const [recommendation, setRecommendation] = useState(null);
   const generationId = useRef(0);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
-  const clearWorksheetButtonRef = useRef(null);
-  const cancelClearButtonRef = useRef(null);
 
   const rosterMembers = useMemo(
     () => uniqueRecipients(recipientRoster ?? []),
@@ -540,14 +541,16 @@ export default function MedalRecommendationClient({
     <main className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8">
       <Link
         href="/medalrecommendation"
-        className="inline-flex items-center gap-2 rounded-sm px-1 py-1 text-sm font-medium !text-muted-foreground transition-colors hover:!text-foreground hover:!no-underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+        className={FEATURE_HOME_LINK_CLASS_NAME}
       >
         <span aria-hidden="true">←</span>
         Medal Recommendation Aid
       </Link>
 
       <header className="mt-6 max-w-3xl">
-        <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+        <h1
+          className={`${oswald.className} text-3xl font-semibold tracking-tight text-primary sm:text-4xl`}
+        >
           {pageTitle}
         </h1>
 
@@ -626,7 +629,7 @@ export default function MedalRecommendationClient({
                 >
                   <h3
                     id="award-guidance-heading"
-                    className="text-xs font-semibold tracking-[0.18em] text-primary uppercase"
+                    className="font-semibold text-foreground"
                   >
                     Award Guidance
                   </h3>
@@ -760,26 +763,16 @@ export default function MedalRecommendationClient({
                     open={clearDialogOpen}
                     onOpenChange={setClearDialogOpen}
                   >
-                    <Button
-                      ref={clearWorksheetButtonRef}
-                      type="button"
-                      variant="secondary"
-                      className="ml-auto"
-                      onClick={() => setClearDialogOpen(true)}
-                    >
-                      Clear Worksheet
-                    </Button>
-                    <DialogContent
-                      className="max-w-md"
-                      onOpenAutoFocus={(event) => {
-                        event.preventDefault();
-                        cancelClearButtonRef.current?.focus();
-                      }}
-                      onCloseAutoFocus={(event) => {
-                        event.preventDefault();
-                        clearWorksheetButtonRef.current?.focus();
-                      }}
-                    >
+                    <DialogTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        className="ml-auto"
+                      >
+                        Clear Worksheet
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
                       <DialogTitle className="pr-8 text-xl font-semibold text-primary">
                         Clear worksheet?
                       </DialogTitle>
@@ -790,11 +783,7 @@ export default function MedalRecommendationClient({
                       </DialogDescription>
                       <div className="mt-6 flex flex-wrap justify-end gap-3">
                         <DialogClose asChild>
-                          <Button
-                            ref={cancelClearButtonRef}
-                            type="button"
-                            variant="outline"
-                          >
+                          <Button type="button" variant="outline">
                             Cancel
                           </Button>
                         </DialogClose>

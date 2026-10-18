@@ -12,6 +12,7 @@ import {
   selectAward,
   selectComboboxOption,
   selectRecipient,
+  selectAllRecipients as confirmAll,
   submitRecommendation,
 } from "./test-helpers";
 
@@ -86,12 +87,6 @@ async function setup(members = roster, service = false) {
 async function openBulk(user, name = "Bulk Add Recipients") {
   await user.click(screen.getByRole("button", { name }));
   return screen.getByRole("dialog", { name: "Bulk Recipient Selection" });
-}
-
-async function confirmAll(user) {
-  await openBulk(user);
-  await user.click(screen.getByRole("button", { name: "Select All Shown" }));
-  await user.click(screen.getByRole("button", { name: "Confirm Recipients" }));
 }
 
 function recipientFields() {

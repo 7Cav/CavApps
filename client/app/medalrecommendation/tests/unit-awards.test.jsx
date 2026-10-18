@@ -4,8 +4,10 @@ import {
   enterWorksheetField as enter,
   getCitationText,
   makeRecipientRoster,
+  openBulkRecipientDialog as openBulk,
   renderClient,
   selectAward,
+  selectAllRecipients as selectAll,
   selectComboboxOption,
   submitRecommendation,
 } from "./test-helpers";
@@ -47,19 +49,6 @@ async function open(award, count = award.minimumRecipients) {
   });
   await selectAward(user, award.name);
   return user;
-}
-async function openBulk(user) {
-  await user.click(
-    screen.getByRole("button", {
-      name: /^(Bulk Add Recipients|View\/Edit Recipients)$/,
-    }),
-  );
-  return screen.getByRole("dialog", { name: "Bulk Recipient Selection" });
-}
-async function selectAll(user) {
-  await openBulk(user);
-  await user.click(screen.getByRole("button", { name: "Select All Shown" }));
-  await user.click(screen.getByRole("button", { name: "Confirm Recipients" }));
 }
 async function fillContext(user, award, overrides = {}) {
   if (award.family === "operation") {

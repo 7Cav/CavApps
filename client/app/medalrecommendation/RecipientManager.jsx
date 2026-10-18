@@ -50,7 +50,7 @@ export default function RecipientManager({
       aria-describedby={minimumError ? "recipients-minimum-error" : undefined}
       className="space-y-4"
     >
-      <h3 id="recipients-heading" className="font-semibold">
+      <h3 id="recipients-heading" className="font-semibold text-foreground">
         Recipients
       </h3>
       {minimumError && (

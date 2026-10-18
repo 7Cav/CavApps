@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { oswald } from "../lib/fonts";
+import { FEATURE_HOME_LINK_CLASS_NAME } from "../lib/navigation-styles";
 
 export const metadata = {
   title: "How to Use This Tool — Medal Recommendation Aid",
@@ -27,11 +29,32 @@ const steps = [
   {
     title: "Review the Medal Requirements",
     user: (
-      <p>
-        Read the Medal Criteria, Narrative Guidance, and any Eligibility
-        Guidance displayed for your chosen award. Make sure you understand what
-        the medal recognizes before preparing your recommendation.
-      </p>
+      <>
+        <p>
+          Review the medal's criteria, narrative guidance, and any eligibility
+          guidance before proceeding.
+        </p>
+        <p>
+          Recommenders generally must outrank the recipient by Regiment billet
+          and have witnessed the action. Temporary operation billets do not
+          override Regiment billets. Lower- or equal-billet members may
+          recommend superiors for combat medals only with three independent
+          eyewitness statements and the operation's OIC approval.
+        </p>
+        <p>
+          If submitting on someone else's behalf, link the original author's
+          MILPAC, state that they have signed off, and accept responsibility for
+          the recommendation and its compliance with medal standards. Consult
+          the SOP or your chain of command about exceptions.
+        </p>
+        <p>
+          <strong>Submission Deadlines:</strong> Combat Medal recommendations
+          must be prepared within one week of the After Action Report (AAR)
+          posting. For Service Medals, the recognized action must have occurred
+          within the last 30 days unless waived by the Chief of Staff (COS) or
+          their designate.
+        </p>
+      </>
     ),
     tool: (
       <>
@@ -105,7 +128,7 @@ const steps = [
           recommendation. Be specific, factual, and relevant to the selected
           medal's criteria.
         </p>
-        <p className="font-medium text-foreground">
+        <p>
           For Service Medals that provide a required sentence starter, continue
           directly from the displayed text. Do not repeat the starter or begin
           an unrelated sentence. Your narrative should complete the opening
@@ -142,6 +165,14 @@ const steps = [
           If you identify a mistake, return to the worksheet, make the necessary
           corrections, and generate the recommendation again.
         </p>
+        <p>
+          Review all validation warnings, even when they do not prevent the
+          recommendation from being generated.
+        </p>
+        <p>
+          Do not copy text directly from Recommendation Preview. Use the
+          provided Recommendation Title and Recommendation Body copy controls.
+        </p>
       </>
     ),
     tool: (
@@ -172,6 +203,17 @@ const steps = [
           paste it into the ticket's message field. Review the completed ticket
           before submitting it through the forums.
         </p>
+        <p>
+          When submitting your recommendation, include the names of any
+          witnesses to the incident or action being recognized, along with any
+          supporting witness statements required by the SOP. The Medal
+          Recommendation Aid does not collect this information automatically.
+        </p>
+        <p>
+          If S1 returns your recommendation for egregious errors, you have up to
+          <strong> three days</strong> to correct them before the ticket is closed.
+          Monitor your submitted ticket for requests or required corrections.
+        </p>
       </>
     ),
     tool: (
@@ -195,14 +237,16 @@ export default function MedalHowToUsePage() {
     <main className="mx-auto max-w-[90rem] px-4 py-6 sm:px-6 sm:py-8">
       <Link
         href="/medalrecommendation"
-        className="inline-flex items-center gap-2 rounded-sm px-1 py-1 text-sm font-medium !text-muted-foreground transition-colors hover:!text-foreground hover:!no-underline focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
+        className={FEATURE_HOME_LINK_CLASS_NAME}
       >
         <span aria-hidden="true">←</span>
         Medal Recommendation Aid
       </Link>
 
       <header className="mt-6 text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-primary sm:text-4xl">
+        <h1
+          className={`${oswald.className} text-3xl font-semibold tracking-tight text-primary sm:text-4xl`}
+        >
           How to Use This Tool
         </h1>
         <p className="mt-3 text-base text-muted-foreground sm:text-lg">
@@ -220,13 +264,14 @@ export default function MedalHowToUsePage() {
           </CardHeader>
           <CardContent className="space-y-4 px-5 pb-5 text-base leading-relaxed text-muted-foreground sm:px-6 sm:pb-6">
             <p>
-              The Medal Recommendation Aid helps you prepare a recommendation,
-              but successfully generating one does not guarantee approval. All
-              recommendations remain subject to the Regiment's eligibility
-              requirements, review, and approval procedures. After submitting
-              your recommendation, you may be asked to provide supporting
-              evidence, additional justification, or witnesses, so be sure to
-              monitor your ticket and respond to any follow-up requests.
+              The Medal Recommendation Aid is designed to help you prepare a
+              properly formatted medal recommendation, but successfully
+              generating one does not establish eligibility or guarantee
+              approval. All recommendations must comply with the Regiment's
+              Awards &amp; Decorations SOP and remain subject to review and
+              approval. After submitting your recommendation, be sure to monitor
+              your ticket and respond promptly to any requests for additional
+              information, supporting evidence, or corrections.
             </p>
             <p>
               Before starting, familiarize yourself with the current{" "}

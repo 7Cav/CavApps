@@ -12,6 +12,9 @@ export const MEDAL_FAMILY_IDS = Object.freeze({
   SERVICE: "service",
 });
 
+const WORKSHEET_DESCRIPTION =
+  "Prepare a recommendation to recognize a fellow trooper.";
+
 const MEDAL_FAMILIES = Object.freeze({
   [MEDAL_FAMILY_IDS.OPERATION]: Object.freeze({
     id: MEDAL_FAMILY_IDS.OPERATION,
@@ -19,11 +22,22 @@ const MEDAL_FAMILIES = Object.freeze({
     landingTitle: "Operation Medals",
     landingDescription:
       "Create recommendations recognizing actions performed during operations.",
+    artwork: Object.freeze({
+      src: "/medalrecommendation/bronze-star.png",
+      width: 1254,
+      height: 1254,
+      className: "w-full",
+      // 42% of the card's inner width, including padding, borders and grid gap.
+      // The app's 13px root makes the 90rem page cap 1170px. Use pixels here:
+      // image sizes resolves rem against the initial font size, not that root.
+      sizes:
+        "(min-width: 1170px) 221px, (min-width: 1024px) calc(21vw - 25px), (min-width: 640px) calc(42vw - 29px), calc(42vw - 18px)",
+    }),
     medals: OPERATION_MEDALS,
     getMedalById: getOperationMedalById,
     awardPlaceholder: "Select an Operation Medal",
     pageTitle: "Operation Medal Recommendation",
-    pageDescription: "Prepare a recommendation to recognize a fellow trooper.",
+    pageDescription: WORKSHEET_DESCRIPTION,
   }),
   [MEDAL_FAMILY_IDS.SERVICE]: Object.freeze({
     id: MEDAL_FAMILY_IDS.SERVICE,
@@ -31,11 +45,20 @@ const MEDAL_FAMILIES = Object.freeze({
     landingTitle: "Service Medals",
     landingDescription:
       "Create recommendations recognizing service and contributions to the Regiment.",
+    artwork: Object.freeze({
+      src: "/medalrecommendation/distinguished-service-medal.png",
+      width: 1132,
+      height: 1390,
+      className: "w-4/5",
+      // DSM occupies 80% of the same 42% artwork column.
+      sizes:
+        "(min-width: 1170px) 177px, (min-width: 1024px) calc(16.8vw - 20px), (min-width: 640px) calc(33.6vw - 23px), calc(33.6vw - 14px)",
+    }),
     medals: SERVICE_MEDALS,
     getMedalById: getServiceMedalById,
     awardPlaceholder: "Select a Service Medal",
     pageTitle: "Service Medal Recommendation",
-    pageDescription: "Prepare a recommendation to recognize a fellow trooper.",
+    pageDescription: WORKSHEET_DESCRIPTION,
   }),
 });
 

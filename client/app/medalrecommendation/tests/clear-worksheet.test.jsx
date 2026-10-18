@@ -2,6 +2,7 @@ import { act, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   enterWorksheetField as enter,
+  fillOperationWorksheet,
   makeRecipient,
   makeRecipientRoster,
   renderClient,
@@ -10,19 +11,20 @@ import {
   selectAward,
   selectComboboxOption,
   selectRecipient,
+  selectAllRecipients,
   submitRecommendation,
 } from "./test-helpers.js";
 
 const narrative =
   "Specialist John Smith secured the crossing. The team repelled the attack. The mission succeeded.";
 
-function fillOperation(title = "Overlord") {
-  enter("Combat Element", "a rifleman");
-  enter("Operation Title", title);
-  enter("Location", "Normandy");
-  enter("Operation Date", "2026-08-11");
-  enter("Narrative", narrative);
-}
+const operationValues = {
+  combatElement: "a rifleman",
+  operationTitle: "Overlord",
+  location: "Normandy",
+  operationDate: "2026-08-11",
+  narrative,
+};
 
 async function clearWorksheet(user) {
   await user.click(screen.getByRole("button", { name: "Clear Worksheet" }));
@@ -63,17 +65,6 @@ function expectCleared() {
   ).toBeVisible();
 }
 
-async function selectAllRecipients(user) {
-  await user.click(screen.getByRole("button", { name: "Bulk Add Recipients" }));
-  const dialog = screen.getByRole("dialog");
-  await user.click(
-    within(dialog).getByRole("button", { name: "Select All Shown" }),
-  );
-  await user.click(
-    within(dialog).getByRole("button", { name: "Confirm Recipients" }),
-  );
-}
-
 describe("Clear Worksheet", () => {
   test.each([
     ["Operation", "Army Commendation Medal With Valor"],
@@ -89,7 +80,7 @@ describe("Clear Worksheet", () => {
       await selectAward(user, award);
       await selectRecipient(user);
       if (family === "Operation") {
-        fillOperation();
+        await fillOperationWorksheet(user, operationValues);
       } else {
         await selectComboboxOption(user, "Service / Contributions", "Service");
         enter("Benefitted Unit", "S3 Operations");
@@ -134,8 +125,11 @@ describe("Clear Worksheet", () => {
       for (const dismissal of ["Cancel", "Escape", "Close dialog"]) {
         await user.click(trigger);
         const dialog = screen.getByRole("dialog", { name: "Clear worksheet?" });
+        expect(dialog).toHaveAccessibleName(/clear worksheet/i);
+        expect(dialog).toHaveAccessibleDescription();
+        expect(dialog).toHaveAccessibleDescription(/remove.*information/i);
         expect(dialog).toHaveAccessibleDescription(
-          "This will remove all entered information, recipients, and generated recommendation content. Your selected medal will remain unchanged.",
+          /selected medal.*(?:remain|preserv|unchanged)/i,
         );
         expect(
           within(dialog).getByRole("button", { name: "Cancel" }),
@@ -194,7 +188,7 @@ describe("Clear Worksheet", () => {
       await user.click(
         screen.getByRole("button", { name: "Doe.J", exact: true }),
       );
-      fillOperation();
+      await fillOperationWorksheet(user, operationValues);
       await submitRecommendation(user);
       expect(screen.getByLabelText("Recommendation Title").value).toContain(
         "Operation Overlord",
@@ -234,7 +228,10 @@ describe("Clear Worksheet", () => {
       expect(globalThis.fetch.mock.calls).toEqual(initialRequests);
 
       await selectRecipient(user);
-      fillOperation("Fury");
+      await fillOperationWorksheet(user, {
+        ...operationValues,
+        operationTitle: "Fury",
+      });
       await submitRecommendation(user);
       const title = screen.getByLabelText("Recommendation Title").value;
       const body = screen.getByLabelText("Recommendation Body").value;
