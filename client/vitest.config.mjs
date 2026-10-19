@@ -21,6 +21,7 @@ export default defineConfig({
       ...configDefaults.exclude,
       "app/uniformbuilder/modules/awardNumerals.test.js",
       "app/uniformbuilder/modules/getCanvasObject.test.js",
+      "app/uniformbuilder/modules/getCoordArray.test.js",
       "app/uniformbuilder/modules/constants/awardCatalog.test.js",
     ],
   },

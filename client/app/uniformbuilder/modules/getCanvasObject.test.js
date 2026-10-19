@@ -6,7 +6,12 @@
  * is null (nothing is drawn), and data[4].imageNum (which badge image is
  * drawn). Those are the only things asserted here. awardTitle and the rest of
  * the badge object are internal and are deliberately left alone, so this suite
- * survives a rewrite of how the badge is chosen.
+ * survives a rewrite of how the badge is chosen. Where the badge image goes it
+ * reads from data[0].combatBadgeCoords.
+ *
+ * When the badge has no position, canvas.jsx leaves it off and lists
+ * data[0].combatBadgeError in the error box. The no-ribbon cases assert only
+ * whether there is an error. Its wording is left to review.
  *
  * For the collar it reads three things off data[0]: mosCheck (non-null means
  * the MOS and rank disagree and nothing is drawn), shoulderCord and neckPins
@@ -25,9 +30,10 @@
  * a wreath, and so on. They are deliberately NOT read back from the catalog:
  * sourcing them from the data under test would move both sides of the
  * assertion together and no row could ever fail. The weapon qual order is a
- * literal for the same reason. The one catalog read in this file is the guard
- * that checks the literal names every weapon the catalog has, which is
- * membership, not order.
+ * literal for the same reason. The catalog is read in two places, neither for
+ * an expected value: the guard that checks the literal names every weapon the
+ * catalog has, which is membership, not order, and the list of ribbon awards a
+ * fixture member holds.
  *
  * Run with `npm run test:client` — not a bare `node`; the script carries the
  * loader hook that lets Node import the client's .jsx modules.
@@ -43,6 +49,7 @@ import assert from "node:assert";
 import { createHarness } from "../../../test-harness.mjs";
 import { AWARD_CATALOG } from "./constants/awardCatalog.js";
 import { AwardType } from "./constants/awardTypes.js";
+import { chestLimit } from "./ribbonLayout.test-helpers.js";
 
 // getIndividual.js reads the two variables above at module scope, so this one
 // import has to happen after they are set — hence dynamic rather than static.
@@ -190,6 +197,71 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
   assertDraws(await combatBadgeFor("68W", [...held].reverse()), 6);
 });
 
+// ── Placement: the badge above a full chest ──────────────────────────────────
+// Ribbons past what the chest holds go on the pinboard, and the chest stays as
+// it is when full, so the badge above it belongs where a full chest puts it.
+// chestLimit only sizes the fixture here; the expected position is the
+// builder's own output for a full chest.
+
+const RIBBON_AWARD_TYPES = new Set([
+  AwardType.Ribbon,
+  AwardType.RibbonDonationLogic,
+  AwardType.RibbonByHighestRank,
+  AwardType.Medal,
+  AwardType.MedalTiered,
+  AwardType.MedalWithValor,
+]);
+const RIBBON_AWARDS = AWARD_CATALOG.filter((award) =>
+  RIBBON_AWARD_TYPES.has(award.awardType),
+).map((award) => award.name);
+
+await test("a member whose ribbons spill onto the pinboard gets their combat badge where a full chest puts it", async () => {
+  const chest = chestLimit(RIBBON_AWARDS.length);
+  assert.ok(RIBBON_AWARDS.length > chest, "too few ribbon awards to overflow");
+  const badgeAt = async (ribbons) =>
+    (
+      await canvasObjectFor("11B", [
+        "Combat Infantry Badge",
+        ...RIBBON_AWARDS.slice(0, ribbons),
+      ])
+    )[0].combatBadgeCoords;
+
+  const fullChest = await badgeAt(chest);
+  const spilled = await badgeAt(chest + 1);
+  assert.notStrictEqual(spilled, null, "no badge position past a full chest");
+  assert.deepStrictEqual(spilled, fullChest);
+});
+
+// ── No ribbons: the badge has no position, and the builder says so (#271) ────
+// The badge sits above the ribbons, so the builder has no position for it
+// when a member has none. That happens when a combat badge is posted before
+// a recruit's graduation posting.
+
+/** The combat badge error the builder hands the renderer. */
+const combatBadgeErrorFor = async (awardNames) =>
+  (await canvasObjectFor("11B", awardNames))[0].combatBadgeError;
+
+await test("a combat badge holder with no ribbons is told the badge was not drawn", async () => {
+  const error = await combatBadgeErrorFor(["Expert Infantry Badge"]);
+  assert.ok(
+    typeof error === "string" && error.length > 0,
+    `expected a combat badge error, got ${error}`,
+  );
+});
+
+// Regression pins. The error needs both a badge and no ribbons, and each pin
+// goes red if the error is raised on one of them alone. Loose equality on
+// purpose, because the canvas tests `combatBadgeError != null`.
+
+await test("a combat badge holder with a ribbon gets no combat badge error", async () => {
+  const held = ["Expert Infantry Badge", "Army Service Ribbon"];
+  assert.equal(await combatBadgeErrorFor(held), null);
+});
+
+await test("a member with no ribbons and no combat badge gets no combat badge error", async () => {
+  assert.equal(await combatBadgeErrorFor([]), null);
+});
+
 // ── Service ribbons: the medal display, in precedence order ──────────────────
 // canvas.jsx lays out data[3] in list order and reads each entry's
 // medalPriority for its sprite-sheet row. An award the registry does not know
@@ -202,20 +274,20 @@ await test("68W wears the Flight Medic Badge over a CIB, in any award order", as
 const medalsFor = async (awardNames) =>
   (await canvasObjectFor("11B", awardNames))[3];
 
-await test("Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
+await test("Hell Let Loose Vietnam Service Ribbon sits between Overseas and Ready or Not on the medal display", async () => {
   // Expected order is MILPAC's, not the catalog's: display_order 205
   // (Overseas), 210 (Vietnam), 225 (Ready or Not). Held in shuffled order so
   // the API's ordering cannot satisfy this by accident.
   const medals = await medalsFor([
     "Ready or Not Service Ribbon",
-    "Vietnam Service Ribbon",
+    "Hell Let Loose Vietnam Service Ribbon",
     "Overseas Service Ribbon",
   ]);
   assert.deepStrictEqual(
     medals.map((medal) => medal.awardTitle),
     [
       "Overseas Service Ribbon",
-      "Vietnam Service Ribbon",
+      "Hell Let Loose Vietnam Service Ribbon",
       "Ready or Not Service Ribbon",
     ],
   );
