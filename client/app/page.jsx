@@ -23,6 +23,12 @@ export default function Home() {
         <Link href="/rosterhistory">
           <button className="button">Roster History</button>
         </Link>
+        <Link
+          href="/medalrecommendation"
+          className="button hover:!text-black hover:!no-underline"
+        >
+          Medal Recommendation
+        </Link>
       </div>
     </div>
   );

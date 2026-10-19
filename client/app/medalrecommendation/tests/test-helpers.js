@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import MedalRecommendationClient from "../MedalRecommendationClient";
 import { MEDAL_FAMILY_IDS } from "../lib/medal-families.js";
 import OperationMedalRecommendationPage from "../operation/page";
@@ -247,6 +247,25 @@ export async function selectRecipient(
 ) {
   await user.type(screen.getByRole("textbox", { name: "Recipient" }), query);
   await user.click(await screen.findByRole("button", { name: username }));
+}
+
+export async function openBulkRecipientDialog(user) {
+  await user.click(
+    screen.getByRole("button", {
+      name: /^(Bulk Add Recipients|View\/Edit Recipients)$/,
+    }),
+  );
+  return screen.getByRole("dialog", { name: "Bulk Recipient Selection" });
+}
+
+export async function selectAllRecipients(user) {
+  const dialog = await openBulkRecipientDialog(user);
+  await user.click(
+    within(dialog).getByRole("button", { name: "Select All Shown" }),
+  );
+  await user.click(
+    within(dialog).getByRole("button", { name: "Confirm Recipients" }),
+  );
 }
 
 async function pasteIntoField(user, label, value) {

@@ -31,10 +31,7 @@ export default function RecommendationSubmission({ recommendation }) {
       aria-labelledby="submission-heading"
       className="space-y-4 border-t border-border/70 pt-6"
     >
-      <h3
-        id="submission-heading"
-        className="text-xs font-semibold tracking-[0.18em] text-muted-foreground uppercase"
-      >
+      <h3 id="submission-heading" className="font-semibold text-foreground">
         Recommendation Submission
       </h3>
       <p className="text-sm leading-6 text-muted-foreground">
@@ -50,7 +47,7 @@ export default function RecommendationSubmission({ recommendation }) {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label
               htmlFor={`recommendation-${field}`}
-              className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+              className="text-sm font-semibold text-foreground"
             >
               Recommendation {label}
             </label>
@@ -91,7 +88,7 @@ export default function RecommendationSubmission({ recommendation }) {
       ))}
       <Button
         asChild
-        className="h-auto min-h-10 max-w-full whitespace-normal text-center"
+        className="h-auto min-h-10 max-w-full whitespace-normal text-center sm:w-80"
       >
         <a
           href="https://7cav.us/tickets/categories/18/create"

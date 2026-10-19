@@ -13,7 +13,7 @@ describe.each([
     renderClient,
     selectAward,
     "Operation Medal Recommendation",
-    "Prepare and review an Operation Medal recommendation.",
+    "Prepare a recommendation to recognize a fellow trooper.",
     "Select an Operation Medal",
   ],
   [
@@ -21,7 +21,7 @@ describe.each([
     renderServiceClient,
     selectServiceAward,
     "Service Medal Recommendation",
-    "Prepare and review a Service Medal recommendation.",
+    "Prepare a recommendation to recognize a fellow trooper.",
     "Select a Service Medal",
   ],
 ])(
@@ -52,11 +52,20 @@ describe.each([
       ).not.toBeInTheDocument();
       expect(screen.getByText(pageDescription)).toBeVisible();
       expect(
-        screen.getByRole("heading", { name: "Recommendation Worksheet" }),
+        screen.getByRole("heading", {
+          level: 2,
+          name: "Recommendation Worksheet",
+        }),
       ).toBeVisible();
       expect(
-        screen.getByRole("heading", { name: "Review & Output" }),
+        screen.getByRole("heading", {
+          level: 2,
+          name: "Recommendation Output",
+        }),
       ).toBeVisible();
+      for (const name of ["Status", "Recommendation Preview"]) {
+        expect(screen.getByRole("heading", { level: 3, name })).toBeVisible();
+      }
       expect(
         screen.getByText("Your generated recommendation will appear here."),
       ).toBeVisible();

@@ -337,6 +337,10 @@ describe("Recommendation submission", () => {
     );
     screen.getByRole("button", { name: "Generate Recommendation" }).focus();
     await user.tab();
+    expect(
+      screen.getByRole("button", { name: "Clear Worksheet" }),
+    ).toHaveFocus();
+    await user.tab();
     expect(preview).toHaveFocus();
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
       previewWarning,

@@ -5,6 +5,11 @@ module.exports = {
   turbopack: {
     root: __dirname,
   },
+  images: {
+    // Retain the default quality and allow the detailed landing medal artwork
+    // to opt into higher quality without changing other images' defaults.
+    qualities: [75, 90],
+  },
   async headers() {
     return [
       {

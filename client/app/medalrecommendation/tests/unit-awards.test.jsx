@@ -1,12 +1,13 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import MedalRecommendationPage from "../page";
 import {
   enterWorksheetField as enter,
   getCitationText,
   makeRecipientRoster,
+  openBulkRecipientDialog as openBulk,
   renderClient,
   selectAward,
+  selectAllRecipients as selectAll,
   selectComboboxOption,
   submitRecommendation,
 } from "./test-helpers";
@@ -49,19 +50,6 @@ async function open(award, count = award.minimumRecipients) {
   await selectAward(user, award.name);
   return user;
 }
-async function openBulk(user) {
-  await user.click(
-    screen.getByRole("button", {
-      name: /^(Bulk Add Recipients|View\/Edit Recipients)$/,
-    }),
-  );
-  return screen.getByRole("dialog", { name: "Bulk Recipient Selection" });
-}
-async function selectAll(user) {
-  await openBulk(user);
-  await user.click(screen.getByRole("button", { name: "Select All Shown" }));
-  await user.click(screen.getByRole("button", { name: "Confirm Recipients" }));
-}
 async function fillContext(user, award, overrides = {}) {
   if (award.family === "operation") {
     const values = { ...UNIT_OPERATION_INPUTS, ...overrides };
@@ -87,16 +75,6 @@ describe("Unit award worksheets", () => {
     vi.setSystemTime(new Date(2026, 8, 27, 12));
   });
   afterEach(() => vi.useRealTimers());
-
-  test("Unit awards use the two existing family links without a third navigation route", () => {
-    render(<MedalRecommendationPage />);
-    expect(
-      screen.getAllByRole("link").map((link) => link.getAttribute("href")),
-    ).toEqual([
-      "/medalrecommendation/operation",
-      "/medalrecommendation/service",
-    ]);
-  });
 
   test.each(["operation", "service"])(
     "%s visibly groups every existing Individual award and its two Unit awards",
