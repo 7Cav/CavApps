@@ -101,6 +101,72 @@ async function replaceText(user, label, text) {
 }
 
 describe("inline and compact recipients", () => {
+  test("one- and two-character searches show a recipient while empty, whitespace, and selected usernames hide suggestions", async () => {
+    const user = await setup();
+    const field = screen.getByRole("textbox", { name: "Recipient" });
+    expect(
+      screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+
+    await user.type(field, "K");
+    expect(screen.getByRole("button", { name: "Kenton.W" })).toBeVisible();
+    await user.type(field, "e");
+    expect(screen.getByRole("button", { name: "Kenton.W" })).toBeVisible();
+    await user.clear(field);
+    expect(
+      screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+    await user.type(field, "   ");
+    expect(
+      screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+
+    await user.clear(field);
+    await user.type(field, "K");
+    await user.click(screen.getByRole("button", { name: "Kenton.W" }));
+    expect(field).toHaveValue("Kenton.W");
+    expect(screen.getByText("Staff Sergeant Wade Kenton")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("a one-character search retains the ten-suggestion ceiling and roster order", async () => {
+    const user = await setup(syntheticRoster(12));
+    await user.type(screen.getByRole("textbox", { name: "Recipient" }), "M");
+    expect(
+      screen
+        .getAllByRole("button", { name: /^Member\.\d+$/ })
+        .map((button) => button.textContent),
+    ).toEqual([
+      "Member.1",
+      "Member.2",
+      "Member.3",
+      "Member.4",
+      "Member.5",
+      "Member.6",
+      "Member.7",
+      "Member.8",
+      "Member.9",
+      "Member.10",
+    ]);
+  });
+
+  test("a short search in another slot excludes an already-selected recipient", async () => {
+    const user = await setup();
+    await selectRecipient(user, "K", "Kenton.W");
+    await user.click(screen.getByRole("button", { name: "Add Recipient" }));
+    await user.type(screen.getByRole("textbox", { name: "Recipient 2" }), "K");
+    expect(screen.getByRole("textbox", { name: "Recipient 1" })).toHaveValue(
+      "Kenton.W",
+    );
+    expect(
+      screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+    // Smith's Support Clerk billet also matches K, so the search is still active.
+    expect(screen.getByRole("button", { name: "Smith.J" })).toBeVisible();
+  });
+
   test.each([
     ["real name", "Wade Kenton", "Kenton.W"],
     ["full rank", "Staff Sergeant", "Kenton.W"],
@@ -419,6 +485,44 @@ describe("inline and compact recipients", () => {
 });
 
 describe("transactional bulk selection", () => {
+  test("full-rank/username paste selects the correct draft recipient only until confirmation", async () => {
+    const user = await setup();
+    await selectRecipient(user);
+    const worksheetRecipients = screen.getByRole("region", {
+      name: "Recipients",
+    });
+    const dialog = await openBulk(user);
+    await replaceText(
+      user,
+      "Paste a Recipient List",
+      "Staff Sergeant Kenton.W",
+    );
+    await user.click(
+      within(dialog).getByRole("button", { name: "Match Pasted Names" }),
+    );
+    expect(
+      within(dialog).getByText("Staff Sergeant Kenton.W: Matched"),
+    ).toBeVisible();
+    const draft = within(dialog).getByRole("list", {
+      name: "Draft recipients",
+    });
+    expect(within(draft).getByText("Staff Sergeant Wade Kenton")).toBeVisible();
+    expect(within(draft).getByText("Kenton.W")).toBeVisible();
+    expect(
+      within(worksheetRecipients)
+        .getAllByRole("textbox", { hidden: true })
+        .map((field) => field.value),
+    ).toEqual(["Smith.J"]);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Confirm Recipients" }),
+    );
+    expect(recipientFields().map((field) => field.value)).toEqual([
+      "Smith.J",
+      "Kenton.W",
+    ]);
+    expect(screen.getByText("Staff Sergeant Wade Kenton")).toBeVisible();
+  });
+
   test.each(["Cancel", "Close bulk recipient selection", "Escape"])(
     "%s discards draft changes and restores focus without clearing the preview",
     async (close) => {

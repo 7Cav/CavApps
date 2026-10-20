@@ -1,5 +1,5 @@
 import * as React from "react";
-const Logo = ({ subtitle, ...props }) => (
+const Logo = ({ subtitle, variant, ...props }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
     width={780.728}
@@ -62,7 +62,7 @@ const Logo = ({ subtitle, ...props }) => (
         }}
       />
     </g>
-    {subtitle === "Medal Recommendation Aid" ? (
+    {variant === "medalRecommendation" ? (
       // Purista Medium (Normal/400), outlined at the original ADR subtitle scale.
       <g
         aria-label="Medal Recommendation Aid"

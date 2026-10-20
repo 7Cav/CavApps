@@ -53,7 +53,7 @@ describe("Medal Recommendation shared branding", () => {
       screen.queryByLabelText("Medal Recommendation Aid"),
     ).not.toBeInTheDocument();
 
-    rerender(<Logo subtitle="Medal Recommendation Aid" />);
+    rerender(<Logo variant="medalRecommendation" />);
     expectOutlinedArtwork("Medal Recommendation Aid");
     expectOutlinedArtwork("7TH CAVALRY GAMING");
     expect(
@@ -67,6 +67,18 @@ describe("Medal Recommendation shared branding", () => {
     expect(
       screen.queryByLabelText("Medal Recommendation Aid"),
     ).not.toBeInTheDocument();
+  });
+
+  test("the Medal artwork variant takes precedence over custom subtitle text without becoming an SVG attribute", () => {
+    const { container } = render(
+      <Logo variant="medalRecommendation" subtitle="Alternate text" />,
+    );
+    expect(
+      screen.getByLabelText("Medal Recommendation Aid").querySelector("path"),
+    ).toHaveAttribute("d", expect.stringMatching(/\S/));
+    expect(screen.queryByText("Alternate text")).not.toBeInTheDocument();
+    expect(container.querySelector("text")).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).not.toHaveAttribute("variant");
   });
 
   test("other custom subtitles and SVG props retain their existing behavior", () => {

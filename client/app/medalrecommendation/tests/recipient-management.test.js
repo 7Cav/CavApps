@@ -796,12 +796,100 @@ describe("exact pasted-list matching", () => {
     "SSG.Kenton.W",
     "SSG Kenton.W",
     "  sTaFf   SeRGEANT Wade   Kenton  ",
+    "Staff Sergeant Kenton.W",
+    "  sTaFf   SeRGEANT   kEntOn.W",
   ])("matches supported alias %s", (text) => {
     expect(matchPastedRecipients(text, roster, [])).toEqual({
       selection: [kenton],
       results: [{ line: text.trim(), outcome: "Matched" }],
     });
   });
+
+  test.each([
+    "Sergeant Kenton.W",
+    "Staff Sergeant Kenton",
+    "Staff Sergeant.Kenton.W",
+  ])("does not guess an unsupported full-rank/username alias: %s", (text) => {
+    expect(matchPastedRecipients(text, roster, [])).toEqual({
+      selection: [],
+      results: [{ line: text, outcome: "Not found" }],
+    });
+  });
+
+  test("repeated full-rank/username aliases add a recipient only once", () => {
+    expect(
+      matchPastedRecipients(
+        "Staff Sergeant Kenton.W\n  STAFF   SERGEANT   KENTON.W",
+        roster,
+        [],
+      ),
+    ).toEqual({
+      selection: [kenton],
+      results: [
+        { line: "Staff Sergeant Kenton.W", outcome: "Matched" },
+        { line: "STAFF   SERGEANT   KENTON.W", outcome: "Already selected" },
+      ],
+    });
+  });
+
+  test("full-rank/username matching does not re-add an existing selection", () => {
+    expect(
+      matchPastedRecipients("Staff Sergeant Kenton.W", roster, [jane, kenton]),
+    ).toEqual({
+      selection: [jane, kenton],
+      results: [
+        { line: "Staff Sergeant Kenton.W", outcome: "Already selected" },
+      ],
+    });
+  });
+
+  test("a normalized full-rank/username alias shared by distinct IDs remains ambiguous", () => {
+    const otherKenton = makeRecipient({
+      user: { userId: "other-kenton", username: " kENTON.W " },
+      rank: { rankFull: " STAFF   SERGEANT " },
+    });
+    expect(
+      matchPastedRecipients(
+        "Staff Sergeant Kenton.W",
+        [kenton, otherKenton],
+        [],
+      ),
+    ).toEqual({
+      selection: [],
+      results: [{ line: "Staff Sergeant Kenton.W", outcome: "Ambiguous" }],
+    });
+  });
+
+  test.each([
+    ["missing rank", { ...kenton, rank: undefined }, "undefined Kenton.W"],
+    [
+      "missing full rank",
+      { ...kenton, rank: { ...kenton.rank, rankFull: undefined } },
+      "undefined Kenton.W",
+    ],
+    [
+      "missing username",
+      { ...kenton, user: { ...kenton.user, username: undefined } },
+      "Staff Sergeant undefined",
+    ],
+  ])(
+    "%s does not create a full-rank/username alias",
+    (_label, member, invalidAlias) => {
+      expect(
+        matchPastedRecipients(
+          `Staff Sergeant Kenton.W\n${invalidAlias}`,
+          [member],
+          [],
+        ),
+      ).toEqual({
+        selection: [],
+        results: [
+          { line: "Staff Sergeant Kenton.W", outcome: "Not found" },
+          { line: invalidAlias, outcome: "Not found" },
+        ],
+      });
+    },
+  );
 
   test("does not guess ambiguous or partial names and reports repeated/existing matches", () => {
     const result = matchPastedRecipients(

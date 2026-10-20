@@ -226,16 +226,18 @@ describe("Medal Recommendation Aid - selection and guidance", () => {
     ).toBeVisible();
   });
 
-  test("does not show recipient suggestions before three normalized characters", async () => {
+  test("shows recipient suggestions for a trimmed one-character query", async () => {
     const user = userEvent.setup();
-    renderClient();
+    renderClient({
+      roster: [makeRecipient({ user: { username: "Smith.J" } })],
+    });
     await selectAward(user);
 
-    await user.type(screen.getByRole("textbox", { name: "Recipient" }), "Sm");
+    await user.type(screen.getByRole("textbox", { name: "Recipient" }), " S ");
 
     expect(
-      screen.queryByRole("button", { name: "Smith.J" }),
-    ).not.toBeInTheDocument();
+      await screen.findByRole("button", { name: "Smith.J" }),
+    ).toBeVisible();
   });
 
   test("does not re-offer the selected recipient", async () => {
