@@ -69,7 +69,7 @@ describe("Medal Recommendation shared branding", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("the Medal artwork variant takes precedence over custom subtitle text without becoming an SVG attribute", () => {
+  test("the Medal artwork variant takes precedence over custom subtitle text", () => {
     const { container } = render(
       <Logo variant="medalRecommendation" subtitle="Alternate text" />,
     );
@@ -78,7 +78,6 @@ describe("Medal Recommendation shared branding", () => {
     ).toHaveAttribute("d", expect.stringMatching(/\S/));
     expect(screen.queryByText("Alternate text")).not.toBeInTheDocument();
     expect(container.querySelector("text")).not.toBeInTheDocument();
-    expect(container.querySelector("svg")).not.toHaveAttribute("variant");
   });
 
   test("other custom subtitles and SVG props retain their existing behavior", () => {

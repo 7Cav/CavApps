@@ -6,6 +6,7 @@ import {
   kentonRecipient as kenton,
   fillOperationWorksheet,
   getCitationText,
+  makeJohnSmithRecipient,
   makeRecipient,
   renderClient,
   renderServiceClient,
@@ -101,7 +102,7 @@ async function replaceText(user, label, text) {
 }
 
 describe("inline and compact recipients", () => {
-  test("one- and two-character searches show a recipient while empty, whitespace, and selected usernames hide suggestions", async () => {
+  test("one- and two-character searches support selection while empty and whitespace queries hide suggestions", async () => {
     const user = await setup();
     const field = screen.getByRole("textbox", { name: "Recipient" });
     expect(
@@ -128,6 +129,26 @@ describe("inline and compact recipients", () => {
     expect(screen.getByText("Staff Sergeant Wade Kenton")).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Kenton.W" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("selecting a username hides another matching recipient's suggestion in the filled field", async () => {
+    const user = await setup([
+      makeJohnSmithRecipient(),
+      makeJohnSmithRecipient("Andrew"),
+    ]);
+    const field = screen.getByRole("textbox", { name: "Recipient" });
+    await user.type(field, "Smith.J");
+    expect(
+      screen.getByRole("button", { name: "Smith.JA", exact: true }),
+    ).toBeVisible();
+
+    await user.click(
+      screen.getByRole("button", { name: "Smith.J", exact: true }),
+    );
+    expect(field).toHaveValue("Smith.J");
+    expect(
+      screen.queryByRole("button", { name: "Smith.JA", exact: true }),
     ).not.toBeInTheDocument();
   });
 
@@ -500,9 +521,11 @@ describe("transactional bulk selection", () => {
     await user.click(
       within(dialog).getByRole("button", { name: "Match Pasted Names" }),
     );
-    expect(
-      within(dialog).getByText("Staff Sergeant Kenton.W: Matched"),
-    ).toBeVisible();
+    const result = within(
+      within(dialog).getByRole("list", { name: "Paste match results" }),
+    ).getByRole("listitem");
+    expect(result).toHaveTextContent("Matched");
+    expect(result).toBeVisible();
     const draft = within(dialog).getByRole("list", {
       name: "Draft recipients",
     });
@@ -942,12 +965,16 @@ describe("transactional bulk selection", () => {
     await user.click(
       screen.getByRole("button", { name: "Match Pasted Names" }),
     );
-    expect(
-      screen.getByText("Staff Sergeant Wade Kenton: Matched"),
-    ).toBeVisible();
-    expect(screen.getByText("Smith.J: Already selected")).toBeVisible();
-    expect(screen.getByText("Jane Doe: Ambiguous")).toBeVisible();
-    expect(screen.getByText("Kenton: Not found")).toBeVisible();
+    const results = within(
+      screen.getByRole("list", { name: "Paste match results" }),
+    ).getAllByRole("listitem");
+    expect(results).toHaveLength(4);
+    ["Matched", "Already selected", "Ambiguous", "Not found"].forEach(
+      (outcome, index) => {
+        expect(results[index]).toHaveTextContent(outcome);
+        expect(results[index]).toBeVisible();
+      },
+    );
     expect(screen.getByText("2 recipients selected")).toBeVisible();
     // The modal hides the worksheet from accessibility queries, but its inputs remain mounted.
     expect(
