@@ -19,8 +19,8 @@
     "axios-retry": "^4.5.0",
     "compression": "^1.8.2",
     "cors": "^2.8.6",
-    "express": "^5.2.1",
-    "mysql2": "^3.24.5",
+    "express": "^5.3.0",
+    "mysql2": "^3.24.6",
     "node-cron": "^4.6.0",
     "node-pg-migrate": "^9.0.0",
     "pg": "^8.23.1"
