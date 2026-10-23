@@ -147,7 +147,7 @@ jobs:
       - name: Mint sprite-bot token
         id: app-token
         if: steps.changes.outputs.changed == 'true'
-        uses: actions/create-github-app-token@v3.2.0
+        uses: actions/create-github-app-token@v3.3.0
         with:
           client-id: ${{ secrets.SPRITE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.SPRITE_BOT_PRIVATE_KEY }}
