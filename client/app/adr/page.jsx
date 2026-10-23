@@ -18,6 +18,15 @@ export const metadata = {
   title: "Active Duty Roster",
 };
 
+// JAG Specialist belongs to no position group upstream, so the roster API never
+// returns it and the four people holding it only ever showed under their
+// primary billet. Defined here until it gets a group of its own; drop this and
+// add "JAG" to Support Departments once it does, or it renders twice.
+const JAG = {
+  groupTitle: "JAG",
+  positions: [{ positionId: "584", positionDisplayOrder: 10 }],
+};
+
 export default async function ActiveDutyRoster() {
   const [combat, reserve, timestamp, groups] = await Promise.all([
     GetCombatRoster(),
@@ -29,14 +38,30 @@ export default async function ActiveDutyRoster() {
   const milpacArray = [{ combat, reserve }];
   const rosterGroups = groups;
 
+  // Groups are matched on groupTitle rather than by their index in the API
+  // response. Indices shift whenever a group is added upstream: E/ACD landed
+  // between D/ACD and D/DEVCOM and silently pointed Development Command at an
+  // empty company for months.
   const units = [
-    { title: "Regimental Command", selectors: [0] },
-    { title: "First Battalion", selectors: [2, 3, 4, 5, 6] },
-    { title: "Second Battalion", selectors: [7, 8, 9, 10, 11] },
-    { title: "Third Battalion", selectors: [12, 13, 14, 16] },
-    { title: "Auxiliary Combat Division", selectors: [15, 17, 18, 19, 20, 21] },
-    { title: "Development Command", selectors: [22] },
-    { title: "Support Departments", selectors: [1] },
+    { title: "Regimental Command", groups: ["Regimental HQ"] },
+    {
+      title: "First Battalion",
+      groups: ["1-7 Command", "A/1-7", "B/1-7", "C/1-7", "D/1-7"],
+    },
+    {
+      title: "Second Battalion",
+      groups: ["2-7 Command", "A/2-7", "B/2-7", "C/2-7", "E/2-7"],
+    },
+    {
+      title: "Third Battalion",
+      groups: ["3-7 Command", "A/3-7", "B/3-7", "C/3-7"],
+    },
+    {
+      title: "Auxiliary Combat Detachment",
+      groups: ["ACD Command", "A/ACD", "B/ACD", "C/ACD", "D/ACD", "E/ACD"],
+    },
+    { title: "Development Command", groups: ["D/DEVCOM"] },
+    { title: "Support Departments", groups: ["Support Attachment", JAG] },
   ];
   return (
     <div className="MasterContainer">
@@ -71,10 +96,10 @@ export default async function ActiveDutyRoster() {
         {units.map((unit) => (
           <div className="DepartmentContainer" key={unit.title}>
             <div className="Title">{unit.title}</div>
-            {unit.selectors.map((selector) => (
+            {unit.groups.map((group) => (
               <AdrListEntry
-                key={`${unit.title}-${selector}`} // Unique key for AdrListEntry
-                rGSelector={selector}
+                key={`${unit.title}-${typeof group === "string" ? group : group.groupTitle}`} // Unique key for AdrListEntry
+                group={group}
                 milpacArray={milpacArray}
                 rosterGroups={rosterGroups}
               />
