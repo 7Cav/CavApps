@@ -142,7 +142,7 @@ export default function RecipientManager({
               const error = errors[index];
               const query = entry.query.trim().toLowerCase();
               const suggestions =
-                query.length < 3 || entry.member?.user?.username === entry.query
+                !query || entry.member?.user?.username === entry.query
                   ? []
                   : filterRecipients(roster, query)
                       .filter(

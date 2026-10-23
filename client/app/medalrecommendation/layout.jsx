@@ -14,7 +14,7 @@ export default function MedalRecommendationLayout({ children }) {
           className="block max-w-[220px] self-center rounded-sm p-[3px] leading-[21px] focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
           <Logo
-            subtitle="Medal Recommendation Aid"
+            variant="medalRecommendation"
             aria-hidden="true"
             width="17em"
             height="3em"

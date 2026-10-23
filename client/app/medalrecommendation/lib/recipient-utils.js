@@ -260,6 +260,9 @@ export function matchPastedRecipients(text, roster, selected) {
     const names = [fullName, username];
     if (rankFull && fullName) names.push(`${rankFull} ${fullName}`);
     if (rankShort && fullName) names.push(`${rankShort} ${fullName}`);
+    if (rankFull && username) {
+      names.push(`${rankFull} ${username}`);
+    }
     if (rankShort && username) {
       names.push(`${rankShort} ${username}`, `${rankShort}.${username}`);
     }

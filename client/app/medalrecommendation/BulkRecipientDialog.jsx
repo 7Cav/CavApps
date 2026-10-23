@@ -248,8 +248,8 @@ function BulkRecipientDraft({ roster, organizations, selected, onConfirm }) {
             Paste a Recipient List
           </label>
           <p id="bulk-paste-help" className="text-sm text-muted-foreground">
-            One recipient per line: full name, rank and name, username, or
-            rank.username. Exact matches only.
+            One recipient per line: full name, username, rank and name, rank and
+            username, or abbreviated rank.username. Exact matches only.
           </p>
           <textarea
             id="bulk-recipient-paste"
