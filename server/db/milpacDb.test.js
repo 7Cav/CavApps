@@ -39,7 +39,7 @@ const ROSTER = {
 };
 
 // Each entry is a forum account and the rosters it has a row on.
-const seed = async (admin, accounts) => {
+const seedAccounts = async (admin, accounts) => {
   await admin.query("TRUNCATE xf_user");
   await admin.query("TRUNCATE xf_nf_rosters_user");
   for (const { username, rosters = [] } of accounts) {
@@ -56,62 +56,74 @@ const seed = async (admin, accounts) => {
   }
 };
 
-const searchable = async (fetchUsernames) =>
-  (await fetchUsernames()).map((row) => row.username).sort();
-
 // --- slices -----------------------------------------------------------------
 
 const slices = [];
 const slice = (name, run) => slices.push({ name, run });
 
-slice("a member whose username has a hyphen is searchable", async (t) => {
-  await t.seed([
-    { username: "Lethbridge-Stewart.J", rosters: [ROSTER.combat] },
-    { username: "Doe.J", rosters: [ROSTER.combat] },
-  ]);
-  assert.deepStrictEqual(await t.searchable(), [
-    "Doe.J",
-    "Lethbridge-Stewart.J",
-  ]);
-});
-
 slice(
-  "members whose usernames have an apostrophe or accent are searchable",
-  async (t) => {
-    await t.seed([
-      { username: "O'Neil.P", rosters: [ROSTER.reserve] },
-      { username: "Müller.K", rosters: [ROSTER.combat] },
+  "a member whose username has a hyphen is searchable",
+  async ({ seed, searchableUsernames }) => {
+    await seed([
+      { username: "Lethbridge-Stewart.J", rosters: [ROSTER.combat] },
+      { username: "Doe.J", rosters: [ROSTER.combat] },
     ]);
-    assert.deepStrictEqual(await t.searchable(), ["Müller.K", "O'Neil.P"]);
+    assert.deepStrictEqual(await searchableUsernames(), [
+      "Doe.J",
+      "Lethbridge-Stewart.J",
+    ]);
   },
 );
 
-slice("a member on any roster is searchable", async (t) => {
-  const accounts = Object.entries(ROSTER).map(([name, id]) => ({
-    username: `${name}.X`,
-    rosters: [id],
-  }));
-  await t.seed(accounts);
-  assert.deepStrictEqual(
-    await t.searchable(),
-    accounts.map((a) => a.username).sort(),
-  );
-});
+slice(
+  "members whose usernames have an apostrophe or accent are searchable",
+  async ({ seed, searchableUsernames }) => {
+    await seed([
+      { username: "O'Neil.P", rosters: [ROSTER.reserve] },
+      { username: "Müller.K", rosters: [ROSTER.combat] },
+    ]);
+    assert.deepStrictEqual(await searchableUsernames(), [
+      "Müller.K",
+      "O'Neil.P",
+    ]);
+  },
+);
 
-slice("a forum account with no roster row is not searchable", async (t) => {
-  await t.seed([
-    { username: "Doe.J", rosters: [ROSTER.combat] },
-    { username: "Smith.J" },
-  ]);
-  assert.deepStrictEqual(await t.searchable(), ["Doe.J"]);
-});
+slice(
+  "a member on any roster is searchable",
+  async ({ seed, searchableUsernames }) => {
+    const accounts = Object.entries(ROSTER).map(([name, id]) => ({
+      username: `${name}.X`,
+      rosters: [id],
+    }));
+    await seed(accounts);
+    assert.deepStrictEqual(
+      await searchableUsernames(),
+      accounts.map((a) => a.username).sort(),
+    );
+  },
+);
 
-slice("a member on two rosters is searchable once", async (t) => {
-  await t.seed([
-    { username: "Doe.J", rosters: [ROSTER.reserve, ROSTER.pastMembers] },
-  ]);
-  assert.deepStrictEqual(await t.searchable(), ["Doe.J"]);
-});
+slice(
+  "a forum account with no roster row is not searchable",
+  async ({ seed, searchableUsernames }) => {
+    await seed([
+      { username: "Doe.J", rosters: [ROSTER.combat] },
+      { username: "Smith.J" },
+    ]);
+    assert.deepStrictEqual(await searchableUsernames(), ["Doe.J"]);
+  },
+);
+
+slice(
+  "a member on two rosters is searchable once",
+  async ({ seed, searchableUsernames }) => {
+    await seed([
+      { username: "Doe.J", rosters: [ROSTER.reserve, ROSTER.pastMembers] },
+    ]);
+    assert.deepStrictEqual(await searchableUsernames(), ["Doe.J"]);
+  },
+);
 
 // --- runner -----------------------------------------------------------------
 
@@ -126,12 +138,13 @@ const main = async () => {
   }
 
   const url = new URL(SERVER_URL);
-  const admin = await mysql.createConnection({
+  const server = {
     host: url.hostname,
     port: parseInt(url.port || "3306", 10),
     user: decodeURIComponent(url.username),
     password: decodeURIComponent(url.password),
-  });
+  };
+  const admin = await mysql.createConnection(server);
 
   let failures = 0;
   try {
@@ -155,20 +168,21 @@ const main = async () => {
     `);
 
     // milpacDb reads these when it opens its pool, on the first query.
-    process.env.XENFORO_DB_HOST = url.hostname;
-    process.env.XENFORO_DB_PORT = url.port || "3306";
-    process.env.XENFORO_DB_USER = decodeURIComponent(url.username);
-    process.env.XENFORO_DB_PASSWORD = decodeURIComponent(url.password);
+    process.env.XENFORO_DB_HOST = server.host;
+    process.env.XENFORO_DB_PORT = String(server.port);
+    process.env.XENFORO_DB_USER = server.user;
+    process.env.XENFORO_DB_PASSWORD = server.password;
     process.env.XENFORO_DB_NAME = DATABASE;
     const { fetchUsernames } = require("./milpacDb");
 
-    const t = {
-      seed: (accounts) => seed(admin, accounts),
-      searchable: () => searchable(fetchUsernames),
+    const fixtures = {
+      seed: (accounts) => seedAccounts(admin, accounts),
+      searchableUsernames: async () =>
+        (await fetchUsernames()).map((row) => row.username).sort(),
     };
     for (const { name, run } of slices) {
       try {
-        await run(t);
+        await run(fixtures);
         console.log(`ok - milpacDb: ${name}`);
       } catch (error) {
         failures++;
