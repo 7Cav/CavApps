@@ -16,6 +16,9 @@ const regiCommand = [
   "743",
   "772",
   "959",
+  "785",
+  "1127",
+  "13",
 ];
 
 const regi = {
@@ -59,6 +62,10 @@ const alpha1 = [
   "224",
   "225",
   "226",
+  //5/1 A/1-7
+  "754",
+  "755",
+  "756",
 ];
 const bravo1 = [
   "227",
@@ -409,6 +416,10 @@ const charlie2 = [
   "477",
   "478",
   "479",
+  //5/1 C/2-7
+  "1123",
+  "1124",
+  "1125",
 ];
 const echo2 = [
   "480",
@@ -707,6 +718,13 @@ const alpha4 = [
   "768",
   "769",
   "770",
+  //5/2 and 5/3 A/ACD
+  "1230",
+  "1231",
+  "1232",
+  "1233",
+  "1234",
+  "1235",
 ];
 const bravo4 = [
   //B ACD
@@ -747,6 +765,24 @@ const bravo4 = [
   "624",
   "625",
   "626",
+  //3 B/ACD
+  "985",
+  "986",
+  "987",
+  "988",
+  "989",
+  "990",
+  "991",
+  "992",
+  "993",
+  "994",
+  "995",
+  "996",
+  "997",
+  "998",
+  "999",
+  "1000",
+  "1001",
 ];
 const charlie4 = [
   //C ACD
@@ -845,6 +881,63 @@ const delta4 = [
   "1212",
   "1216",
 ];
+const echo4 = [
+  //E ACD
+  "1240",
+  "1241",
+  "1242",
+  "1243",
+  "1244",
+  "1245",
+  "1246",
+  "1247",
+  "1248",
+  "1249",
+  "1250",
+  "1251",
+  "1252",
+  "1253",
+  "1254",
+  "1255",
+  "1256",
+  "1257",
+  "1258",
+  "1259",
+  "1260",
+  "1261",
+  "1262",
+  "1263",
+  "1264",
+  "1265",
+  "1266",
+  "1267",
+  "1268",
+  "1269",
+  "1270",
+  "1271",
+  "1272",
+  "1273",
+  "1274",
+  "1275",
+  "1276",
+  "1277",
+  "1278",
+  "1279",
+  "1280",
+  "1281",
+  "1282",
+  "1283",
+  "1284",
+  "1285",
+  "1286",
+  "1287",
+  "1288",
+  "1289",
+  "1290",
+  "1291",
+  "1292",
+  "1293",
+];
 //DEVCOM
 
 //DEVCOM HQ + leads
@@ -872,6 +965,9 @@ const alphaSP = [
   "718",
   "1146",
   "720",
+  "1236",
+  "1237",
+  "1238",
 ];
 const bravoSP = [
   "707",
@@ -947,13 +1043,14 @@ const starterPlatoon = {
 };
 
 const acd = {
-  positionIds: [acdCommand, alpha4, bravo4, charlie4, delta4],
+  positionIds: [acdCommand, alpha4, bravo4, charlie4, delta4, echo4],
   positionTitles: [
     "Reserve and Development Command Headquarters",
     "Alpha Company ACD",
     "Bravo Company ACD",
     "Charlie Company ACD",
     "Delta Company ACD",
+    "Echo Company ACD",
   ],
   collapsibleTitle: "Reserve and Development Command",
 };
@@ -1341,6 +1438,7 @@ const billetBank = {
   bravo4,
   charlie4,
   delta4,
+  echo4,
   starterPlatoonCommand,
   alphaSP,
   bravoSP,

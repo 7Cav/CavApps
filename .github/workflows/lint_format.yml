@@ -9,6 +9,21 @@ jobs:
   lint_format_check:
     runs-on: ubuntu-latest
 
+    # A throwaway MariaDB for server/db/milpacDb.test.js, which needs a real
+    # server to run the forum queries against.
+    services:
+      mariadb:
+        image: mariadb:11.8
+        env:
+          MARIADB_ROOT_PASSWORD: test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "healthcheck.sh --connect --innodb_initialized"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
     steps:
       - name: Checkout the Repo
         uses: actions/checkout@v7
@@ -30,3 +45,5 @@ jobs:
 
       - name: Tests
         run: npm test
+        env:
+          MILPAC_TEST_DB_URL: mysql://root:test@127.0.0.1:3306
