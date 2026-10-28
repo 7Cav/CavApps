@@ -163,16 +163,17 @@ async function fetchRosterProfiles(rosterId) {
 }
 
 async function fetchUsernames() {
-  //ported function from old sqlite cache
-
   const mariaDB = getPool();
 
+  // Every account with a roster row, on any roster. The 7Cav API loads a
+  // profile by username through this same join, so these are exactly the
+  // members whose uniform the Uniform Builder can load.
   try {
     const [usernames] = await mariaDB.query(
       `
-      SELECT xu.username 
-      FROM xenforo.xf_user AS xu
-      WHERE xu.username REGEXP '^[A-Za-z]+\\\\.[A-Z]{1,2}$'
+      SELECT DISTINCT xu.username
+      FROM xf_nf_rosters_user AS u
+      JOIN xf_user AS xu ON xu.user_id = u.user_id
     `,
     );
 
