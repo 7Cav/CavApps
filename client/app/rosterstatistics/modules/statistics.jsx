@@ -64,6 +64,7 @@ class Statistics extends Component {
             "#f7a8b8",
             "#2ca089",
             "#8b5a2b",
+            "#1565c0",
           ],
           plotOptions: {
             pie: {
@@ -135,6 +136,7 @@ class Statistics extends Component {
             "#e68c08", // 17 Bravo ACD
             "#e68c08", // 18 Charlie ACD
             "#e68c08", // 19 Delta ACD
+            "#e68c08", // 20 Echo ACD
             "#7b3fa0", // 21 SP Command
             "#7b3fa0", // 22 Alpha SP
             "#7b3fa0", // 23 Bravo SP
