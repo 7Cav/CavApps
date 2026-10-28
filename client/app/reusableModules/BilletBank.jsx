@@ -1018,14 +1018,26 @@ const deltaSP = [
   "1158",
 ];
 
+//DEVCOM department billets, as opposed to the HQ leads above or the line
+//billets in the platoons. Not charted in Roster Statistics yet.
+const devcomDepartments = ["1009", "753"];
+
 const starterPlatoon = {
-  positionIds: [starterPlatoonCommand, alphaSP, bravoSP, charlieSP, deltaSP],
+  positionIds: [
+    starterPlatoonCommand,
+    alphaSP,
+    bravoSP,
+    charlieSP,
+    deltaSP,
+    devcomDepartments,
+  ],
   positionTitles: [
     "Development Command Headquarters",
     "Alpha Platoon DEVCOM",
     "Bravo Platoon DEVCOM",
     "Charlie Platoon DEVCOM",
     "Delta Platoon DEVCOM",
+    "DEVCOM Departments",
   ],
   collapsibleTitle: "DEVCOM",
 };
@@ -1087,6 +1099,16 @@ const rrd = [
   "1054",
   "1055",
   "1056",
+  //HLLV, Battlefield 6 and Foxhole recruiting
+  "1226",
+  "1227",
+  "1228",
+  "1163",
+  "1164",
+  "1165",
+  "1184",
+  "1183",
+  "1182",
 ];
 const rtc = [
   "98",
@@ -1117,6 +1139,17 @@ const rtc = [
   "1035",
   "1057",
   "1058",
+  //Starter Platoon, Battlefield 6 and Foxhole instruction
+  "1139",
+  "1140",
+  "1166",
+  "1167",
+  "1168",
+  "1172",
+  "1221",
+  "1222",
+  "1223",
+  "1224",
 ];
 const s5 = [
   "83",
@@ -1136,6 +1169,11 @@ const s5 = [
   "739",
   "740",
   "741",
+  //Cavalry Times
+  "935",
+  "1038",
+  "1037",
+  "1036",
 ];
 
 const roo = {
@@ -1198,6 +1236,8 @@ const s1 = [
   "788",
   "789",
   "1052",
+  "1126",
+  "628",
 ];
 
 const s3 = [
@@ -1244,6 +1284,18 @@ const s3 = [
   "1004",
   "1039",
   "1053",
+  //Squad Development, Starter Platoon, BF6 and Foxhole operations
+  "1229",
+  "1169",
+  "1170",
+  "1171",
+  "1122",
+  "1160",
+  "1161",
+  "1162",
+  "1218",
+  "1219",
+  "1220",
 ];
 
 const s6 = [
@@ -1324,6 +1376,11 @@ const s7 = [
   "679",
   "680",
   "682",
+  "681",
+  //RoN CQBA
+  "744",
+  "745",
+  "746",
 ];
 const ld = ["126", "127", "128", "129", "130", "131", "132", "539"];
 const wag = ["39", "40", "41", "42", "43", "44", "45", "46", "47", "48"];
