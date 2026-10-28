@@ -3,6 +3,7 @@ const router = express.Router();
 const cors = require("cors");
 const cRequest = require("../controllers/cRequest");
 const rRequest = require("../controllers/rRequest");
+const mRequest = require("../controllers/mRequest");
 const iRequest = require("../controllers/iRequest");
 const gRequest = require("../controllers/gRequest");
 const app = express();
@@ -15,6 +16,7 @@ app.use(
 
 router.get("/combat", cRequest);
 router.get("/reserves", rRequest);
+router.get("/medal-recipients", mRequest);
 router.get("/individual", (req, res) => {
   const userName = req.query.username;
   if (!userName) {
@@ -23,4 +25,5 @@ router.get("/individual", (req, res) => {
   iRequest(req, res, userName);
 });
 router.get("/groups", gRequest);
+
 module.exports = router;
