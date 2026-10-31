@@ -35,11 +35,15 @@ const steps = [
           guidance before proceeding.
         </p>
         <p>
-          Recommenders generally must outrank the recipient by Regiment billet
-          and have witnessed the action. Temporary operation billets do not
-          override Regiment billets. Lower- or equal-billet members may
-          recommend superiors for combat medals only with three independent
-          eyewitness statements and the operation's OIC approval.
+          Medal recommendations are ordinarily authored by a member holding a
+          higher Regiment billet than the recipient. Combat authors must
+          ordinarily have personally witnessed the event. Chapter 3 permits
+          lower- or equal-billet members to recommend superiors for combat
+          medals with three independent eyewitness statements from separate
+          members and the operation OIC's sign-off. Temporary operation billets
+          and S3 mission-maker titles do not supersede primary Regiment billets.
+          Service medal authors must hold a higher billet and have personally
+          witnessed the recognized event.
         </p>
         <p>
           <strong>Submission Deadlines:</strong> Combat Medal recommendations
@@ -187,6 +191,23 @@ const steps = [
     title: "Submit Your Recommendation",
     user: (
       <>
+        <p>
+          Ordinarily, the original author submits the recommendation. Under
+          Chapter 3, another member may submit a combat recommendation only when
+          the original author holds a lesser billet than the submitting member;
+          for service recommendations, the author's billet may be lesser or
+          equal. Unit Awards follow the applicable combat or service authority
+          and any additional award criteria. Submitting on someone's behalf does
+          not waive the original author's requirements or the recommendation's
+          criteria.
+        </p>
+        <p>
+          For either permitted route, credit the original author with a link to
+          their MILPAC and declare their sign-off. As the submitting member,
+          ensure the recommendation meets the medal's current standards and
+          criteria, and accept full responsibility for it regardless of the
+          outcome, including fraudulent submissions.
+        </p>
         <p>
           Copy the generated <strong>Recommendation Title</strong>, then select{" "}
           <strong>Open Medal Recommendation Ticket</strong>. Paste the title
