@@ -8,6 +8,7 @@ import {
   isValidRecipient,
   matchPastedRecipients,
   orderRecipientsForRecommendation,
+  prioritizeInlineRecipients,
   selectShownRecipients,
   uniqueRecipients,
   validateRecipientEntries,
@@ -607,6 +608,105 @@ describe("recipient collection and identity", () => {
         "Wade Kenton",
       ),
     ).toBe(true);
+  });
+});
+
+describe("inline recipient search priority", () => {
+  test("username and surname prefixes lead in roster order while all fallback matches retain their order", () => {
+    const rankMatch = makeRecipient({
+      user: { userId: "rank", username: "Zulu.Z" },
+      realName: "Zed Zulu",
+    });
+    const surnameMatch = makeRecipient({
+      user: { userId: "surname", username: "Alpha.A" },
+      realName: "Alex Smith",
+    });
+    const substringMatch = makeRecipient({
+      user: { userId: "substring", username: "ASmith.B" },
+      realName: "Beth Jones",
+    });
+    const usernameMatch = makeRecipient({
+      user: { userId: "username", username: "Sierra.Z" },
+      realName: "Zed Zulu",
+    });
+    const bothMatch = makeJohnSmithRecipient();
+    const matches = Object.freeze([
+      rankMatch,
+      surnameMatch,
+      substringMatch,
+      usernameMatch,
+      bothMatch,
+    ]);
+    const result = prioritizeInlineRecipients(matches, "s");
+    expect(result).toEqual([
+      surnameMatch,
+      usernameMatch,
+      bothMatch,
+      rankMatch,
+      substringMatch,
+    ]);
+    expect(result).not.toBe(matches);
+    expect(matches).toEqual([
+      rankMatch,
+      surnameMatch,
+      substringMatch,
+      usernameMatch,
+      bothMatch,
+    ]);
+    expect(filterRecipients(matches, "s")).toEqual(matches);
+  });
+
+  test.each(["SMITH", "  sMiTh  "])(
+    "normalizes username, surname, and query case and whitespace: %s",
+    (query) => {
+      const fallback = makeRecipient({
+        user: { userId: "fallback", username: "ASmith.B" },
+        realName: "Beth Jones",
+      });
+      const usernameMatch = makeRecipient({
+        user: { userId: "username", username: "  SmItH.Z  " },
+        realName: "Zed Zulu",
+      });
+      const surnameMatch = makeRecipient({
+        user: { userId: "surname", username: "Alpha.A" },
+        realName: "  Alex   SMITH  ",
+      });
+      expect(
+        prioritizeInlineRecipients(
+          [fallback, usernameMatch, surnameMatch],
+          query,
+        ),
+      ).toEqual([usernameMatch, surnameMatch, fallback]);
+    },
+  );
+
+  test("collapses internal whitespace when comparing a username prefix", () => {
+    const fallback = makeRecipient({
+      user: { userId: "fallback", username: "Jones.J" },
+      realName: "Jane Jones",
+      primary: { positionTitle: "Blue Team Leader" },
+    });
+    const prefix = makeRecipient({
+      user: { userId: "prefix", username: "  Blue   Team.A  " },
+      realName: "Alex Alpha",
+    });
+    expect(
+      prioritizeInlineRecipients([fallback, prefix], "  bLUE   te  "),
+    ).toEqual([prefix, fallback]);
+  });
+
+  test("missing and malformed identity values remain safe fallback matches", () => {
+    const missing = { primary: { positionTitle: "Smith Team" } };
+    const malformed = {
+      user: { username: 42 },
+      realName: { surname: "Smith" },
+      primary: { positionTitle: "Smith Team" },
+    };
+    const blank = { user: { username: "  " }, realName: null };
+    const prefix = makeJohnSmithRecipient();
+    expect(
+      prioritizeInlineRecipients([missing, malformed, blank, prefix], "smith"),
+    ).toEqual([prefix, missing, malformed, blank]);
   });
 });
 

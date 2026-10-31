@@ -10,6 +10,7 @@ import {
   filterRecipients,
   getRecipientDisplayName,
   getRecipientId,
+  prioritizeInlineRecipients,
   requiresEligibilityWarning,
 } from "./lib/recipient-utils";
 
@@ -144,11 +145,12 @@ export default function RecipientManager({
               const suggestions =
                 !query || entry.member?.user?.username === entry.query
                   ? []
-                  : filterRecipients(roster, query)
-                      .filter(
+                  : prioritizeInlineRecipients(
+                      filterRecipients(roster, query).filter(
                         (member) => !selectedIds.has(getRecipientId(member)),
-                      )
-                      .slice(0, 10);
+                      ),
+                      query,
+                    ).slice(0, 10);
               return (
                 <div key={entry.slotId} className="flex min-w-0 flex-col gap-2">
                   <label

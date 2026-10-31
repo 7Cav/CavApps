@@ -233,6 +233,25 @@ export function filterRecipients(roster, query, organization) {
   });
 }
 
+export function prioritizeInlineRecipients(matches, query) {
+  const normalizedQuery = normalize(query);
+  const prefixMatches = [];
+  const otherMatches = [];
+  for (const member of matches) {
+    const username = normalize(member?.user?.username);
+    const surname = normalize(parseRecipientName(member?.realName).surname);
+    if (
+      username.startsWith(normalizedQuery) ||
+      surname.startsWith(normalizedQuery)
+    ) {
+      prefixMatches.push(member);
+    } else {
+      otherMatches.push(member);
+    }
+  }
+  return [...prefixMatches, ...otherMatches];
+}
+
 export function selectShownRecipients(selected, shown) {
   return uniqueRecipients([...selected, ...shown]);
 }

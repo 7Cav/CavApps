@@ -173,6 +173,40 @@ describe("inline and compact recipients", () => {
     ]);
   });
 
+  test("username and surname prefixes beyond ten rank matches lead the ten inline suggestions in roster order", async () => {
+    const surnameMatch = makeRecipient({
+      user: { userId: "surname-prefix", username: "Zulu.A" },
+      realName: "Alex Smith",
+    });
+    const usernameMatch = makeRecipient({
+      user: { userId: "username-prefix", username: "Sierra.Z" },
+      realName: "Zed Zulu",
+    });
+    const user = await setup([
+      ...syntheticRoster(12),
+      surnameMatch,
+      usernameMatch,
+    ]);
+    await user.type(screen.getByRole("textbox", { name: "Recipient" }), "S");
+    const suggestions = within(
+      screen.getByRole("region", { name: "Recipients" }),
+    ).getAllByRole("button", { name: /^(Member\.\d+|Zulu\.A|Sierra\.Z)$/ });
+    expect(suggestions.map((button) => button.textContent)).toEqual([
+      "Zulu.A",
+      "Sierra.Z",
+      "Member.1",
+      "Member.2",
+      "Member.3",
+      "Member.4",
+      "Member.5",
+      "Member.6",
+      "Member.7",
+      "Member.8",
+    ]);
+    expect(suggestions[0]).toBeVisible();
+    expect(suggestions[1]).toBeVisible();
+  });
+
   test("a short search in another slot excludes an already-selected recipient", async () => {
     const user = await setup();
     await selectRecipient(user, "K", "Kenton.W");

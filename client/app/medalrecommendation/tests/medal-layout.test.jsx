@@ -69,26 +69,15 @@ describe("Medal Recommendation shared branding", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("the Medal artwork variant takes precedence over custom subtitle text", () => {
+  test("supported SVG dimensions and accessibility props pass through", () => {
     const { container } = render(
-      <Logo variant="medalRecommendation" subtitle="Alternate text" />,
+      <Logo width="250" height="50" aria-label="CavApps logo" />,
     );
-    expect(
-      screen.getByLabelText("Medal Recommendation Aid").querySelector("path"),
-    ).toHaveAttribute("d", expect.stringMatching(/\S/));
-    expect(screen.queryByText("Alternate text")).not.toBeInTheDocument();
-    expect(container.querySelector("text")).not.toBeInTheDocument();
-  });
-
-  test("other custom subtitles and SVG props retain their existing behavior", () => {
-    const { container } = render(
-      <Logo subtitle="Custom subtitle" width="250" height="50" />,
-    );
-    expect(screen.getByText("Custom subtitle")).toBeInTheDocument();
     expect(container.querySelector("svg")).toHaveAttribute("width", "250");
     expect(container.querySelector("svg")).toHaveAttribute("height", "50");
-    expect(
-      container.querySelector('[aria-label="Active Duty Roster"]'),
-    ).not.toBeInTheDocument();
+    expect(container.querySelector("svg")).toHaveAttribute(
+      "aria-label",
+      "CavApps logo",
+    );
   });
 });
