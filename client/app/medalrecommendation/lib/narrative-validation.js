@@ -51,19 +51,26 @@ function formatSentenceMinimum(value) {
 
 function findSentenceRanges(text) {
   const sentenceRanges = [];
-  const sentencePattern = /[^.!?]+[.!?]+/g;
+  const isEnding = (character) =>
+    character === "." || character === "!" || character === "?";
+  let cursor = 0;
 
-  for (const match of text.matchAll(sentencePattern)) {
-    const rawSentence = match[0];
+  // Visit each character once. A regex that requires terminal punctuation
+  // retries every starting position on a long, unfinished final sentence.
+  while (cursor < text.length) {
+    const sentenceStart = cursor;
+    while (cursor < text.length && !isEnding(text[cursor])) cursor += 1;
+    if (cursor === text.length) break;
+    const punctuationStart = cursor;
+    while (cursor < text.length && isEnding(text[cursor])) cursor += 1;
+    if (sentenceStart === punctuationStart) continue;
+    const rawSentence = text.slice(sentenceStart, cursor);
 
     const leadingWhitespaceLength = rawSentence.match(/^\s*/)?.[0].length ?? 0;
 
-    const trailingWhitespaceLength = rawSentence.match(/\s*$/)?.[0].length ?? 0;
-
-    const start = (match.index ?? 0) + leadingWhitespaceLength;
-
-    const end =
-      (match.index ?? 0) + rawSentence.length - trailingWhitespaceLength;
+    const start = sentenceStart + leadingWhitespaceLength;
+    // The extracted span ends with punctuation, never trailing whitespace.
+    const end = cursor;
 
     if (end > start) {
       sentenceRanges.push({
@@ -75,6 +82,58 @@ function findSentenceRanges(text) {
   }
 
   return sentenceRanges;
+}
+
+function* findDuplicateWordRanges(text) {
+  const isWordCharacter = (character) => /\w/iu.test(character ?? "");
+  // Preserve the Unicode case folding of the former /iu word pattern.
+  const foldWord = (word) => word.toLowerCase().replace(/ſ/g, "s");
+  let previous;
+  let matchedEnd = 0;
+
+  for (const match of text.matchAll(/[A-Za-z][A-Za-z'’\-]*/giu)) {
+    const current = {
+      start: match.index,
+      end: match.index + match[0].length,
+      word: foldWord(match[0]),
+    };
+    if (previous && /^\s+$/u.test(text.slice(previous.end, current.start))) {
+      // A hyphen/apostrophe can begin a later word boundary within a token.
+      // KMP prefix links find matching suffixes without rescanning that token
+      // from every boundary (quadratic for a long "a-a-a-" chain).
+      const word = current.word;
+      const prefixes = new Uint32Array(word.length);
+      for (let i = 1, length = 0; i < word.length; i += 1) {
+        while (length && word[i] !== word[length])
+          length = prefixes[length - 1];
+        if (word[i] === word[length]) length += 1;
+        prefixes[i] = length;
+      }
+      let length = 0;
+      for (const character of previous.word) {
+        while (length && character !== word[length])
+          length = prefixes[length - 1];
+        if (character === word[length]) length += 1;
+      }
+      // Longest suffix first preserves the earliest valid, nonoverlapping
+      // match, including a second occurrence ending inside a compound word.
+      while (length) {
+        const start = previous.end - length;
+        const end = current.start + length;
+        if (
+          start >= matchedEnd &&
+          !isWordCharacter(text[start - 1]) &&
+          isWordCharacter(text[end - 1]) !== isWordCharacter(text[end])
+        ) {
+          yield { start, end };
+          matchedEnd = end;
+          break;
+        }
+        length = prefixes[length - 1];
+      }
+    }
+    previous = current;
+  }
 }
 
 export function getRankEntries(rosterMembers) {
@@ -229,19 +288,13 @@ export function analyzeNarrative(
     }
   }
 
-  const duplicateWordPattern = /\b([A-Za-z][A-Za-z'’\-]*)\s+\1\b/giu;
-
   const warnedDuplicateWords = new Set();
 
-  for (const match of text.matchAll(duplicateWordPattern)) {
-    const duplicateText = match[0];
+  for (const { start, end } of findDuplicateWordRanges(text)) {
+    const duplicateText = text.slice(start, end);
     const warningKey = duplicateText.toLowerCase();
 
-    addHighlightRange(
-      highlightRanges,
-      match.index ?? 0,
-      (match.index ?? 0) + duplicateText.length,
-    );
+    addHighlightRange(highlightRanges, start, end);
 
     if (!warnedDuplicateWords.has(warningKey)) {
       warnedDuplicateWords.add(warningKey);

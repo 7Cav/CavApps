@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -8,7 +7,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SERVICE_MONTH_NAMES } from "./lib/citation-builders";
-import { isServiceMonthValid } from "./lib/worksheet-validation";
 
 export default function ServiceMonthYearField({
   id,
@@ -18,14 +16,10 @@ export default function ServiceMonthYearField({
   describedBy,
   onChange,
 }) {
-  const [draft, setDraft] = useState("");
-  const [year = "", month = ""] = (value || draft).split("-");
+  const [year = "", month = ""] = (value || "").split("-");
 
   function updateDraft(month, year) {
-    const candidate = `${year}-${month}`;
-    const isComplete = isServiceMonthValid(candidate);
-    setDraft(isComplete ? "" : candidate);
-    onChange(isComplete ? candidate : "");
+    onChange(year || month ? `${year}-${month}` : "");
   }
 
   return (
