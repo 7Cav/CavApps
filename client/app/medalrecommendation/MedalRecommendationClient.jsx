@@ -52,6 +52,7 @@ import { FEATURE_HOME_LINK_CLASS_NAME } from "./lib/navigation-styles";
 import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
+import DraftFileControls from "./DraftFileControls";
 import {
   RECIPIENT_INLINE_LIMIT,
   RECIPIENT_SELECTION_POLICY,
@@ -327,6 +328,7 @@ export default function MedalRecommendationClient({
   const [recipientEditorKey, setRecipientEditorKey] = useState(0);
 
   const [worksheetValues, setWorksheetValues] = useState({});
+  const [draftName, setDraftName] = useState(undefined);
 
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
@@ -455,7 +457,7 @@ export default function MedalRecommendationClient({
     updateRecipientEntries(
       recipientEntries.map((entry) =>
         entry.slotId === slotId
-          ? { ...entry, member, query: member.user.username }
+          ? { slotId: entry.slotId, member, query: member.user.username }
           : entry,
       ),
     );
@@ -484,13 +486,23 @@ export default function MedalRecommendationClient({
         .filter((entry) => entry.member)
         .map((entry) => [getRecipientId(entry.member), entry.slotId]),
     );
-    updateRecipientEntries(
-      unique.map((member) => ({
-        slotId: slots.get(getRecipientId(member)) ?? nextSlotId.current++,
-        member,
-        query: member.user.username,
-      })),
-    );
+    const confirmed = unique.map((member) => ({
+      slotId: slots.get(getRecipientId(member)) ?? nextSlotId.current++,
+      member,
+      query: member.user.username,
+    }));
+    // Keep pending work at its existing position relative to resolved slots.
+    // Bulk still determines the resolved selection and its working order.
+    const merged = [];
+    let index = 0;
+    for (const entry of recipientEntries) {
+      if (!entry.member && (entry.unresolvedRecipient || entry.query))
+        merged.push(entry);
+      else if (entry.member && index < confirmed.length)
+        merged.push(confirmed[index++]);
+    }
+    merged.push(...confirmed.slice(index));
+    updateRecipientEntries(merged);
   }
 
   function handleWorksheetValueChange(fieldName, value) {
@@ -529,10 +541,22 @@ export default function MedalRecommendationClient({
   }
 
   function handleClearWorksheet() {
+    setDraftName(undefined);
     setRecipientEntries([{ slotId: 0, query: "", member: null }]);
     nextSlotId.current = 1;
     setRecipientEditorKey((key) => key + 1);
     setWorksheetValues(applyAwardChange(null, selectedWorksheet, {}));
+    setHasAttemptedGenerate(false);
+    setRecommendation(null);
+  }
+
+  function restoreDraft(prepared) {
+    setSelectedMedalId(prepared.medalId);
+    setWorksheetValues(prepared.values);
+    setRecipientEntries(prepared.entries);
+    nextSlotId.current = prepared.entries.length;
+    setRecipientEditorKey((key) => key + 1);
+    setDraftName(prepared.name);
     setHasAttemptedGenerate(false);
     setRecommendation(null);
   }
@@ -561,13 +585,33 @@ export default function MedalRecommendationClient({
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden border-border/70 bg-card/70 shadow-none">
-          <CardHeader className="border-b border-border/70 p-5 sm:p-6">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border/70 p-5 sm:p-6">
             <h2
               id="recommendation-worksheet-heading"
               className="text-xl font-semibold text-foreground"
             >
               Recommendation Worksheet
             </h2>
+            <DraftFileControls
+              state={{
+                medalFamily,
+                medalId: selectedMedalId,
+                entries: recipientEntries,
+                values: worksheetValues,
+                name: draftName,
+              }}
+              roster={recipientRoster ?? []}
+              hasWork={Boolean(
+                selectedMedalId ||
+                recommendation ||
+                recipientEntries.some(
+                  (entry) =>
+                    entry.member || entry.unresolvedRecipient || entry.query,
+                ) ||
+                Object.values(worksheetValues).some(Boolean),
+              )}
+              onRestore={restoreDraft}
+            />
           </CardHeader>
 
           <CardContent className="space-y-6 p-5 sm:p-6">
@@ -699,6 +743,22 @@ export default function MedalRecommendationClient({
                       RECIPIENT_SELECTION_POLICY.minimum
                     )
                       updateRecipientEntries(recipientEntries.slice(0, -1));
+                  }}
+                  onRemoveEntry={(slotId) => {
+                    const remaining = recipientEntries.filter(
+                      (entry) => entry.slotId !== slotId,
+                    );
+                    updateRecipientEntries(
+                      remaining.length
+                        ? remaining
+                        : [
+                            {
+                              slotId: nextSlotId.current++,
+                              query: "",
+                              member: null,
+                            },
+                          ],
+                    );
                   }}
                   onQueryChange={(slotId, query) =>
                     updateRecipientEntries(

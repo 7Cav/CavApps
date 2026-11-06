@@ -70,6 +70,65 @@ describe("narrative validation utilities", () => {
   });
 
   describe("analyzeNarrative", () => {
+    test.each([
+      ["long unfinished narrative", "x".repeat(500_000), 0],
+      ["normal sentences", "They advanced. They held. They returned.", 3],
+      [
+        "repeated punctuation",
+        "They advanced... They held!! They returned?!?",
+        3,
+      ],
+      ["unfinished final sentence", "They advanced. They held. They began", 2],
+      [
+        "long unfinished tail",
+        "They advanced. They held. " + "x".repeat(500_000),
+        2,
+      ],
+      ["leading punctuation", "...They advanced. They held!", 2],
+      ["space before punctuation", "They advanced.   !! Unfinished", 2],
+    ])(
+      "counts %s without treating unfinished text as a sentence",
+      (_, text, count) => {
+        const options = { recipientRank: undefined, rankEntries: [] };
+        const atCount = analyze(text, {
+          ...options,
+          minimumNarrativeSentences: count,
+        });
+        const aboveCount = analyze(text, {
+          ...options,
+          minimumNarrativeSentences: count + 1,
+        });
+        expect(atCount.warnings.map(({ key }) => key)).not.toContain(
+          "sentence-count",
+        );
+        expect(aboveCount.warnings.map(({ key }) => key)).toContain(
+          "sentence-count",
+        );
+        expect(atCount.text).toBe(text.trim());
+        expect(aboveCount.highlightRanges).toEqual(atCount.highlightRanges);
+      },
+    );
+
+    test("preserves duplicate-sentence and punctuation highlights before a long unfinished tail", () => {
+      const text = "They held!! They held!! " + "x".repeat(500_000);
+      const result = analyze(text, {
+        recipientRank: undefined,
+        rankEntries: [],
+        minimumNarrativeSentences: 3,
+      });
+      expect(result.warnings.map(({ key }) => key)).toEqual([
+        "sentence-count",
+        "duplicate-sentence",
+        "repeated-punctuation",
+      ]);
+      expect(result.highlightRanges).toEqual([
+        { start: 0, end: 11 },
+        { start: 12, end: 23 },
+        { start: 9, end: 11 },
+        { start: 21, end: 23 },
+      ]);
+    });
+
     test("trims the narrative and accepts flexible recipient identity whitespace", () => {
       const result = analyze(
         "  Specialist   John Smith led the first action. He held the line. He secured the objective.  ",

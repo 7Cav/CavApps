@@ -620,7 +620,7 @@ describe("Expanded Service Medal family", () => {
     expect(preview()).not.toHaveTextContent(/1IC|Military Police/);
   });
 
-  test("Month/Year control emits canonical months, preserves partial edits, and follows external values", async () => {
+  test("Month/Year control persists partial edits, completes dates, clears, and follows external values", async () => {
     function ControlledMonth() {
       const [value, setValue] = useState("");
       return (
@@ -631,8 +631,10 @@ describe("Expanded Service Medal family", () => {
             value={value}
             onChange={setValue}
           />
-          <output aria-label="Canonical service month">{value}</output>
+          <output aria-label="Editable service month">{value}</output>
           <button onClick={() => setValue("2024-01")}>Load saved month</button>
+          <button onClick={() => setValue("20-05")}>Load partial month</button>
+          <button onClick={() => setValue("")}>Clear month</button>
         </>
       );
     }
@@ -640,16 +642,16 @@ describe("Expanded Service Medal family", () => {
     render(<ControlledMonth />);
     const year = screen.getByRole("textbox", { name: "Service Start Year" });
     const month = screen.getByRole("combobox", { name: "Service Start Month" });
-    const canonical = screen.getByLabelText("Canonical service month");
+    const canonical = screen.getByLabelText("Editable service month");
     expect(month).toHaveTextContent("Month");
     expect(year).toHaveValue("");
     await user.type(year, "20x2");
     expect(year).toHaveValue("202");
-    expect(canonical).toBeEmptyDOMElement();
+    expect(canonical).toHaveTextContent(/^202-$/);
     await selectComboboxOption(user, "Service Start Month", "January");
     await selectComboboxOption(user, "Service Start Month", "December");
     expect(year).toHaveValue("202");
-    expect(canonical).toBeEmptyDOMElement();
+    expect(canonical).toHaveTextContent(/^202-12$/);
     await user.type(year, "5");
     expect(canonical).toHaveTextContent(/^2025-12$/);
     await user.type(year, "9");
@@ -662,7 +664,7 @@ describe("Expanded Service Medal family", () => {
     }
     await user.clear(year);
     expect(month).toHaveTextContent("December");
-    expect(canonical).toBeEmptyDOMElement();
+    expect(canonical).toHaveTextContent(/^-12$/);
     await user.type(year, "2");
     await user.click(screen.getByRole("button", { name: "Load saved month" }));
     expect(year).toHaveValue("2024");
@@ -670,6 +672,16 @@ describe("Expanded Service Medal family", () => {
     await user.clear(year);
     await user.type(year, "2023");
     expect(canonical).toHaveTextContent(/^2023-01$/);
+    await user.click(
+      screen.getByRole("button", { name: "Load partial month" }),
+    );
+    expect(year).toHaveValue("20");
+    expect(month).toHaveTextContent("May");
+    expect(canonical).toHaveTextContent(/^20-05$/);
+    await user.click(screen.getByRole("button", { name: "Clear month" }));
+    expect(year).toHaveValue("");
+    expect(month).toHaveTextContent("Month");
+    expect(canonical).toBeEmptyDOMElement();
   });
 
   test("Month/Year selections clear errors live and invalidate stale previews", async () => {

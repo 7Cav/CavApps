@@ -51,19 +51,28 @@ function formatSentenceMinimum(value) {
 
 function findSentenceRanges(text) {
   const sentenceRanges = [];
-  const sentencePattern = /[^.!?]+[.!?]+/g;
+  const isEnding = (character) =>
+    character === "." || character === "!" || character === "?";
+  let cursor = 0;
 
-  for (const match of text.matchAll(sentencePattern)) {
-    const rawSentence = match[0];
+  // Visit each character once. A regex that requires terminal punctuation
+  // retries every starting position on a long, unfinished final sentence.
+  while (cursor < text.length) {
+    const sentenceStart = cursor;
+    while (cursor < text.length && !isEnding(text[cursor])) cursor += 1;
+    if (cursor === text.length) break;
+    const punctuationStart = cursor;
+    while (cursor < text.length && isEnding(text[cursor])) cursor += 1;
+    if (sentenceStart === punctuationStart) continue;
+    const rawSentence = text.slice(sentenceStart, cursor);
 
     const leadingWhitespaceLength = rawSentence.match(/^\s*/)?.[0].length ?? 0;
 
     const trailingWhitespaceLength = rawSentence.match(/\s*$/)?.[0].length ?? 0;
 
-    const start = (match.index ?? 0) + leadingWhitespaceLength;
+    const start = sentenceStart + leadingWhitespaceLength;
 
-    const end =
-      (match.index ?? 0) + rawSentence.length - trailingWhitespaceLength;
+    const end = cursor - trailingWhitespaceLength;
 
     if (end > start) {
       sentenceRanges.push({
