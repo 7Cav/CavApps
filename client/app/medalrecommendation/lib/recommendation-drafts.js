@@ -7,6 +7,7 @@ import {
 import {
   getRecipientId,
   getRecipientRankAbbreviation,
+  uniqueRecipients,
 } from "./recipient-utils";
 
 export const DRAFT_FORMAT = "cavapps.medal-recommendation.draft";
@@ -56,21 +57,14 @@ function string(value, limit = MAX_DRAFT_BYTES) {
 
 function selectedRecipient(entry) {
   object(entry, ["kind", "query", "identity", "snapshot"]);
-  object(entry.identity, ["userId", "profileId"], []);
-  const identity = {};
-  for (const key of ["userId", "profileId"]) {
-    if (!Object.hasOwn(entry.identity, key)) continue;
-    const id = string(entry.identity[key], 128).trim();
-    if (!id) fail("A selected recipient has an empty identifier.");
-    identity[key] = id;
-  }
-  if (!Object.keys(identity).length)
-    fail("A selected recipient needs a stable identifier.");
+  object(entry.identity, ["userId"]);
+  const userId = string(entry.identity.userId, 128).trim();
+  if (!userId) fail("A selected recipient has an empty identifier.");
   object(entry.snapshot, ["username", "rankFull", "realName"]);
   return {
     kind: "selected",
     query: string(entry.query),
-    identity,
+    identity: { userId },
     snapshot: {
       username: string(entry.snapshot.username, 4096),
       rankFull: string(entry.snapshot.rankFull, 4096),
@@ -139,7 +133,6 @@ function validateDraft(input, medalFamily) {
   if (!Array.isArray(input.recipients) || input.recipients.length > MAX_ENTRIES)
     fail("Invalid draft recipient collection.");
   const users = new Set();
-  const profiles = new Set();
   const recipients = input.recipients.map((entry) => {
     if (entry?.kind === "search") {
       object(entry, ["kind", "query"]);
@@ -147,16 +140,10 @@ function validateDraft(input, medalFamily) {
     }
     if (entry?.kind !== "selected") fail("Invalid draft recipient entry.");
     const result = selectedRecipient(entry);
-    for (const [key, seen] of [
-      ["userId", users],
-      ["profileId", profiles],
-    ]) {
-      const id = result.identity[key];
-      if (!id) continue;
-      if (seen.has(id))
-        fail("The draft contains duplicate selected recipients.");
-      seen.add(id);
-    }
+    const { userId } = result.identity;
+    if (users.has(userId))
+      fail("The draft contains duplicate selected recipients.");
+    users.add(userId);
     return result;
   });
   return {
@@ -191,14 +178,10 @@ export function serializeDraft({
     if (!entry.member) return { kind: "search", query: entry.query };
     const member = entry.member;
     const userId = getRecipientId(member);
-    const profileId = String(member.profileId ?? "").trim();
     return {
       kind: "selected",
       query: entry.query,
-      identity: {
-        ...(userId ? { userId } : {}),
-        ...(profileId ? { profileId } : {}),
-      },
+      identity: { userId },
       snapshot: {
         username: member.user?.username ?? "",
         rankFull: member.rank?.rankFull ?? "",
@@ -239,36 +222,18 @@ export function parseDraft(text, medalFamily) {
   return validateDraft(input, medalFamily);
 }
 
-// Index the original roster, before normal selection deduplication can hide
-// conflicting API identities. Snapshots never become roster records.
+// Use the same forum identity and deduplication as normal recipient selection.
+// Snapshots never become roster records.
 export function prepareDraftRestore(draft, roster) {
-  const byUser = new Map();
-  const byProfile = new Map();
-  for (const member of roster) {
-    for (const [id, index] of [
-      [getRecipientId(member), byUser],
-      [String(member.profileId ?? "").trim(), byProfile],
-    ]) {
-      if (id) index.set(id, [...(index.get(id) ?? []), member]);
-    }
-  }
+  const byUser = new Map(
+    uniqueRecipients(roster).map((member) => [getRecipientId(member), member]),
+  );
   const resolvedIds = new Set();
   const entries = draft.recipients.map((entry, slotId) => {
     if (entry.kind === "search")
       return { slotId, query: entry.query, member: null };
-    const candidates = Object.entries(entry.identity).map(
-      ([key, id]) => (key === "userId" ? byUser : byProfile).get(id) ?? [],
-    );
-    const candidate = candidates[0]?.[0];
-    const unambiguous =
-      candidate &&
-      candidates.every(
-        (matches) => matches.length === 1 && matches[0] === candidate,
-      ) &&
-      byUser.get(getRecipientId(candidate))?.length === 1 &&
-      (!candidate.profileId ||
-        byProfile.get(String(candidate.profileId).trim())?.length === 1);
-    if (!unambiguous)
+    const candidate = byUser.get(entry.identity.userId);
+    if (!candidate)
       return {
         slotId,
         query: entry.query,

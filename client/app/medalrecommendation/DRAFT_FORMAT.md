@@ -17,7 +17,7 @@ but the worksheet need not be complete.
     {
       "kind": "selected",
       "query": "Kenton.W",
-      "identity": { "userId": "9397", "profileId": "4637" },
+      "identity": { "userId": "9397" },
       "snapshot": {
         "username": "Kenton.W",
         "rankFull": "Staff Sergeant",
@@ -56,19 +56,23 @@ IDs are freshly allocated and never serialized.
 
 - `search` entries contain only `kind` and the raw string `query`.
 - `selected` entries additionally require `identity` and `snapshot`.
-- `identity` contains one or both nonempty string identifiers, each at most
-  128 UTF-16 code units. Whitespace around IDs is normalized. `userId` is the
-  forum user ID; `profileId` is the MILPACS profile-map key. They are distinct.
+- `identity` contains exactly one property: `userId`, the forum user ID. It is
+  a required nonempty string of at most 128 UTF-16 code units. Whitespace around
+  the ID is normalized. Unsupported identity properties, including the distinct
+  MILPACS `profileId`, are rejected rather than discarded.
 - `snapshot` contains exactly `username`, `rankFull`, and `realName`, each a
   string of at most 4096 UTF-16 code units. These are display fallbacks, never
   trusted roster records or identity-matching criteria.
 
-Resolution indexes the original roster supplied to the page, before selection
-deduplication. Every supplied ID must match uniquely and agree on the same
-current member; ambiguous current identities remain unresolved. A missing or
-conflicting second identifier does not silently fall back to the first.
-Repeated saved identifiers, or separate entries resolving to the same person,
-reject the entire import.
+Resolution uses the same forum-ID deduplication as normal recipient selection,
+then looks up the saved `userId` in the current roster. A recreated MILPACS
+profile under the same forum account resolves successfully. A missing forum
+account remains unresolved, even if another member has the saved username or
+real name. Duplicate selected `userId` values reject the entire import.
+
+This is the final pre-release version-one identity contract. Earlier drafts
+containing `profileId` (alone or alongside `userId`) fail strict validation;
+there is no migration or version change.
 
 Resolved recipients use current usernames, names, ranks, billets, and roster
 status. A resolved selection's query becomes the current username. No additional

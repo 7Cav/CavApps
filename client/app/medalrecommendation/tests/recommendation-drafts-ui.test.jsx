@@ -39,7 +39,7 @@ function selected(member = current) {
   return {
     kind: "selected",
     query: member.user.username,
-    identity: { userId: member.user.userId, profileId: member.profileId },
+    identity: { userId: member.user.userId },
     snapshot: {
       username: member.user.username,
       rankFull: member.rank.rankFull,
@@ -330,11 +330,12 @@ describe("Worksheet draft files", () => {
   );
 
   test.each(["operation", "service"])(
-    "%s resolves current promoted, renamed and Reserves identity without changing authored prose",
+    "%s restores a recreated profile with current rank, username and Reserves status without changing authored prose",
     async (family) => {
       const user = userEvent.setup();
       const promoted = makeRecipient({
         ...current,
+        profileId: "9999",
         user: { ...current.user, username: "Renamed.W" },
         rank: {
           rankId: "16",
@@ -371,7 +372,7 @@ describe("Worksheet draft files", () => {
         within(preview()).getByRole("link", {
           name: "Sergeant First Class William Renamed",
         }),
-      ).toHaveAttribute("href", "https://7cav.us/rosters/profile/4637/");
+      ).toHaveAttribute("href", "https://7cav.us/rosters/profile/9999/");
     },
   );
 
@@ -381,7 +382,7 @@ describe("Worksheet draft files", () => {
       const user = userEvent.setup();
       renderClient({ medalFamily: family, roster: [current] });
       const missing = selected();
-      missing.identity = { userId: "gone", profileId: "gone-profile" };
+      missing.identity = { userId: "gone" };
       await loadEmpty(user, draft(family, { recipients: [missing] }));
       expect(
         screen.getByText("Recipient Not Found", { exact: true }),
@@ -393,6 +394,10 @@ describe("Worksheet draft files", () => {
       ).toBeVisible();
       await submitRecommendation(user);
       expect(preview()).not.toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: "Download" }));
+      expect(JSON.parse(await readBlob(downloaded)).recipients).toEqual([
+        missing,
+      ]);
       const input = screen.getByRole("textbox", {
         name: "Recipient",
         exact: true,
@@ -606,6 +611,14 @@ describe("Worksheet draft files", () => {
     [
       "duplicate identity",
       draft("operation", { recipients: [selected(), selected()] }),
+    ],
+    [
+      "earlier dual-ID identity",
+      draft("operation", {
+        recipients: [
+          { ...selected(), identity: { userId: "9397", profileId: "4637" } },
+        ],
+      }),
     ],
     [
       "prototype property",

@@ -19,7 +19,7 @@ function draft(overrides = {}) {
     ...overrides,
   };
 }
-function saved(identity = { userId: "9397", profileId: "4637" }) {
+function saved(identity = { userId: "9397" }) {
   return {
     kind: "selected",
     query: "Old.W",
@@ -39,7 +39,7 @@ const restore = (recipients, roster = [member]) =>
   prepareDraftRestore(parse(draft({ recipients })), roster);
 
 describe("Draft file contract", () => {
-  test("exports raw editable values, independent profile identity, search order, and no generated or roster data", () => {
+  test("exports raw editable values, forum identity only, search order, and no generated or roster data", () => {
     const text = serializeDraft({
       medalFamily: "operation",
       medalId: "army-commendation-medal",
@@ -70,7 +70,7 @@ describe("Draft file contract", () => {
       {
         kind: "selected",
         query: "Kenton.W",
-        identity: { userId: "9397", profileId: "4637" },
+        identity: { userId: "9397" },
         snapshot: {
           username: "Kenton.W",
           rankFull: "Staff Sergeant",
@@ -171,6 +171,7 @@ describe("Draft file contract", () => {
       (d) => ({ ...d, recipients: [{ kind: "search", query: 1 }] }),
     ],
     ["missing stable ID", (d) => ({ ...d, recipients: [saved({})] })],
+    ["empty stable ID", (d) => ({ ...d, recipients: [saved({ userId: "" })] })],
     [
       "blank stable ID",
       (d) => ({ ...d, recipients: [saved({ userId: " " })] }),
@@ -182,6 +183,21 @@ describe("Draft file contract", () => {
     [
       "oversized ID",
       (d) => ({ ...d, recipients: [saved({ userId: "a".repeat(129) })] }),
+    ],
+    [
+      "profile-only identity",
+      (d) => ({ ...d, recipients: [saved({ profileId: "4637" })] }),
+    ],
+    [
+      "earlier dual-ID identity",
+      (d) => ({
+        ...d,
+        recipients: [saved({ userId: "9397", profileId: "4637" })],
+      }),
+    ],
+    [
+      "unknown identity property",
+      (d) => ({ ...d, recipients: [saved({ userId: "9397", otherId: "x" })] }),
     ],
     [
       "missing snapshot",
@@ -298,41 +314,38 @@ describe("Draft file contract", () => {
 });
 
 describe("Draft recipient identity", () => {
-  test.each([
-    { userId: "9397", profileId: "4637" },
-    { userId: "9397" },
-    { profileId: "4637" },
-  ])("resolves %j to the current roster record", (identity) => {
-    const result = restore([saved(identity)]);
+  test("restores current rank and username by forum ID instead of saved display information", () => {
+    const result = restore([saved()]);
     expect(result.entries[0].member).toBe(member);
     expect(result.entries[0].query).toBe("Kenton.W");
+    expect(result.entries[0].member.rank.rankFull).toBe("Staff Sergeant");
+  });
+  test("restores a recreated MILPACS profile under the same forum account", () => {
+    const text = serializeDraft({
+      medalFamily: "operation",
+      medalId: "army-commendation-medal",
+      entries: [{ member, query: "Kenton.W" }],
+      values: {},
+    });
+    const recreated = makeRecipient({ ...member, profileId: "9999" });
+    const result = prepareDraftRestore(parseDraft(text, "operation"), [
+      recreated,
+    ]);
+    expect(result.entries[0].member).toBe(recreated);
+    expect(result.entries[0].member.profileId).toBe("9999");
+  });
+  test("uses normal recipient selection when roster records share a forum ID", () => {
+    const repeated = makeRecipient({ ...member, profileId: "9999" });
+    expect(restore([saved()], [member, repeated]).entries[0].member).toBe(
+      member,
+    );
   });
   test.each([
-    ["missing", [saved({ userId: "missing" })], [member]],
+    ["missing forum account", [saved({ userId: "missing" })], [member]],
     [
-      "same name, different ID",
+      "same username and real name, different forum ID",
       [saved({ userId: "missing" })],
       [makeRecipient({ user: { username: "Old.W" }, realName: "Old Name" })],
-    ],
-    [
-      "one unverifiable ID",
-      [saved({ userId: "9397", profileId: "missing" })],
-      [member],
-    ],
-    [
-      "conflicting IDs",
-      [saved({ userId: "9397", profileId: "other" })],
-      [member, makeRecipient({ profileId: "other" })],
-    ],
-    [
-      "ambiguous forum ID",
-      [saved()],
-      [member, makeRecipient({ user: { userId: "9397" }, profileId: "other" })],
-    ],
-    [
-      "ambiguous profile ID",
-      [saved()],
-      [member, makeRecipient({ profileId: "4637" })],
     ],
   ])("keeps %s identity unresolved and downloadable", (_, entries, roster) => {
     const restored = restore(entries, roster);
@@ -349,17 +362,14 @@ describe("Draft recipient identity", () => {
     });
     expect(JSON.parse(redownload).recipients).toEqual(entries);
   });
-  test.each([
-    [saved(), saved({ userId: "9397" })],
-    [saved(), saved({ profileId: "4637" })],
-  ])("rejects repeated saved identifiers", (...recipients) =>
-    expect(() => restore(recipients)).toThrow(/duplicate/),
+  test.each(["9397", " 9397 "])(
+    "rejects duplicate forum ID %j before restoration",
+    (userId) => {
+      expect(() =>
+        parse(draft({ recipients: [saved(), saved({ userId })] })),
+      ).toThrow(/duplicate/);
+    },
   );
-  test("rejects two different identifier forms resolving to the same member", () => {
-    expect(() =>
-      restore([saved({ userId: "9397" }), saved({ profileId: "4637" })]),
-    ).toThrow(/duplicate/);
-  });
   test("keeps working order and unfinished text rather than recommendation sorting", () => {
     const junior = makeRecipient();
     const result = restore(
