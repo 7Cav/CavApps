@@ -28,6 +28,7 @@ export default function DraftFileControls({
   roster,
   hasWork,
   onRestore,
+  onLoadStart,
 }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(null);
@@ -46,6 +47,7 @@ export default function DraftFileControls({
   );
 
   function changeOpen(value) {
+    if (value) onLoadStart?.();
     request.current += 1;
     reader.current?.abort();
     setOpen(value);
