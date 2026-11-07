@@ -53,6 +53,7 @@ import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
 import DraftFileControls from "./DraftFileControls";
+import useWorksheetRecovery from "./useWorksheetRecovery";
 import {
   RECIPIENT_INLINE_LIMIT,
   RECIPIENT_SELECTION_POLICY,
@@ -330,6 +331,31 @@ export default function MedalRecommendationClient({
   const [worksheetValues, setWorksheetValues] = useState({});
   const [draftName, setDraftName] = useState(undefined);
 
+  // Update this at the edit boundary, not during a later render/effect. Related
+  // React state updates can be batched without creating a partial recovery draft.
+  const editable = useRef({
+    medalFamily,
+    medalId: selectedMedalId,
+    entries: recipientEntries,
+    values: worksheetValues,
+    name: draftName,
+  });
+  const recovery = useWorksheetRecovery({
+    medalFamily,
+    roster: recipientRoster ?? [],
+    onRestore: (prepared) => restoreDraft(prepared, false),
+  });
+
+  function updateEditable(patch, options = {}, persist = true) {
+    const next = { ...editable.current, ...patch, medalFamily };
+    editable.current = next;
+    setSelectedMedalId(next.medalId);
+    setRecipientEntries(next.entries);
+    setWorksheetValues(next.values);
+    setDraftName(next.name);
+    if (persist) recovery.recordEdit(next, options);
+  }
+
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
   const [recommendation, setRecommendation] = useState(null);
@@ -440,12 +466,13 @@ export default function MedalRecommendationClient({
     narrativeField,
   ]);
 
-  function updateRecipientEntries(entries) {
-    setRecipientEntries(entries);
+  function updateRecipientEntries(entries, options) {
+    updateEditable({ entries }, options);
     setRecommendation(null);
   }
 
   function selectRecipient(slotId, member) {
+    const recipientEntries = editable.current.entries;
     if (
       recipientEntries.some(
         (entry) =>
@@ -464,6 +491,7 @@ export default function MedalRecommendationClient({
   }
 
   function confirmRecipients(members) {
+    const recipientEntries = editable.current.entries;
     const unique = uniqueRecipients(members);
     if (
       !validateRecipientEntries(
@@ -506,10 +534,19 @@ export default function MedalRecommendationClient({
   }
 
   function handleWorksheetValueChange(fieldName, value) {
-    setWorksheetValues((currentValues) => ({
-      ...currentValues,
-      [fieldName]: value,
-    }));
+    const current = editable.current;
+    const field = resolveMedalWorksheet(getMedalById(current.medalId)).fields[
+      fieldName
+    ];
+    const debounce =
+      ["text", "textarea"].includes(field.type) ||
+      (field.type === "monthYear" &&
+        (current.values[fieldName] ?? "").split("-")[0] !==
+          value.split("-")[0]);
+    updateEditable(
+      { values: { ...current.values, [fieldName]: value } },
+      { debounce },
+    );
     setRecommendation(null);
   }
 
@@ -541,22 +578,36 @@ export default function MedalRecommendationClient({
   }
 
   function handleClearWorksheet() {
-    setDraftName(undefined);
-    setRecipientEntries([{ slotId: 0, query: "", member: null }]);
+    const worksheet = resolveMedalWorksheet(
+      getMedalById(editable.current.medalId),
+    );
+    updateEditable(
+      {
+        name: undefined,
+        entries: [{ slotId: 0, query: "", member: null }],
+        values: applyAwardChange(null, worksheet, {}),
+      },
+      { clear: true },
+    );
     nextSlotId.current = 1;
     setRecipientEditorKey((key) => key + 1);
-    setWorksheetValues(applyAwardChange(null, selectedWorksheet, {}));
     setHasAttemptedGenerate(false);
     setRecommendation(null);
   }
 
-  function restoreDraft(prepared) {
-    setSelectedMedalId(prepared.medalId);
-    setWorksheetValues(prepared.values);
-    setRecipientEntries(prepared.entries);
+  function restoreDraft(prepared, persist = true) {
+    updateEditable(
+      {
+        medalId: prepared.medalId,
+        values: prepared.values,
+        entries: prepared.entries,
+        name: prepared.name,
+      },
+      {},
+      persist,
+    );
     nextSlotId.current = prepared.entries.length;
     setRecipientEditorKey((key) => key + 1);
-    setDraftName(prepared.name);
     setHasAttemptedGenerate(false);
     setRecommendation(null);
   }
@@ -611,10 +662,29 @@ export default function MedalRecommendationClient({
                 Object.values(worksheetValues).some(Boolean),
               )}
               onRestore={restoreDraft}
+              onLoadStart={recovery.cancelHydration}
             />
           </CardHeader>
 
           <CardContent className="space-y-6 p-5 sm:p-6">
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <p>
+                Recovery stays in this browser profile, shared by anyone using
+                it, and does not sync across devices.
+              </p>
+              <p
+                aria-live="polite"
+                aria-atomic="true"
+                aria-label="Worksheet Recovery"
+                className={
+                  recovery.status.kind === "warning"
+                    ? "text-amber-400"
+                    : undefined
+                }
+              >
+                {recovery.status.message}
+              </p>
+            </div>
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="award"
@@ -631,13 +701,14 @@ export default function MedalRecommendationClient({
                   const nextWorksheet = resolveMedalWorksheet(nextMedal);
 
                   const nextValues = applyAwardChange(
-                    selectedWorksheet,
+                    resolveMedalWorksheet(
+                      getMedalById(editable.current.medalId),
+                    ),
                     nextWorksheet,
-                    worksheetValues,
+                    editable.current.values,
                   );
 
-                  setSelectedMedalId(value);
-                  setWorksheetValues(nextValues);
+                  updateEditable({ medalId: value, values: nextValues });
                   setHasAttemptedGenerate(false);
                   setRecommendation(null);
                 }}
@@ -726,6 +797,7 @@ export default function MedalRecommendationClient({
                     hasAttemptedGenerate ? recipientValidation.errors : []
                   }
                   onAdd={() => {
+                    const recipientEntries = editable.current.entries;
                     if (recipientEntries.length < RECIPIENT_INLINE_LIMIT) {
                       updateRecipientEntries([
                         ...recipientEntries,
@@ -738,6 +810,7 @@ export default function MedalRecommendationClient({
                     }
                   }}
                   onRemove={() => {
+                    const recipientEntries = editable.current.entries;
                     if (
                       recipientEntries.length >
                       RECIPIENT_SELECTION_POLICY.minimum
@@ -745,6 +818,7 @@ export default function MedalRecommendationClient({
                       updateRecipientEntries(recipientEntries.slice(0, -1));
                   }}
                   onRemoveEntry={(slotId) => {
+                    const recipientEntries = editable.current.entries;
                     const remaining = recipientEntries.filter(
                       (entry) => entry.slotId !== slotId,
                     );
@@ -762,11 +836,12 @@ export default function MedalRecommendationClient({
                   }}
                   onQueryChange={(slotId, query) =>
                     updateRecipientEntries(
-                      recipientEntries.map((entry) =>
+                      editable.current.entries.map((entry) =>
                         entry.slotId === slotId
                           ? { ...entry, query, member: null }
                           : entry,
                       ),
+                      { debounce: true },
                     )
                   }
                   onSelect={selectRecipient}
