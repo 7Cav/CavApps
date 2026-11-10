@@ -12,18 +12,34 @@ const steps = [
   {
     title: "Select a Medal",
     user: (
-      <p>
-        Choose either Operation Medals or Service Medals from the landing page.
-        Once inside the worksheet, select the medal you wish to recommend.
-      </p>
+      <>
+        <p>
+          Choose either Operation Medals or Service Medals from the landing
+          page. Once inside the worksheet, select the medal you wish to
+          recommend.
+        </p>
+        <p>
+          Use <strong>Save</strong> for named drafts, <strong>Load</strong> to
+          reopen or manage saved drafts or import a JSON file, and{" "}
+          <strong>Download</strong> for a portable copy. Clearing the worksheet
+          does not delete saved drafts.
+        </p>
+      </>
     ),
     tool: (
-      <p>
-        The Aid loads the appropriate worksheet for your selected medal,
-        including its required fields, criteria, and available guidance.
-        Different medals may have different requirements, so the worksheet will
-        adapt to your selection.
-      </p>
+      <>
+        <p>
+          The Aid loads the appropriate worksheet for your selected medal,
+          including its required fields, criteria, and available guidance.
+          Different medals may have different requirements, so the worksheet
+          will adapt to your selection.
+        </p>
+        <p>
+          When browser storage is available, the Aid automatically preserves
+          your in-progress worksheet for recovery. Named drafts are stored
+          separately in this browser and do not sync between devices.
+        </p>
+      </>
     ),
   },
   {

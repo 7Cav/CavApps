@@ -1,5 +1,9 @@
 import {
   buildDraftFilename,
+  draftNameKey,
+  normalizeDraftName,
+  suggestDraftName,
+  withDraftName,
   MAX_DRAFT_BYTES,
   parseDraft,
   prepareDraftRestore,
@@ -37,6 +41,54 @@ const parse = (value, family = "operation") =>
   parseDraft(JSON.stringify(value), family);
 const restore = (recipients, roster = [member]) =>
   prepareDraftRestore(parse(draft({ recipients })), roster);
+
+describe("Browser draft names", () => {
+  test("normalizes surrounding whitespace and Unicode while preserving display case and internal spacing", () => {
+    expect(normalizeDraftName("  Cafe\u0301  Draft  ")).toBe("Café  Draft");
+    expect(draftNameKey("  CAFÉ  Draft ")).toBe("café  draft");
+    expect(normalizeDraftName("😀".repeat(256))).toHaveLength(512);
+  });
+  test.each(["", "   ", "a\nb", "\tDraft", "Draft\u0085", "😀".repeat(257)])(
+    "rejects invalid browser name %#",
+    (name) => {
+      expect(() => normalizeDraftName(name)).toThrow();
+    },
+  );
+  test("suggests the smallest available generated number, and a confirmed suffix for custom copies", () => {
+    const base = "Draft - Operation Overlord - ARCOM - SSG.Kenton.W";
+    expect(suggestDraftName(base, [])).toBe(base);
+    expect(suggestDraftName(base, [base.toUpperCase()])).toBe(
+      "Draft (1) - Operation Overlord - ARCOM - SSG.Kenton.W",
+    );
+    expect(
+      suggestDraftName(base, [
+        base,
+        "Draft (1) - Operation Overlord - ARCOM - SSG.Kenton.W",
+        "Draft (3) - Operation Overlord - ARCOM - SSG.Kenton.W",
+      ]),
+    ).toBe("Draft (2) - Operation Overlord - ARCOM - SSG.Kenton.W");
+    expect(
+      suggestDraftName("Custom plan", ["CUSTOM PLAN", "Custom plan (2)"]),
+    ).toBe("Custom plan (1)");
+    expect(
+      normalizeDraftName(
+        suggestDraftName("😀".repeat(256), ["😀".repeat(256)]),
+      ),
+    ).toHaveLength(512);
+  });
+  test("renaming preserves all validated recipient and editable content without storage metadata", () => {
+    const source = JSON.stringify(
+      draft({
+        recipients: [saved(), { kind: "search", query: " unfinished " }],
+        values: { narrative: "  draft\ntext " },
+      }),
+    );
+    const before = parseDraft(source, "operation");
+    expect(
+      JSON.parse(withDraftName(source, "operation", " New name ")),
+    ).toEqual({ ...before, name: "New name" });
+  });
+});
 
 describe("Draft file contract", () => {
   test("exports raw editable values, forum identity only, search order, and no generated or roster data", () => {
