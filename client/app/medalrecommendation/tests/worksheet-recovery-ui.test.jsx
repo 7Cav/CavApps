@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, useRef, useState } from "react";
 import {
   act,
   cleanup,
@@ -11,6 +11,7 @@ import {
 import userEvent from "@testing-library/user-event";
 import { IDBFactory, IDBObjectStore } from "fake-indexeddb";
 import MedalRecommendationClient from "../MedalRecommendationClient";
+import useWorksheetRecovery from "../useWorksheetRecovery";
 import * as storage from "../lib/worksheet-recovery-store";
 import { MAX_DRAFT_BYTES, serializeDraft } from "../lib/recommendation-drafts";
 import {
@@ -123,7 +124,10 @@ afterEach(async () => {
   vi.useRealTimers();
 });
 async function seed(draft = state()) {
-  const token = await observer.register(draft.medalFamily);
+  const token = await observer.register(
+    draft.medalFamily,
+    await observer.readHead(draft.medalFamily),
+  );
   await observer.commit(token, serializeDraft(draft));
   return token;
 }
@@ -177,7 +181,241 @@ function holdHydration() {
   return { release, read };
 }
 
+// Separate rendered controllers model independent tabs without duplicating the
+// full worksheet's HTML IDs in a single jsdom document. Storage is real IDB.
+function RecoveryTab({ name, family = "operation" }) {
+  const [draft, setDraft] = useState(() =>
+    state(family, { medalId: "", values: {} }),
+  );
+  const editable = useRef(draft);
+  const recovery = useWorksheetRecovery({
+    medalFamily: family,
+    roster: [member],
+    onRestore(prepared) {
+      const next = { medalFamily: family, ...prepared };
+      editable.current = next;
+      setDraft(next);
+    },
+  });
+  return (
+    <section aria-label={name}>
+      <textarea
+        aria-label={`${name} Narrative`}
+        value={draft.values.narrative ?? ""}
+        onChange={(event) => {
+          const next = {
+            ...editable.current,
+            values: {
+              ...editable.current.values,
+              narrative: event.target.value,
+            },
+          };
+          editable.current = next;
+          setDraft(next);
+          recovery.recordEdit(next, { debounce: true });
+        }}
+      />
+      <p aria-label={`${name} Recovery`} aria-live="polite">
+        {recovery.status.message}
+      </p>
+    </section>
+  );
+}
+
 describe("Automatic worksheet recovery", () => {
+  test("a stale tab cannot replace another tab's fully completed additional sentence", async () => {
+    await seed();
+    render(<RecoveryTab name="Tab A" />);
+    render(<RecoveryTab name="Tab B" />);
+    const original = state().values.narrative;
+    await recovered("Tab A Narrative", original);
+    await recovered("Tab B Narrative", original);
+    const newer = `${original} Tab B secured the extraction point.`;
+    fireEvent.change(screen.getByLabelText("Tab B Narrative"), {
+      target: { value: newer },
+    });
+    fireEvent(window, new Event("pagehide"));
+    await stored("operation", "narrative", newer);
+    const completed = await observer.read("operation");
+    expect(completed.head.revision).toBe(2);
+
+    // B's payload is fully committed before A edits its older worksheet.
+    const firstLocal = `${original} Tab A added an older account.`;
+    fireEvent.change(screen.getByLabelText("Tab A Narrative"), {
+      target: { value: firstLocal },
+    });
+    // A second edit is already queued before the first conflict is delivered.
+    const local = `${firstLocal} Another queued stale edit.`;
+    fireEvent.change(screen.getByLabelText("Tab A Narrative"), {
+      target: { value: local },
+    });
+    fireEvent(window, new Event("pagehide"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Tab A Recovery")).toHaveTextContent(
+        /another tab/i,
+      ),
+    );
+    expect(screen.getByLabelText("Tab A Narrative")).toHaveValue(local);
+    expect(await observer.read("operation")).toEqual(completed);
+    fireEvent.change(screen.getByLabelText("Tab A Narrative"), {
+      target: { value: `${local} More unsaved typing.` },
+    });
+    fireEvent(window, new Event("pagehide"));
+    expect(screen.getByLabelText("Tab A Recovery")).toHaveTextContent(
+      /another tab.*not saved.*Download/i,
+    );
+    expect(await observer.read("operation")).toEqual(completed);
+    render(<RecoveryTab name="Tab C" />);
+    await recovered("Tab C Narrative", newer);
+  });
+
+  test("rapid edits retain immediate queue admission and focus waits for their acknowledged base", async () => {
+    const base = await seed();
+    renderClient({ roster: [member] });
+    await recovered("Operation Title", "Overlord");
+    const barrier = deferred();
+    const holding = navigator.locks.request(
+      "cavapps-medal-recovery:operation",
+      {},
+      () => barrier.promise,
+    );
+    enterWorksheetField("Operation Title", "First local edit");
+    // This stale competitor joins between genuine local edits. If registration
+    // admission were deferred until its predecessor resolved, it could win.
+    const competitor = observer.register("operation", base);
+    const rejected = expect(competitor).rejects.toBeInstanceOf(
+      storage.RecoveryConflictError,
+    );
+    fireEvent(window, new Event("focus"));
+    enterWorksheetField("Operation Title", "Second local edit");
+    enterWorksheetField("Operation Title", "Third local edit");
+    fireEvent(window, new Event("pagehide"));
+    await act(async () => {
+      barrier.resolve();
+      await holding;
+      await rejected;
+    });
+    await stored("operation", "operationTitle", "Third local edit");
+    await waitFor(() =>
+      expect(feedback()).toHaveTextContent(/saved in this browser/i),
+    );
+    expect((await observer.readHead("operation")).revision).toBe(4);
+    expect(feedback()).not.toHaveTextContent(/another tab/i);
+  });
+
+  test.each(["focus", "visible"])(
+    "%s freshness invalidates saved feedback without replacing local fields or advancing recovery",
+    async (event) => {
+      await seed();
+      renderClient({ roster: [member] });
+      await recovered("Operation Title", "Overlord");
+      enterWorksheetField("Operation Title", "My completed work");
+      fireEvent(window, new Event("pagehide"));
+      await stored("operation", "operationTitle", "My completed work");
+      await waitFor(() =>
+        expect(feedback()).toHaveTextContent(/saved in this browser/i),
+      );
+      await seed(
+        state("operation", {
+          values: { operationTitle: "Other tab's newer work" },
+        }),
+      );
+      const newer = await observer.read("operation");
+      if (event === "focus") fireEvent(window, new Event("focus"));
+      else {
+        vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+        fireEvent(document, new Event("visibilitychange"));
+      }
+      await waitFor(() =>
+        expect(feedback()).toHaveTextContent(/another tab.*not saved/i),
+      );
+      expect(
+        screen.getByLabelText("Operation Title", { exact: true }),
+      ).toHaveValue("My completed work");
+      expect(await observer.read("operation")).toEqual(newer);
+    },
+  );
+
+  test.each(["Clear", "Load"])(
+    "stale %s preserves the local result and Download without replacing newer recovery",
+    async (action) => {
+      const user = userEvent.setup();
+      await seed();
+      await seed(state("service"));
+      const service = await observer.read("service");
+      renderClient({ roster: [member] });
+      await recovered("Operation Title", "Overlord");
+      await seed(
+        state("operation", {
+          values: { operationTitle: "Other tab's completed work" },
+        }),
+      );
+      const newer = await observer.read("operation");
+      if (action === "Clear") await clear(user);
+      else {
+        await upload(
+          user,
+          serializeDraft(
+            state("operation", {
+              values: { operationTitle: "Imported local work" },
+            }),
+          ),
+        );
+        await user.click(
+          within(screen.getByRole("dialog")).getByRole("button", {
+            name: "Replace Worksheet",
+          }),
+        );
+      }
+      await waitFor(() =>
+        expect(feedback()).toHaveTextContent(
+          /another tab.*not saved.*Download/i,
+        ),
+      );
+      expect(
+        screen.getByLabelText("Operation Title", { exact: true }),
+      ).toHaveValue(action === "Clear" ? "" : "Imported local work");
+      if (action === "Clear")
+        expect(feedback()).toHaveTextContent(/cleared.*not saved/i);
+      await user.click(screen.getByRole("button", { name: "Download" }));
+      expect(downloaded).toBeInstanceOf(Blob);
+      enterWorksheetField("Operation Title", "Still local after conflict");
+      fireEvent(window, new Event("pagehide"));
+      expect(feedback()).toHaveTextContent(/another tab/i);
+      expect(await observer.read("operation")).toEqual(newer);
+      expect(await observer.read("service")).toEqual(service);
+    },
+  );
+
+  test("a conflict in Operation does not prevent a mounted Service worksheet from saving", async () => {
+    await seed();
+    await seed(state("service"));
+    render(<RecoveryTab name="Operation" />);
+    render(<RecoveryTab name="Service" family="service" />);
+    await recovered("Operation Narrative", state().values.narrative);
+    await recovered("Service Narrative", state("service").values.narrative);
+    await seed(
+      state("operation", { values: { narrative: "Newer Operation work." } }),
+    );
+    const operation = await observer.read("operation");
+    fireEvent(window, new Event("focus"));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Operation Recovery")).toHaveTextContent(
+        /another tab/i,
+      ),
+    );
+    fireEvent.change(screen.getByLabelText("Service Narrative"), {
+      target: { value: "Independent Service edit." },
+    });
+    fireEvent(window, new Event("pagehide"));
+    await stored("service", "narrative", "Independent Service edit.");
+    await waitFor(() =>
+      expect(screen.getByLabelText("Service Recovery")).toHaveTextContent(
+        /saved in this browser/i,
+      ),
+    );
+    expect(await observer.read("operation")).toEqual(operation);
+  });
   test.each([
     ["operation", "Operation Title", "operationTitle", "Fury"],
     ["service", "Affected Area of the Cav", "affectedArea", "S6 Development"],
@@ -392,12 +630,12 @@ describe("Automatic worksheet recovery", () => {
 
   test("Clear preserves the medal, clears name metadata, and defeats older cross-tab work", async () => {
     const user = userEvent.setup();
-    await seed(state("operation", { name: "Imported name" }));
+    const base = await seed(state("operation", { name: "Imported name" }));
     await seed(state("service"));
     const service = await observer.read("service");
+    const old = await observer.register("operation", base);
     const view = renderClient({ roster: [member] });
     await recovered("Operation Title", "Overlord");
-    const old = await observer.register("operation");
     enterWorksheetField("Operation Title", "Pending typing");
     await clear(user);
     await stored("operation", "operationTitle", "");
@@ -477,34 +715,57 @@ describe("Automatic worksheet recovery", () => {
         );
         if (action === "invalid")
           expect(await screen.findByRole("alert")).toBeVisible();
-        else await stored("operation", "operationTitle", "Manual Fury");
+        else {
+          await recovered("Operation Title", "Manual Fury");
+          await waitFor(() =>
+            expect(feedback()).toHaveTextContent(/another tab.*not saved/i),
+          );
+        }
       }
-      if (action !== "accept")
-        expect(await observer.read("operation")).toEqual(before);
+      expect(await observer.read("operation")).toEqual(before);
     },
   );
 
-  test("a delayed hydration result cannot replace a new medal selection and field edit", async () => {
-    await seed();
-    const pending = holdHydration();
-    renderClient({ roster: [member] });
-    await pending.read.promise;
-    await selectAward(userEvent.setup(), "Bronze Star Medal");
-    enterWorksheetField("Operation Title", "New work");
-    await act(async () => pending.release.resolve());
-    expect(screen.getByRole("combobox", { name: "Award" })).toHaveTextContent(
-      "Bronze Star Medal",
-    );
-    expect(
-      screen.getByLabelText("Operation Title", { exact: true }),
-    ).toHaveValue("New work");
-  });
+  test.each([true, false])(
+    "edits before hydration retain local values and cannot adopt an unread base (existing recovery: %s)",
+    async (prior) => {
+      if (prior) await seed();
+      const before = await observer.read("operation");
+      const pending = holdHydration();
+      renderClient({ roster: [member] });
+      await pending.read.promise;
+      await selectAward(userEvent.setup(), "Bronze Star Medal");
+      enterWorksheetField("Operation Title", "New work");
+      await act(async () => pending.release.resolve());
+      expect(screen.getByRole("combobox", { name: "Award" })).toHaveTextContent(
+        "Bronze Star Medal",
+      );
+      expect(
+        screen.getByLabelText("Operation Title", { exact: true }),
+      ).toHaveValue("New work");
+      fireEvent(window, new Event("pagehide"));
+      if (prior) {
+        await waitFor(() =>
+          expect(feedback()).toHaveTextContent(/another tab/i),
+        );
+        expect(await observer.read("operation")).toEqual(before);
+      } else {
+        await stored("operation", "operationTitle", "New work");
+        enterWorksheetField("Operation Title", "More new work");
+        fireEvent(window, new Event("pagehide"));
+        await stored("operation", "operationTitle", "More new work");
+        await waitFor(() =>
+          expect(feedback()).toHaveTextContent(/saved in this browser/i),
+        );
+      }
+    },
+  );
 
   test.each([true, false])(
     "interrupted recovery warns and restores only completed work (prior save: %s)",
     async (prior) => {
-      if (prior) await seed();
-      await observer.register("operation");
+      const base = prior ? await seed() : null;
+      const pending = await observer.register("operation", base);
       renderClient({ roster: [member] });
       await waitFor(() =>
         expect(feedback()).toHaveTextContent(/unsaved|not saved/i),
@@ -515,6 +776,21 @@ describe("Automatic worksheet recovery", () => {
           screen.queryByLabelText("Operation Title", { exact: true }),
         ).not.toBeInTheDocument();
       expect(preview()).not.toBeInTheDocument();
+      if (!prior)
+        await selectAward(userEvent.setup(), "Army Commendation Medal");
+      enterWorksheetField(
+        "Operation Title",
+        "Edited after interrupted recovery",
+      );
+      fireEvent(window, new Event("pagehide"));
+      await stored(
+        "operation",
+        "operationTitle",
+        "Edited after interrupted recovery",
+      );
+      expect((await observer.readHead("operation")).revision).toBeGreaterThan(
+        pending.revision,
+      );
     },
   );
 
@@ -523,7 +799,15 @@ describe("Automatic worksheet recovery", () => {
     renderClient({ roster: [member] });
     await recovered("Operation Title", "Overlord");
     enterWorksheetField("Operation Title", "Older local work");
-    const newer = await observer.register("operation");
+    await navigator.locks.request(
+      "cavapps-medal-recovery:operation",
+      {},
+      () => {},
+    );
+    const newer = await observer.register(
+      "operation",
+      await observer.readHead("operation"),
+    );
     await observer.commit(
       newer,
       serializeDraft(

@@ -2,6 +2,7 @@ import { IDBFactory, IDBObjectStore, forceCloseDatabase } from "fake-indexeddb";
 import {
   createRecoveryStore,
   RECOVERY_DATABASE,
+  RecoveryConflictError,
 } from "../lib/worksheet-recovery-store";
 import { MAX_DRAFT_BYTES, serializeDraft } from "../lib/recommendation-drafts";
 
@@ -83,12 +84,86 @@ async function raw(name, family, value) {
   });
 }
 async function save(store, draft = state()) {
-  const token = await store.register(draft.medalFamily);
+  const base = await store.readHead(draft.medalFamily);
+  const token = await store.register(draft.medalFamily, base);
   await store.commit(token, serializeDraft(draft));
   return token;
 }
 
 describe("Browser worksheet recovery storage", () => {
+  test("two tabs racing from the same base cannot both advance recovery", async () => {
+    const a = client();
+    const b = client();
+    const base = await save(a);
+    const barrier = deferred();
+    const holding = locks.request(
+      "cavapps-medal-recovery:operation",
+      {},
+      () => barrier.promise,
+    );
+    const winner = b.register("operation", base);
+    const stale = a.register("operation", base);
+    const successor = a.register("operation", stale);
+    const rejected = Promise.all([
+      expect(stale).rejects.toBeInstanceOf(RecoveryConflictError),
+      expect(successor).rejects.toBeInstanceOf(RecoveryConflictError),
+    ]);
+    barrier.resolve();
+    await holding;
+    const token = await winner;
+    await rejected;
+    await b.commit(token, serializeDraft(state("operation", "B survives")));
+    expect(await a.read("operation")).toMatchObject({
+      head: { revision: 2, editId: token.editId },
+      snapshot: { revision: 2, editId: token.editId },
+      draft: { values: { operationTitle: "B survives" } },
+    });
+  });
+
+  test.each(["absent", "revision", "edit ID"])(
+    "registration and Clear reject an incorrect %s base without modifying either store",
+    async (difference) => {
+      const store = client();
+      const base = await save(store);
+      const before = await store.read("operation");
+      const expected =
+        difference === "absent"
+          ? null
+          : {
+              ...base,
+              ...(difference === "revision"
+                ? { revision: 2 }
+                : { editId: "different-edit" }),
+            };
+      await expect(
+        store.register("operation", expected),
+      ).rejects.toBeInstanceOf(RecoveryConflictError);
+      await expect(
+        store.clear({ ...state(), values: {}, entries: [] }, expected),
+      ).rejects.toBeInstanceOf(RecoveryConflictError);
+      expect(await store.read("operation")).toEqual(before);
+    },
+  );
+
+  test("a newer incomplete head blocks stale edits and Clear while retaining the completed snapshot", async () => {
+    const store = client();
+    const base = await save(store);
+    const pending = await store.register("operation", base);
+    const before = await store.read("operation");
+    await expect(store.register("operation", base)).rejects.toBeInstanceOf(
+      RecoveryConflictError,
+    );
+    await expect(
+      store.clear({ ...state(), values: {} }, base),
+    ).rejects.toBeInstanceOf(RecoveryConflictError);
+    expect(await store.read("operation")).toEqual(before);
+    expect(before).toMatchObject({
+      head: pending,
+      snapshot: base,
+      interrupted: true,
+    });
+  });
+
   test("an aborted registration leaves the head unchanged and releases the edit queue", async () => {
     const store = client();
     const saved = await save(store);
@@ -100,10 +175,10 @@ describe("Browser worksheet recovery storage", () => {
         request.addEventListener("success", () => this.transaction.abort());
         return request;
       });
-    await expect(store.register("operation")).rejects.toThrow(/abort/i);
+    await expect(store.register("operation", saved)).rejects.toThrow(/abort/i);
     expect((await store.read("operation")).head).toEqual(saved);
     failing.mockRestore();
-    expect((await store.register("operation")).revision).toBe(
+    expect((await store.register("operation", saved)).revision).toBe(
       saved.revision + 1,
     );
   });
@@ -162,9 +237,8 @@ describe("Browser worksheet recovery storage", () => {
     expect(await raw("recoveryHeads", "operation")).toBeUndefined();
   });
 
-  test("two connections assign distinct ordered revisions and reject delayed older payloads", async () => {
+  test("queued same-tab edits chain their own revisions and reject delayed older payloads", async () => {
     const first = client();
-    const second = client();
     const barrier = deferred();
     const holding = locks.request(
       "cavapps-medal-recovery:operation",
@@ -172,13 +246,13 @@ describe("Browser worksheet recovery storage", () => {
       () => barrier.promise,
     );
     const old = first.register("operation");
-    const newer = second.register("operation");
+    const newer = first.register("operation", old);
     barrier.resolve();
     await holding;
     const [a, b] = await Promise.all([old, newer]);
     expect([a.revision, b.revision]).toEqual([1, 2]);
     expect(a.editId).not.toBe(b.editId);
-    await second.commit(b, serializeDraft(state("operation", "Fury")));
+    await first.commit(b, serializeDraft(state("operation", "Fury")));
     expect(await first.commit(a, serializeDraft(state()))).toBe(false);
     expect((await first.read("operation")).draft.values.operationTitle).toBe(
       "Fury",
@@ -212,9 +286,13 @@ describe("Browser worksheet recovery storage", () => {
     const old = first.register("operation");
     await opened.promise;
     const newer = second.register("operation");
+    const rejected = expect(newer).rejects.toBeInstanceOf(
+      RecoveryConflictError,
+    );
     release.resolve();
     expect((await old).revision).toBe(1);
-    expect((await newer).revision).toBe(2);
+    await rejected;
+    expect((await second.readHead("operation")).revision).toBe(1);
   });
 
   test("clock ties and reversal do not affect ordering or the other family", async () => {
@@ -223,6 +301,9 @@ describe("Browser worksheet recovery storage", () => {
     const a = await save(store);
     const service = await save(store, state("service", "Training"));
     const b = await save(store, state("operation", "Fury"));
+    await expect(store.register("operation", a)).rejects.toBeInstanceOf(
+      RecoveryConflictError,
+    );
     clock.mockReturnValue(1);
     const c = await save(store, state("operation", "Torch"));
     expect([a.revision, b.revision, c.revision, service.revision]).toEqual([
@@ -236,7 +317,7 @@ describe("Browser worksheet recovery storage", () => {
   test("a registered but interrupted edit retains the last completed snapshot", async () => {
     const first = client();
     const saved = await save(first);
-    const pending = await first.register("operation");
+    const pending = await first.register("operation", saved);
     first.close();
     const result = await client().read("operation");
     expect(result.head.revision).toBe(pending.revision);
@@ -260,7 +341,9 @@ describe("Browser worksheet recovery storage", () => {
     const store = client({ newEditId: () => "same-edit" });
     const token = await save(store);
     expect(await store.commit(token, serializeDraft(state()))).toBe(true);
-    await expect(store.register("operation")).rejects.toThrow(/identifier/i);
+    await expect(store.register("operation", token)).rejects.toThrow(
+      /identifier/i,
+    );
     await expect(
       store.commit(token, serializeDraft(state("operation", "Changed"))),
     ).rejects.toThrow(/conflicting/i);
@@ -302,8 +385,8 @@ describe("Browser worksheet recovery storage", () => {
 
   test("request success followed by transaction abort does not replace a completed snapshot", async () => {
     const store = client();
-    await save(store);
-    const token = await store.register("operation");
+    const base = await save(store);
+    const token = await store.register("operation", base);
     const original = IDBObjectStore.prototype.put;
     vi.spyOn(IDBObjectStore.prototype, "put").mockImplementation(function (
       ...args
@@ -335,22 +418,25 @@ describe("Browser worksheet recovery storage", () => {
       return request;
     });
     await expect(
-      store.clear({ ...state(), values: {}, entries: [] }),
-    ).rejects.toThrow();
+      store.clear({ ...state(), values: {}, entries: [] }, before.head),
+    ).rejects.toThrow(/abort/i);
     expect(await store.read("operation")).toEqual(before);
   });
 
   test("Clear is an atomic ordering barrier; later genuine edits remain allowed", async () => {
     const a = client();
     const b = client();
-    await save(a);
+    const base = await save(a);
     await save(a, state("service", "Training"));
-    const old = await a.register("operation");
-    const clear = await b.clear({
-      ...state(),
-      values: {},
-      entries: [{ query: "", member: null }],
-    });
+    const old = await a.register("operation", base);
+    const clear = await b.clear(
+      {
+        ...state(),
+        values: {},
+        entries: [{ query: "", member: null }],
+      },
+      (await b.read("operation")).head,
+    );
     expect(await a.commit(old, serializeDraft(state()))).toBe(false);
     const result = await a.read("operation");
     expect(result.head).toEqual(clear);
@@ -369,8 +455,8 @@ describe("Browser worksheet recovery storage", () => {
 
   test("quota and size failures retain completed work without truncation", async () => {
     const store = client();
-    await save(store);
-    const token = await store.register("operation");
+    const base = await save(store);
+    const token = await store.register("operation", base);
     await expect(
       store.commit(token, "é".repeat(MAX_DRAFT_BYTES)),
     ).rejects.toThrow(/1 MiB/i);

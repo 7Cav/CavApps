@@ -5,7 +5,11 @@ import {
   prepareDraftRestore,
   serializeDraft,
 } from "./lib/recommendation-drafts";
-import { createRecoveryStore } from "./lib/worksheet-recovery-store";
+import {
+  createRecoveryStore,
+  RecoveryConflictError,
+  sameRecoveryHead,
+} from "./lib/worksheet-recovery-store";
 
 export default function useWorksheetRecovery({
   medalFamily,
@@ -25,12 +29,27 @@ export default function useWorksheetRecovery({
     if (
       current.active &&
       runtime.current === current &&
-      (!job || current.latest === job)
+      (current.conflict || !job || current.latest === job)
     )
-      setStatus(next);
+      setStatus(
+        current.conflict
+          ? {
+              kind: "warning",
+              message: `Another tab has newer browser recovery. ${
+                current.latest?.clear
+                  ? "The cleared worksheet was not saved."
+                  : "This worksheet's current changes are not saved."
+              } Use Download to preserve your local worksheet before reloading (draft files must fit within 1 MiB).`,
+            }
+          : next,
+      );
   }
 
   function fail(current, error, job) {
+    if (error instanceof RecoveryConflictError) {
+      current.conflict = true;
+      clearTimers(current);
+    }
     report(
       current,
       {
@@ -61,22 +80,47 @@ export default function useWorksheetRecovery({
         const saved =
           job.clear ||
           (await current.store.commit(token, serializeDraft(job.snapshot)));
-        report(
-          current,
-          saved
-            ? { kind: "saved", message: "Worksheet saved in this browser." }
-            : {
-                kind: "warning",
-                message:
-                  "Another tab has newer edits. This worksheet was not saved.",
-              },
-          job,
-        );
+        if (!saved && current.latest === job)
+          fail(current, new RecoveryConflictError(), job);
+        else if (saved)
+          report(
+            current,
+            { kind: "saved", message: "Worksheet saved in this browser." },
+            job,
+          );
       } catch (error) {
         fail(current, error, job);
       }
     })();
     return job.flushing;
+  }
+
+  function checkFreshness(current) {
+    if (
+      !current.store ||
+      current.hydrating ||
+      current.conflict ||
+      current.checking
+    )
+      return;
+    current.checking = (async () => {
+      try {
+        while (current.active && !current.conflict) {
+          const registration = current.registration;
+          await registration;
+          // Recheck if an edit joined the queue while this read was pending.
+          const head = await current.store.readHead(medalFamily);
+          if (registration !== current.registration) continue;
+          if (!sameRecoveryHead(head, current.observed))
+            fail(current, new RecoveryConflictError());
+          return;
+        }
+      } catch (error) {
+        fail(current, error);
+      } finally {
+        current.checking = null;
+      }
+    })();
   }
 
   useEffect(() => {
@@ -85,6 +129,10 @@ export default function useWorksheetRecovery({
       latest: null,
       idleTimer: null,
       maxTimer: null,
+      observed: null,
+      registration: Promise.resolve(null),
+      hydrating: true,
+      conflict: false,
     };
     runtime.current = current;
     const startedAt = generation.current;
@@ -102,13 +150,14 @@ export default function useWorksheetRecovery({
             generation.current !== startedAt
           )
             return;
-          if (result.draft) {
-            const prepared = prepareDraftRestore(
-              result.draft,
-              callbacks.current.roster,
-            );
-            callbacks.current.onRestore(prepared);
-          }
+          const prepared = result.draft
+            ? prepareDraftRestore(result.draft, callbacks.current.roster)
+            : null;
+          // Only accepted, validated hydration authorizes this base. A canceled
+          // read must never lend its head to an already-edited local worksheet.
+          current.observed = result.head ?? null;
+          current.registration = Promise.resolve(current.observed);
+          if (prepared) callbacks.current.onRestore(prepared);
           report(
             current,
             result.interrupted
@@ -128,21 +177,29 @@ export default function useWorksheetRecovery({
         })
         .catch((error) => {
           if (generation.current === startedAt) fail(current, error);
+        })
+        .finally(() => {
+          current.hydrating = false;
         });
     } catch (error) {
+      current.hydrating = false;
       fail(current, error);
     }
-    const hidden = () => {
+    const visibility = () => {
       if (document.visibilityState === "hidden") void flush(current);
+      else checkFreshness(current);
     };
+    const focus = () => checkFreshness(current);
     const pagehide = () => {
       void flush(current);
     };
-    document.addEventListener("visibilitychange", hidden);
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("focus", focus);
     window.addEventListener("pagehide", pagehide);
     return () => {
       current.active = false;
-      document.removeEventListener("visibilitychange", hidden);
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("focus", focus);
       window.removeEventListener("pagehide", pagehide);
       // Best effort only. The original revision still protects other tabs even
       // when this finishes after navigation. No new edit is created on cleanup.
@@ -161,14 +218,32 @@ export default function useWorksheetRecovery({
       { kind: "pending", message: "Worksheet changes are not saved yet." },
       job,
     );
+    if (current.conflict) {
+      job.registration = Promise.resolve(null);
+      return;
+    }
     try {
       // This call submits the lock immediately; it is never deferred by React
       // effects, debounce timers, serialization, or database initialization.
-      job.registration = (
-        clear
-          ? current.store.clear(snapshot)
-          : current.store.register(medalFamily)
-      ).catch((error) => {
+      const previous = current.registration;
+      const registration = clear
+        ? current.store.clear(snapshot, previous)
+        : current.store.register(medalFamily, previous);
+      current.registration = registration.then(
+        (token) => {
+          current.observed = token;
+          return token;
+        },
+        (error) => {
+          // Poison queued successors after a conflict. Other failures retain the
+          // previous base so a later edit can retry without adopting external work.
+          if (error instanceof RecoveryConflictError) throw error;
+          return previous;
+        },
+      );
+      // A last conflicting edit may have no successor to consume its rejection.
+      void current.registration.catch(() => {});
+      job.registration = registration.catch((error) => {
         fail(current, error, job);
         return null;
       });

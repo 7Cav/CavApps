@@ -5,6 +5,26 @@ const DATABASE_VERSION = 1;
 const ENVELOPE_VERSION = 1;
 const STORES = ["recoveryHeads", "recoverySnapshots"];
 
+export class RecoveryConflictError extends Error {
+  constructor() {
+    super("Another tab has newer browser recovery.");
+    this.name = "RecoveryConflictError";
+  }
+}
+
+export function sameRecoveryHead(left, right) {
+  return (
+    (left?.revision ?? null) === (right?.revision ?? null) &&
+    (left?.editId ?? null) === (right?.editId ?? null)
+  );
+}
+
+function checkExpectedHead(head, expected, family) {
+  checkEnvelope(head, family);
+  checkEnvelope(expected ?? undefined, family);
+  if (!sameRecoveryHead(head, expected)) throw new RecoveryConflictError();
+}
+
 function checkFamily(family) {
   if (!["operation", "service"].includes(family))
     throw new Error("Unsupported recovery medal family.");
@@ -206,19 +226,35 @@ export function createRecoveryStore({
       };
     },
 
-    register(family) {
-      return ordered(family, (editId) =>
-        transaction(
+    readHead(family) {
+      return transaction(
+        family,
+        "readonly",
+        (_tx, head) => {
+          checkEnvelope(head, family);
+          return head;
+        },
+        ["recoveryHeads"],
+      );
+    },
+
+    register(family, expectedHead = null) {
+      return ordered(family, async (editId) => {
+        // Resolve this tab's preceding registration under the already-admitted
+        // lock, before opening a transaction. Absence is an explicit base.
+        const expected = await expectedHead;
+        return transaction(
           family,
           "readwrite",
           (tx, head) => {
+            checkExpectedHead(head, expected, family);
             const next = nextHead(head, family, editId);
             tx.objectStore("recoveryHeads").put(next, family);
             return next;
           },
           ["recoveryHeads"],
-        ),
-      );
+        );
+      });
     },
 
     async commit(token, draftJSON) {
@@ -242,14 +278,16 @@ export function createRecoveryStore({
       });
     },
 
-    clear(state) {
-      return ordered(state.medalFamily, (editId) => {
+    clear(state, expectedHead = null) {
+      return ordered(state.medalFamily, async (editId) => {
+        const expected = await expectedHead;
         const draftJSON = serializeDraft(state);
         return transaction(
           state.medalFamily,
           "readwrite",
           (tx, head, snapshot) => {
             checkPair(head, snapshot, state.medalFamily);
+            checkExpectedHead(head, expected, state.medalFamily);
             const next = nextHead(head, state.medalFamily, editId);
             tx.objectStore("recoveryHeads").put(next, state.medalFamily);
             tx.objectStore("recoverySnapshots").put(
