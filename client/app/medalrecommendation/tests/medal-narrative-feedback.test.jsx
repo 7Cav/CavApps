@@ -70,6 +70,172 @@ describe("narrative validation utilities", () => {
   });
 
   describe("analyzeNarrative", () => {
+    test("counts a punctuation-ending span after 160,000 spaces and preserves its highlight", () => {
+      const text = "First." + " ".repeat(160_000) + "!! Last.";
+      const result = analyze(text, {
+        recipientRank: undefined,
+        rankEntries: [],
+        minimumNarrativeSentences: 3,
+      });
+      expect(result.text).toBe(text);
+      expect(result.warnings.map(({ key }) => key)).toEqual([
+        "repeated-punctuation",
+      ]);
+      expect(result.highlightRanges).toEqual([
+        { start: 160_006, end: 160_008 },
+      ]);
+    });
+
+    test.each([80_000, 800_000])(
+      "handles a %i-character hyphen chain while preserving subsequent duplicate-word highlights",
+      (length) => {
+        const text = "a-".repeat(length / 2) + " hold HOLD.";
+        const result = analyze(text, {
+          recipientRank: undefined,
+          rankEntries: [],
+          minimumNarrativeSentences: 1,
+        });
+        expect(result.text).toBe(text);
+        expect(result.warnings).toEqual([
+          {
+            key: "duplicate-word-hold hold",
+            message:
+              'Possible duplicate: "hold HOLD" was detected in the narrative. Verify that the repetition is intentional.',
+          },
+        ]);
+        expect(result.highlightRanges).toEqual([
+          { start: length + 1, end: length + 10 },
+        ]);
+      },
+    );
+
+    test.each([
+      ["capitalization", "THE the.", [{ start: 0, end: 7 }]],
+      [
+        "spaces, tabs and line breaks",
+        "Hold \t\nhold.",
+        [{ start: 0, end: 11 }],
+      ],
+      ["apostrophes", "don't DON'T.", [{ start: 0, end: 11 }]],
+      ["curly apostrophes", "trooper’s TROOPER’S.", [{ start: 0, end: 19 }]],
+      ["hyphens", "well-trained WELL-TRAINED.", [{ start: 0, end: 25 }]],
+      [
+        "compound word boundaries",
+        "well-the the-other.",
+        [{ start: 5, end: 12 }],
+      ],
+      ["trailing hyphen boundary", "a- a-b.", [{ start: 0, end: 5 }]],
+      ["nonduplicate words", "alpha beta.", []],
+      ["alphanumeric boundaries", "a a1. _a a.", []],
+      [
+        "nonoverlapping matches",
+        "go go go go go.",
+        [
+          { start: 0, end: 5 },
+          { start: 6, end: 11 },
+        ],
+      ],
+      [
+        "nonoverlapping compound matches",
+        "a a-a a.",
+        [
+          { start: 0, end: 3 },
+          { start: 4, end: 7 },
+        ],
+      ],
+      [
+        "Unicode case-folded boundaries",
+        "ſ S. K k.",
+        [
+          { start: 0, end: 3 },
+          { start: 5, end: 8 },
+        ],
+      ],
+    ])(
+      "preserves duplicate-word warnings and ranges for %s",
+      (_, text, ranges) => {
+        const result = analyze(text, {
+          recipientRank: undefined,
+          rankEntries: [],
+          minimumNarrativeSentences: 0,
+        });
+        expect(result.highlightRanges).toEqual(ranges);
+        const duplicates = [
+          ...new Map(
+            ranges.map(({ start, end }) => {
+              const duplicate = text.slice(start, end);
+              return [duplicate.toLowerCase(), duplicate];
+            }),
+          ).entries(),
+        ];
+        expect(result.warnings).toEqual(
+          duplicates.map(([key, duplicate]) => ({
+            key: `duplicate-word-${key}`,
+            message: `Possible duplicate: "${duplicate}" was detected in the narrative. Verify that the repetition is intentional.`,
+          })),
+        );
+      },
+    );
+
+    test.each([
+      ["long unfinished narrative", "x".repeat(500_000), 0],
+      ["normal sentences", "They advanced. They held. They returned.", 3],
+      [
+        "repeated punctuation",
+        "They advanced... They held!! They returned?!?",
+        3,
+      ],
+      ["unfinished final sentence", "They advanced. They held. They began", 2],
+      [
+        "long unfinished tail",
+        "They advanced. They held. " + "x".repeat(500_000),
+        2,
+      ],
+      ["leading punctuation", "...They advanced. They held!", 2],
+      ["space before punctuation", "They advanced.   !! Unfinished", 2],
+    ])(
+      "counts %s without treating unfinished text as a sentence",
+      (_, text, count) => {
+        const options = { recipientRank: undefined, rankEntries: [] };
+        const atCount = analyze(text, {
+          ...options,
+          minimumNarrativeSentences: count,
+        });
+        const aboveCount = analyze(text, {
+          ...options,
+          minimumNarrativeSentences: count + 1,
+        });
+        expect(atCount.warnings.map(({ key }) => key)).not.toContain(
+          "sentence-count",
+        );
+        expect(aboveCount.warnings.map(({ key }) => key)).toContain(
+          "sentence-count",
+        );
+        expect(atCount.text).toBe(text.trim());
+        expect(aboveCount.highlightRanges).toEqual(atCount.highlightRanges);
+      },
+    );
+
+    test("preserves duplicate-sentence and punctuation highlights before a long unfinished tail", () => {
+      const text = "They held!! They held!! " + "x".repeat(500_000);
+      const result = analyze(text, {
+        recipientRank: undefined,
+        rankEntries: [],
+        minimumNarrativeSentences: 3,
+      });
+      expect(result.warnings.map(({ key }) => key)).toEqual([
+        "sentence-count",
+        "duplicate-sentence",
+        "repeated-punctuation",
+      ]);
+      expect(result.highlightRanges).toEqual([
+        { start: 0, end: 11 },
+        { start: 12, end: 23 },
+        { start: 9, end: 11 },
+        { start: 21, end: 23 },
+      ]);
+    });
+
     test("trims the narrative and accepts flexible recipient identity whitespace", () => {
       const result = analyze(
         "  Specialist   John Smith led the first action. He held the line. He secured the objective.  ",

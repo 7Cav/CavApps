@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -52,6 +53,8 @@ import { FEATURE_HOME_LINK_CLASS_NAME } from "./lib/navigation-styles";
 import RecommendationSubmission from "./RecommendationSubmission";
 import ServiceMonthYearField from "./ServiceMonthYearField";
 import RecipientManager from "./RecipientManager";
+import DraftFileControls from "./DraftFileControls";
+import useWorksheetRecovery from "./useWorksheetRecovery";
 import {
   RECIPIENT_INLINE_LIMIT,
   RECIPIENT_SELECTION_POLICY,
@@ -327,6 +330,74 @@ export default function MedalRecommendationClient({
   const [recipientEditorKey, setRecipientEditorKey] = useState(0);
 
   const [worksheetValues, setWorksheetValues] = useState({});
+  const [draftName, setDraftName] = useState(undefined);
+  const [namedBinding, setNamedBinding] = useState(null);
+  const namedBindingRef = useRef(null);
+  const worksheetSession = useRef(0);
+  const [sessionId, setSessionId] = useState(0);
+
+  function bindNamedDraft(record) {
+    const binding = record
+      ? {
+          id: record.id,
+          medalFamily: record.medalFamily,
+          revision: record.revision,
+          name: record.name,
+        }
+      : null;
+    namedBindingRef.current = binding;
+    setNamedBinding(binding);
+  }
+
+  function replaceSession(record = null) {
+    worksheetSession.current += 1;
+    setSessionId(worksheetSession.current);
+    bindNamedDraft(record);
+  }
+
+  function namedSaved(record, session) {
+    if (session !== worksheetSession.current) return;
+    bindNamedDraft(record);
+    // Saving metadata does not invalidate output or register a recovery edit.
+    updateEditable({ name: record.name }, {}, false);
+  }
+
+  function namedRenamed(record, expectedRevision, session) {
+    const bound = namedBindingRef.current;
+    if (
+      session !== worksheetSession.current ||
+      bound?.id !== record.id ||
+      bound.medalFamily !== record.medalFamily ||
+      bound.revision !== expectedRevision
+    )
+      return;
+    namedSaved(record, session);
+  }
+
+  // Update this at the edit boundary, not during a later render/effect. Related
+  // React state updates can be batched without creating a partial recovery draft.
+  const editable = useRef({
+    medalFamily,
+    medalId: selectedMedalId,
+    entries: recipientEntries,
+    values: worksheetValues,
+    name: draftName,
+  });
+  const recovery = useWorksheetRecovery({
+    medalFamily,
+    roster: recipientRoster ?? [],
+    onRestore: (prepared) => restoreDraft(prepared, false),
+  });
+
+  function updateEditable(patch, options = {}, persist = true) {
+    const next = { ...editable.current, ...patch, medalFamily };
+    editable.current = next;
+    setSelectedMedalId(next.medalId);
+    setRecipientEntries(next.entries);
+    setWorksheetValues(next.values);
+    setDraftName(next.name);
+    if (persist) recovery.recordEdit(next, options);
+  }
 
   const [hasAttemptedGenerate, setHasAttemptedGenerate] = useState(false);
 
@@ -438,12 +509,13 @@ export default function MedalRecommendationClient({
     narrativeField,
   ]);
 
-  function updateRecipientEntries(entries) {
-    setRecipientEntries(entries);
+  function updateRecipientEntries(entries, options) {
+    updateEditable({ entries }, options);
     setRecommendation(null);
   }
 
   function selectRecipient(slotId, member) {
+    const recipientEntries = editable.current.entries;
     if (
       recipientEntries.some(
         (entry) =>
@@ -455,13 +527,14 @@ export default function MedalRecommendationClient({
     updateRecipientEntries(
       recipientEntries.map((entry) =>
         entry.slotId === slotId
-          ? { ...entry, member, query: member.user.username }
+          ? { slotId: entry.slotId, member, query: member.user.username }
           : entry,
       ),
     );
   }
 
   function confirmRecipients(members) {
+    const recipientEntries = editable.current.entries;
     const unique = uniqueRecipients(members);
     if (
       !validateRecipientEntries(
@@ -484,20 +557,39 @@ export default function MedalRecommendationClient({
         .filter((entry) => entry.member)
         .map((entry) => [getRecipientId(entry.member), entry.slotId]),
     );
-    updateRecipientEntries(
-      unique.map((member) => ({
-        slotId: slots.get(getRecipientId(member)) ?? nextSlotId.current++,
-        member,
-        query: member.user.username,
-      })),
-    );
+    const confirmed = unique.map((member) => ({
+      slotId: slots.get(getRecipientId(member)) ?? nextSlotId.current++,
+      member,
+      query: member.user.username,
+    }));
+    // Keep pending work at its existing position relative to resolved slots.
+    // Bulk still determines the resolved selection and its working order.
+    const merged = [];
+    let index = 0;
+    for (const entry of recipientEntries) {
+      if (!entry.member && (entry.unresolvedRecipient || entry.query))
+        merged.push(entry);
+      else if (entry.member && index < confirmed.length)
+        merged.push(confirmed[index++]);
+    }
+    merged.push(...confirmed.slice(index));
+    updateRecipientEntries(merged);
   }
 
   function handleWorksheetValueChange(fieldName, value) {
-    setWorksheetValues((currentValues) => ({
-      ...currentValues,
-      [fieldName]: value,
-    }));
+    const current = editable.current;
+    const field = resolveMedalWorksheet(getMedalById(current.medalId)).fields[
+      fieldName
+    ];
+    const debounce =
+      ["text", "textarea"].includes(field.type) ||
+      (field.type === "monthYear" &&
+        (current.values[fieldName] ?? "").split("-")[0] !==
+          value.split("-")[0]);
+    updateEditable(
+      { values: { ...current.values, [fieldName]: value } },
+      { debounce },
+    );
     setRecommendation(null);
   }
 
@@ -529,10 +621,38 @@ export default function MedalRecommendationClient({
   }
 
   function handleClearWorksheet() {
-    setRecipientEntries([{ slotId: 0, query: "", member: null }]);
+    replaceSession();
+    const worksheet = resolveMedalWorksheet(
+      getMedalById(editable.current.medalId),
+    );
+    updateEditable(
+      {
+        name: undefined,
+        entries: [{ slotId: 0, query: "", member: null }],
+        values: applyAwardChange(null, worksheet, {}),
+      },
+      { clear: true },
+    );
     nextSlotId.current = 1;
     setRecipientEditorKey((key) => key + 1);
-    setWorksheetValues(applyAwardChange(null, selectedWorksheet, {}));
+    setHasAttemptedGenerate(false);
+    setRecommendation(null);
+  }
+
+  function restoreDraft(prepared, persist = true, record = null) {
+    replaceSession(record);
+    updateEditable(
+      {
+        medalId: prepared.medalId,
+        values: prepared.values,
+        entries: prepared.entries,
+        name: prepared.name,
+      },
+      {},
+      persist,
+    );
+    nextSlotId.current = prepared.entries.length;
+    setRecipientEditorKey((key) => key + 1);
     setHasAttemptedGenerate(false);
     setRecommendation(null);
   }
@@ -561,13 +681,69 @@ export default function MedalRecommendationClient({
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden border-border/70 bg-card/70 shadow-none">
-          <CardHeader className="border-b border-border/70 p-5 sm:p-6">
-            <h2
-              id="recommendation-worksheet-heading"
-              className="text-xl font-semibold text-foreground"
+          <CardHeader className="space-y-0 border-b border-border/70 p-5 sm:p-6">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <h2
+                id="recommendation-worksheet-heading"
+                className="text-xl font-semibold text-foreground"
+              >
+                Recommendation Worksheet
+              </h2>
+              <DraftFileControls
+                state={{
+                  medalFamily,
+                  medalId: selectedMedalId,
+                  entries: recipientEntries,
+                  values: worksheetValues,
+                  name: draftName,
+                }}
+                roster={recipientRoster ?? []}
+                hasWork={Boolean(
+                  selectedMedalId ||
+                  recommendation ||
+                  recipientEntries.some(
+                    (entry) =>
+                      entry.member || entry.unresolvedRecipient || entry.query,
+                  ) ||
+                  Object.values(worksheetValues).some(Boolean),
+                )}
+                binding={namedBinding}
+                sessionId={sessionId}
+                onNamedSaved={namedSaved}
+                onNamedRenamed={namedRenamed}
+                onNamedDeleted={(record, session) => {
+                  if (
+                    session === worksheetSession.current &&
+                    namedBindingRef.current?.id === record.id
+                  )
+                    bindNamedDraft(null);
+                }}
+                onRestore={(prepared, record, session) => {
+                  if (session === worksheetSession.current)
+                    restoreDraft(prepared, true, record);
+                }}
+                onLoadStart={recovery.cancelHydration}
+              />
+            </div>
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label="Worksheet Recovery"
             >
-              Recommendation Worksheet
-            </h2>
+              {recovery.status.message && (
+                <p
+                  className={`flex items-start gap-2 pt-3 text-[10pt] ${recovery.status.kind === "warning" ? "text-amber-400" : "text-muted-foreground"}`}
+                >
+                  {recovery.status.kind === "warning" && (
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0"
+                    />
+                  )}
+                  <span>{recovery.status.message}</span>
+                </p>
+              )}
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-6 p-5 sm:p-6">
@@ -587,13 +763,14 @@ export default function MedalRecommendationClient({
                   const nextWorksheet = resolveMedalWorksheet(nextMedal);
 
                   const nextValues = applyAwardChange(
-                    selectedWorksheet,
+                    resolveMedalWorksheet(
+                      getMedalById(editable.current.medalId),
+                    ),
                     nextWorksheet,
-                    worksheetValues,
+                    editable.current.values,
                   );
 
-                  setSelectedMedalId(value);
-                  setWorksheetValues(nextValues);
+                  updateEditable({ medalId: value, values: nextValues });
                   setHasAttemptedGenerate(false);
                   setRecommendation(null);
                 }}
@@ -682,6 +859,7 @@ export default function MedalRecommendationClient({
                     hasAttemptedGenerate ? recipientValidation.errors : []
                   }
                   onAdd={() => {
+                    const recipientEntries = editable.current.entries;
                     if (recipientEntries.length < RECIPIENT_INLINE_LIMIT) {
                       updateRecipientEntries([
                         ...recipientEntries,
@@ -694,19 +872,38 @@ export default function MedalRecommendationClient({
                     }
                   }}
                   onRemove={() => {
+                    const recipientEntries = editable.current.entries;
                     if (
                       recipientEntries.length >
                       RECIPIENT_SELECTION_POLICY.minimum
                     )
                       updateRecipientEntries(recipientEntries.slice(0, -1));
                   }}
+                  onRemoveEntry={(slotId) => {
+                    const recipientEntries = editable.current.entries;
+                    const remaining = recipientEntries.filter(
+                      (entry) => entry.slotId !== slotId,
+                    );
+                    updateRecipientEntries(
+                      remaining.length
+                        ? remaining
+                        : [
+                            {
+                              slotId: nextSlotId.current++,
+                              query: "",
+                              member: null,
+                            },
+                          ],
+                    );
+                  }}
                   onQueryChange={(slotId, query) =>
                     updateRecipientEntries(
-                      recipientEntries.map((entry) =>
+                      editable.current.entries.map((entry) =>
                         entry.slotId === slotId
                           ? { ...entry, query, member: null }
                           : entry,
                       ),
+                      { debounce: true },
                     )
                   }
                   onSelect={selectRecipient}
