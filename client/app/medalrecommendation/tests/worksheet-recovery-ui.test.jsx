@@ -223,6 +223,32 @@ function RecoveryTab({ name, family = "operation" }) {
 }
 
 describe("Automatic worksheet recovery", () => {
+  test("recovery checking, restored work, pending edits and completed saves have visible live feedback", async () => {
+    await seed();
+    const pending = holdHydration();
+    renderClient({ roster: [member] });
+    await pending.read.promise;
+    const status = screen.getByLabelText("Worksheet Recovery");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(within(status).getByText(/checking/i)).toBeVisible();
+    await act(async () => pending.release.resolve());
+    await recovered("Operation Title", "Overlord");
+    expect(within(status).getByText(/recovered/i)).toBeVisible();
+    enterWorksheetField("Narrative", "A new local edit awaiting recovery.");
+    expect(within(status).getByText(/not saved yet/i)).toBeVisible();
+    fireEvent(window, new Event("pagehide"));
+    await stored(
+      "operation",
+      "narrative",
+      "A new local edit awaiting recovery.",
+    );
+    await waitFor(() =>
+      expect(within(status).getByText(/saved in this browser/i)).toBeVisible(),
+    );
+    expect(screen.getAllByLabelText("Worksheet Recovery")).toHaveLength(1);
+  });
+
   test("a stale tab cannot replace another tab's fully completed additional sentence", async () => {
     await seed();
     render(<RecoveryTab name="Tab A" />);
@@ -262,7 +288,7 @@ describe("Automatic worksheet recovery", () => {
     });
     fireEvent(window, new Event("pagehide"));
     expect(screen.getByLabelText("Tab A Recovery")).toHaveTextContent(
-      /another tab.*not saved.*Download/i,
+      /another tab.*Download/i,
     );
     expect(await observer.read("operation")).toEqual(completed);
     render(<RecoveryTab name="Tab C" />);
@@ -326,9 +352,10 @@ describe("Automatic worksheet recovery", () => {
         vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
         fireEvent(document, new Event("visibilitychange"));
       }
-      await waitFor(() =>
-        expect(feedback()).toHaveTextContent(/another tab.*not saved/i),
-      );
+      await waitFor(() => expect(feedback()).toHaveTextContent(/another tab/i));
+      const status = screen.getByLabelText("Worksheet Recovery");
+      expect(within(status).getByText(/another tab/i)).toBeVisible();
+      expect(status).toHaveAttribute("aria-live", "polite");
       expect(
         screen.getByLabelText("Operation Title", { exact: true }),
       ).toHaveValue("My completed work");
@@ -368,15 +395,13 @@ describe("Automatic worksheet recovery", () => {
         );
       }
       await waitFor(() =>
-        expect(feedback()).toHaveTextContent(
-          /another tab.*not saved.*Download/i,
-        ),
+        expect(feedback()).toHaveTextContent(/another tab.*Download/i),
       );
       expect(
         screen.getByLabelText("Operation Title", { exact: true }),
       ).toHaveValue(action === "Clear" ? "" : "Imported local work");
       if (action === "Clear")
-        expect(feedback()).toHaveTextContent(/cleared.*not saved/i);
+        expect(feedback()).toHaveTextContent(/another tab/i);
       await user.click(screen.getByRole("button", { name: "Download" }));
       expect(downloaded).toBeInstanceOf(Blob);
       enterWorksheetField("Operation Title", "Still local after conflict");
@@ -591,6 +616,7 @@ describe("Automatic worksheet recovery", () => {
       </StrictMode>,
     );
     await waitFor(() => expect(feedback()).toHaveTextContent(/^$/));
+    expect(screen.getByLabelText("Worksheet Recovery")).toBeEmptyDOMElement();
     expect((await observer.read("operation")).head).toBeUndefined();
     empty.unmount();
     await seed();
@@ -718,7 +744,7 @@ describe("Automatic worksheet recovery", () => {
         else {
           await recovered("Operation Title", "Manual Fury");
           await waitFor(() =>
-            expect(feedback()).toHaveTextContent(/another tab.*not saved/i),
+            expect(feedback()).toHaveTextContent(/another tab/i),
           );
         }
       }

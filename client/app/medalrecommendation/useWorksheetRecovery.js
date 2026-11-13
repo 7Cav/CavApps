@@ -35,11 +35,8 @@ export default function useWorksheetRecovery({
         current.conflict
           ? {
               kind: "warning",
-              message: `Another tab has newer browser recovery. ${
-                current.latest?.clear
-                  ? "The cleared worksheet was not saved."
-                  : "This worksheet's current changes are not saved."
-              } Use Download to preserve your local worksheet before reloading (draft files must fit within 1 MiB).`,
+              message:
+                "Another tab has newer changes. This worksheet isn't being saved. Download a copy before reloading.",
             }
           : next,
       );

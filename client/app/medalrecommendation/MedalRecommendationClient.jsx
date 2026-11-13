@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -330,6 +331,48 @@ export default function MedalRecommendationClient({
 
   const [worksheetValues, setWorksheetValues] = useState({});
   const [draftName, setDraftName] = useState(undefined);
+  const [namedBinding, setNamedBinding] = useState(null);
+  const namedBindingRef = useRef(null);
+  const worksheetSession = useRef(0);
+  const [sessionId, setSessionId] = useState(0);
+
+  function bindNamedDraft(record) {
+    const binding = record
+      ? {
+          id: record.id,
+          medalFamily: record.medalFamily,
+          revision: record.revision,
+          name: record.name,
+        }
+      : null;
+    namedBindingRef.current = binding;
+    setNamedBinding(binding);
+  }
+
+  function replaceSession(record = null) {
+    worksheetSession.current += 1;
+    setSessionId(worksheetSession.current);
+    bindNamedDraft(record);
+  }
+
+  function namedSaved(record, session) {
+    if (session !== worksheetSession.current) return;
+    bindNamedDraft(record);
+    // Saving metadata does not invalidate output or register a recovery edit.
+    updateEditable({ name: record.name }, {}, false);
+  }
+
+  function namedRenamed(record, expectedRevision, session) {
+    const bound = namedBindingRef.current;
+    if (
+      session !== worksheetSession.current ||
+      bound?.id !== record.id ||
+      bound.medalFamily !== record.medalFamily ||
+      bound.revision !== expectedRevision
+    )
+      return;
+    namedSaved(record, session);
+  }
 
   // Update this at the edit boundary, not during a later render/effect. Related
   // React state updates can be batched without creating a partial recovery draft.
@@ -578,6 +621,7 @@ export default function MedalRecommendationClient({
   }
 
   function handleClearWorksheet() {
+    replaceSession();
     const worksheet = resolveMedalWorksheet(
       getMedalById(editable.current.medalId),
     );
@@ -595,7 +639,8 @@ export default function MedalRecommendationClient({
     setRecommendation(null);
   }
 
-  function restoreDraft(prepared, persist = true) {
+  function restoreDraft(prepared, persist = true, record = null) {
+    replaceSession(record);
     updateEditable(
       {
         medalId: prepared.medalId,
@@ -636,55 +681,72 @@ export default function MedalRecommendationClient({
 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         <Card className="overflow-hidden border-border/70 bg-card/70 shadow-none">
-          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b border-border/70 p-5 sm:p-6">
-            <h2
-              id="recommendation-worksheet-heading"
-              className="text-xl font-semibold text-foreground"
+          <CardHeader className="space-y-0 border-b border-border/70 p-5 sm:p-6">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+              <h2
+                id="recommendation-worksheet-heading"
+                className="text-xl font-semibold text-foreground"
+              >
+                Recommendation Worksheet
+              </h2>
+              <DraftFileControls
+                state={{
+                  medalFamily,
+                  medalId: selectedMedalId,
+                  entries: recipientEntries,
+                  values: worksheetValues,
+                  name: draftName,
+                }}
+                roster={recipientRoster ?? []}
+                hasWork={Boolean(
+                  selectedMedalId ||
+                  recommendation ||
+                  recipientEntries.some(
+                    (entry) =>
+                      entry.member || entry.unresolvedRecipient || entry.query,
+                  ) ||
+                  Object.values(worksheetValues).some(Boolean),
+                )}
+                binding={namedBinding}
+                sessionId={sessionId}
+                onNamedSaved={namedSaved}
+                onNamedRenamed={namedRenamed}
+                onNamedDeleted={(record, session) => {
+                  if (
+                    session === worksheetSession.current &&
+                    namedBindingRef.current?.id === record.id
+                  )
+                    bindNamedDraft(null);
+                }}
+                onRestore={(prepared, record, session) => {
+                  if (session === worksheetSession.current)
+                    restoreDraft(prepared, true, record);
+                }}
+                onLoadStart={recovery.cancelHydration}
+              />
+            </div>
+            <div
+              aria-live="polite"
+              aria-atomic="true"
+              aria-label="Worksheet Recovery"
             >
-              Recommendation Worksheet
-            </h2>
-            <DraftFileControls
-              state={{
-                medalFamily,
-                medalId: selectedMedalId,
-                entries: recipientEntries,
-                values: worksheetValues,
-                name: draftName,
-              }}
-              roster={recipientRoster ?? []}
-              hasWork={Boolean(
-                selectedMedalId ||
-                recommendation ||
-                recipientEntries.some(
-                  (entry) =>
-                    entry.member || entry.unresolvedRecipient || entry.query,
-                ) ||
-                Object.values(worksheetValues).some(Boolean),
+              {recovery.status.message && (
+                <p
+                  className={`flex items-start gap-2 pt-3 text-[10pt] ${recovery.status.kind === "warning" ? "text-amber-400" : "text-muted-foreground"}`}
+                >
+                  {recovery.status.kind === "warning" && (
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0"
+                    />
+                  )}
+                  <span>{recovery.status.message}</span>
+                </p>
               )}
-              onRestore={restoreDraft}
-              onLoadStart={recovery.cancelHydration}
-            />
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-6 p-5 sm:p-6">
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <p>
-                Recovery stays in this browser profile, shared by anyone using
-                it, and does not sync across devices.
-              </p>
-              <p
-                aria-live="polite"
-                aria-atomic="true"
-                aria-label="Worksheet Recovery"
-                className={
-                  recovery.status.kind === "warning"
-                    ? "text-amber-400"
-                    : undefined
-                }
-              >
-                {recovery.status.message}
-              </p>
-            </div>
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="award"

@@ -206,9 +206,54 @@ export function serializeDraft({
     },
     medalFamily,
   );
+  return encodeDraft(draft);
+}
+
+function encodeDraft(draft) {
   const text = JSON.stringify(draft, null, 2) + "\n";
   checkDraftSize(new TextEncoder().encode(text).byteLength);
   return text;
+}
+
+// Browser names are stricter than optional imported metadata. Do not change
+// the v1 file parser's accepted names or Download's filename convention.
+export function normalizeDraftName(value) {
+  if (typeof value !== "string") fail("Enter a draft name.");
+  if (/[\u0000-\u001f\u007f-\u009f]/u.test(value))
+    fail("Draft names cannot contain control characters.");
+  const name = value.trim().normalize("NFC");
+  if (!name) fail("Enter a draft name.");
+  if (name.length > 512) fail("Draft names must be 512 characters or fewer.");
+  return name;
+}
+
+export function draftNameKey(name) {
+  return normalizeDraftName(name).toLowerCase().normalize("NFC");
+}
+
+export function suggestDraftName(base, names) {
+  const name = normalizeDraftName(base);
+  const used = new Set(names.map(draftNameKey));
+  if (!used.has(draftNameKey(name))) return name;
+  const generated = /^Draft(?: \(\d+\))? - (.+)$/u.exec(name);
+  for (let number = 1; ; number++) {
+    const suffix = generated ? "" : ` (${number})`;
+    const prefix = generated ? `Draft (${number}) - ` : "";
+    // Only suggestions are shortened, never a name the user confirms or types.
+    let stem = "";
+    for (const character of generated?.[1] ?? name) {
+      if (prefix.length + stem.length + character.length + suffix.length > 512)
+        break;
+      stem += character;
+    }
+    const candidate = prefix + stem + suffix;
+    if (!used.has(draftNameKey(candidate))) return candidate;
+  }
+}
+
+export function withDraftName(text, medalFamily, name) {
+  const draft = parseDraft(text, medalFamily);
+  return encodeDraft({ ...draft, name: normalizeDraftName(name) });
 }
 
 export function parseDraft(text, medalFamily) {

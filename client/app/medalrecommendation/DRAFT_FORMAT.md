@@ -1,9 +1,10 @@
 # Medal Recommendation draft files — version 1
 
 Draft files contain editable worksheet inputs, not generated recommendations.
-Load and Download run entirely in the browser; neither sends file contents to a
-server or writes browser draft storage. A medal must be selected to download,
-but the worksheet need not be complete.
+Save, Load, and Download run entirely in the browser; none sends draft contents
+to a server. Save manages named browser drafts; Load offers saved drafts and JSON
+file import; Download creates a portable JSON file. A medal must be selected to
+save or download, but the worksheet need not be complete.
 
 ## Envelope
 
@@ -38,8 +39,9 @@ but the worksheet need not be complete.
 ```
 
 All shown envelope properties are required. An optional string `name` (at most
-512 UTF-16 code units) is preserved on re-download. Slice 1 has no naming UI;
-Clear Worksheet removes this metadata. Normal edits and medal changes retain it.
+512 UTF-16 code units) is preserved on re-download. Clear Worksheet removes this
+local metadata. Normal edits and medal changes retain it. The optional name is
+never authority to overwrite a named browser record.
 
 `medalFamily` is `operation` or `service`. The family must match the open
 worksheet, and `medalId` must exist in that family's current catalog. Medal IDs
@@ -140,4 +142,68 @@ Download filenames use `Draft -`, available title-context/medal/recipient
 segments, and `.json`. Missing segments are omitted. Unsafe path/platform
 characters are replaced; the stem is bounded to 180 UTF-8 bytes without splitting
 Unicode code points. Saved draft names do not override these filename rules.
-Browser duplicate-number assignment is outside Slice 1.
+Browser-assigned duplicate download filenames remain outside the application.
+
+## Named browser drafts
+
+Named drafts are local to this browser profile, shared by anyone using it, and
+do not synchronize across devices or forum accounts. They are independent of
+automatic worksheet recovery and of downloaded files. Clear Worksheet does not
+delete named drafts.
+
+The dedicated IndexedDB database `cavapps-medal-drafts`, schema version 1, has one
+`drafts` store keyed by an immutable UUID. Each record contains `id`,
+`schemaVersion`, `medalFamily`, `name`, `nameKey`, `revision`, `createdAt`,
+`modifiedAt`, and `draftJSON`. A unique compound index on family/name key prevents
+collisions; a family/modification index supports listing. Invalid records omitted
+by that index are also surfaced without repair. Records list newest first with
+ID ordering for ties. There is no automatic pruning or draft-count limit.
+
+The payload remains the strict version-one JSON documented above. New snapshots
+use `serializeDraft()`; Rename parses the existing payload and changes only its
+name. The envelope and payload names must match. The 1 MiB limit includes the
+encoded name, indentation, and final newline. IDs, revisions, timestamps, and
+other database metadata never enter downloaded files or automatic recovery.
+
+Browser names are trimmed, normalized to NFC, nonblank, free of control
+characters, and at most 512 UTF-16 code units. Capitalization and internal spaces
+are retained for display. Uniqueness uses deterministic lowercase NFC within a
+medal family; Operation and Service may share a name. Imported file metadata
+continues using the original v1 validation rules.
+
+New names start from the existing download filename without `.json`. Generated
+collisions use the smallest available positive number, for example
+`Draft (1) - Operation Overlord - ARCOM - SSG.Kenton.W`. Custom copies may use
+` (1)`. Suggestions can be edited before confirmation. A collision at confirmation
+fails visibly; there is no implicit overwrite or automatic retry under a new name.
+
+Save captures editable state at confirmation, including incomplete and inactive
+profile fields, partial Service dates, unresolved references, and search order.
+It preserves existing generated output. A successful Save binds the current
+worksheet session to the saved ID, family, name, and acknowledged revision.
+Subsequent edits retain that binding. Save then offers explicit confirmed
+Overwrite or a separate copy with a new ID.
+
+Create, Overwrite, Rename, and Delete each use a native atomic read/write
+transaction, acknowledged only on completion. Existing-record mutations compare
+the captured ID, family, and revision before writing; a remote modification or
+deletion rejects stale requests. Failed operations leave the existing record
+intact. No deleted ID is recreated. Rename advances a worksheet's binding only
+when the previously acknowledged revision matches; refreshing the list never
+authorizes overwriting from a stale worksheet.
+
+Named Load validates the envelope and payload and resolves recipients using the
+current roster. Existing meaningful work requires replacement confirmation;
+accepting that confirmation re-reads and checks the saved revision. Successful
+Load clears generated output, resets validation display, and records an ordinary
+recovery edit. Corrupt drafts cannot replace the worksheet or block unrelated
+valid entries. Explicit deletion of corrupt content is allowed only when its
+identity metadata is valid. Unsupported records are reported without migration,
+repair, or purge. File import remains available if named storage fails.
+
+Bindings exist only in the current worksheet session. File import, automatic
+recovery after reload, Clear, and unmount discard them. A delayed operation cannot
+attach to a replacement session, and completing Save does not revert later edits.
+Manual Save and local name changes do not register a recovery edit. An active
+recovery conflict stays active after named Save or Load; saving a separate named
+copy and downloading remain available without authorizing stale recovery writes.
