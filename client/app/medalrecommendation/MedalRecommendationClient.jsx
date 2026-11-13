@@ -725,24 +725,25 @@ export default function MedalRecommendationClient({
                 onLoadStart={recovery.cancelHydration}
               />
             </div>
-            <p
+            <div
               aria-live="polite"
               aria-atomic="true"
               aria-label="Worksheet Recovery"
-              className={
-                recovery.status.kind === "warning"
-                  ? "flex items-start gap-2 pt-3 text-[10pt] text-amber-400"
-                  : "sr-only"
-              }
             >
-              {recovery.status.kind === "warning" && (
-                <TriangleAlert
-                  aria-hidden="true"
-                  className="mt-0.5 size-4 shrink-0"
-                />
+              {recovery.status.message && (
+                <p
+                  className={`flex items-start gap-2 pt-3 text-[10pt] ${recovery.status.kind === "warning" ? "text-amber-400" : "text-muted-foreground"}`}
+                >
+                  {recovery.status.kind === "warning" && (
+                    <TriangleAlert
+                      aria-hidden="true"
+                      className="mt-0.5 size-4 shrink-0"
+                    />
+                  )}
+                  <span>{recovery.status.message}</span>
+                </p>
               )}
-              <span>{recovery.status.message}</span>
-            </p>
+            </div>
           </CardHeader>
 
           <CardContent className="space-y-6 p-5 sm:p-6">

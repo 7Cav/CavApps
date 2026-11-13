@@ -63,6 +63,10 @@ export default function DraftFileControls({
   const nameInput = useRef(null);
   const listHeading = useRef(null);
   const manageBack = useRef(null);
+  const saveHeading = useRef(null);
+  const overwritePrompt = useRef(null);
+  const saveStage = useRef("new");
+  const saving = useRef(null);
   const latest = useRef(null);
   latest.current = {
     state,
@@ -105,6 +109,13 @@ export default function DraftFileControls({
     else if (manage) manageBack.current?.focus();
   }, [manage]);
 
+  useEffect(() => {
+    if (!saveOpen) return;
+    if (saveMode === "copy") nameInput.current?.focus();
+    else if (saveMode === "overwrite") overwritePrompt.current?.focus();
+    else if (saveMode === "choice") saveHeading.current?.focus();
+  }, [saveOpen, saveMode]);
+
   function returnToList() {
     setManage(null);
     setError("");
@@ -124,6 +135,7 @@ export default function DraftFileControls({
   function resetDialog(nextMode) {
     mode.current = nextMode;
     request.current++;
+    saving.current = null;
     listRequest.current++;
     reader.current?.abort();
     setPending(null);
@@ -178,7 +190,8 @@ export default function DraftFileControls({
     setSaveOpen(value);
     if (!value) return;
     setSaveTarget(binding ?? null);
-    setSaveMode(binding ? "choice" : "new");
+    saveStage.current = binding ? "choice" : "new";
+    setSaveMode(saveStage.current);
     nameEdited.current = false;
     let base = buildDraftFilename(latest.current.state).replace(/\.json$/, "");
     try {
@@ -200,6 +213,7 @@ export default function DraftFileControls({
   }
 
   function copyMode() {
+    if (saveStage.current !== "choice" || saving.current !== null) return;
     try {
       setName(
         suggestDraftName(name, [
@@ -208,15 +222,41 @@ export default function DraftFileControls({
         ]),
       );
       nameEdited.current = true;
-      setSaveMode("new");
+      saveStage.current = "copy";
+      setSaveMode("copy");
       setError("");
     } catch (failure) {
       setError(failure.message);
     }
   }
 
+  function overwriteMode() {
+    if (saveStage.current !== "choice" || saving.current !== null) return;
+    saveStage.current = "overwrite";
+    setSaveMode("overwrite");
+    setError("");
+  }
+
+  function backToSaveChoice() {
+    if (saving.current !== null) return;
+    saveStage.current = "choice";
+    setSaveMode("choice");
+    setName(saveTarget.name);
+    setError("");
+  }
+
   async function save() {
+    if (
+      mode.current !== "save" ||
+      saveStage.current === "choice" ||
+      saving.current !== null ||
+      listing
+    )
+      return;
     const token = ++request.current;
+    saving.current = token;
+    const action = saveStage.current;
+    const target = saveTarget;
     const current = latest.current;
     setReading(true);
     setError("");
@@ -229,11 +269,11 @@ export default function DraftFileControls({
         current.roster,
       );
       const result =
-        saveMode === "overwrite"
+        action === "overwrite"
           ? await database.current.overwrite(
               current.state.medalFamily,
-              saveTarget.id,
-              saveTarget.revision,
+              target.id,
+              target.revision,
               text,
               chosen,
             )
@@ -249,6 +289,7 @@ export default function DraftFileControls({
     } catch (failure) {
       if (active(token, current.sessionId)) setError(failure.message);
     } finally {
+      if (saving.current === token) saving.current = null;
       if (active(token, current.sessionId)) setReading(false);
     }
   }
@@ -428,7 +469,11 @@ export default function DraftFileControls({
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
-            <DialogTitle className="pr-8 text-xl font-semibold">
+            <DialogTitle
+              ref={saveHeading}
+              tabIndex={-1}
+              className="pr-8 text-xl font-semibold"
+            >
               Save worksheet draft
             </DialogTitle>
             <DialogDescription className="mt-2 text-sm text-muted-foreground">
@@ -441,7 +486,11 @@ export default function DraftFileControls({
                 <p className="text-sm text-amber-400">{listError}</p>
               )}
               {saveMode === "overwrite" && (
-                <p className="text-sm break-words">
+                <p
+                  ref={overwritePrompt}
+                  tabIndex={-1}
+                  className="text-sm break-words"
+                >
                   Overwrite saved draft “{saveTarget.name}” with this worksheet?
                   Its previous saved content will be replaced.
                 </p>
@@ -452,43 +501,56 @@ export default function DraftFileControls({
                 </p>
               )}
               {reading && <p role="status">Saving draft…</p>}
-              <div className="flex flex-wrap justify-end gap-2">
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">
-                    Cancel
-                  </Button>
-                </DialogClose>
+              {/* Choices stay on the left; the next stage's controls are all
+                  on the right, including on mobile. The old pointer position
+                  stays inert even when the dialog changes height. */}
+              <div className="grid grid-cols-2 items-end gap-3">
                 {saveMode === "choice" ? (
-                  <>
+                  <div key="save-choices" className="flex flex-col gap-2">
                     <Button
                       type="button"
-                      onClick={() => setSaveMode("overwrite")}
+                      className="h-auto min-h-10 whitespace-normal"
+                      disabled={reading}
+                      onClick={overwriteMode}
                     >
                       Overwrite this draft
                     </Button>
                     <Button
                       type="button"
                       variant="secondary"
-                      disabled={listing}
+                      className="h-auto min-h-10 whitespace-normal"
+                      disabled={reading || listing}
                       onClick={copyMode}
                     >
                       Save as separate copy
                     </Button>
-                  </>
+                  </div>
                 ) : (
-                  <>
-                    {saveTarget && (
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={reading || listing}
-                        onClick={copyMode}
-                      >
-                        Save as separate copy
-                      </Button>
-                    )}
+                  <div
+                    key="save-completion"
+                    className="col-start-2 flex flex-col gap-2"
+                  >
+                    <div className="flex flex-wrap justify-end gap-2">
+                      {saveTarget && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={reading}
+                          onClick={backToSaveChoice}
+                        >
+                          Back
+                        </Button>
+                      )}
+                      <DialogClose asChild>
+                        <Button type="button" variant="outline">
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                    </div>
                     <Button
+                      key={saveMode}
                       type="button"
+                      className="h-auto min-h-10 whitespace-normal"
                       disabled={reading || listing}
                       onClick={save}
                     >
@@ -496,7 +558,18 @@ export default function DraftFileControls({
                         ? "Confirm Overwrite"
                         : "Save new draft"}
                     </Button>
-                  </>
+                  </div>
+                )}
+                {saveMode === "choice" && (
+                  <DialogClose asChild key="choice-cancel">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="justify-self-end"
+                    >
+                      Cancel
+                    </Button>
+                  </DialogClose>
                 )}
               </div>
             </div>

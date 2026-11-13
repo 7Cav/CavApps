@@ -329,20 +329,24 @@ describe("Named browser drafts", () => {
     ).toBe(true);
   });
 
-  test("a separate copy gets a new identity and subsequent edits overwrite only that copy", async () => {
+  test("double-clicking separate copy only opens naming; explicit Save creates one independent copy", async () => {
     const user = userEvent.setup();
     const original = await seed();
     await mount();
     await load(user, original.name);
     await openSave(user);
     await waitFor(() => expect(button("Save as separate copy")).toBeEnabled());
-    await user.click(button("Save as separate copy"));
+    await user.dblClick(button("Save as separate copy"));
+    expect(screen.getByRole("dialog")).toBeVisible();
     expect(screen.getByLabelText("Draft name")).toHaveValue("Stored plan (1)");
+    expect(screen.getByLabelText("Draft name")).toHaveFocus();
+    expect(await observer.list("operation")).toHaveLength(1);
+    expect(await observer.read("operation", original.id)).toEqual(original);
     await user.click(button("Save new draft"));
     await closed();
-    const copy = (await observer.list("operation")).find(
-      (record) => record.id !== original.id,
-    );
+    const records = await observer.list("operation");
+    expect(records).toHaveLength(2);
+    const copy = records.find((record) => record.id !== original.id);
     enterWorksheetField("Operation Title", "Copy edited");
     await overwrite(user);
     await closed();
@@ -351,6 +355,108 @@ describe("Named browser drafts", () => {
       JSON.parse((await observer.read("operation", copy.id)).draftJSON).values
         .operationTitle,
     ).toBe("Copy edited");
+  });
+
+  test("repeated Enter chooses overwrite without saving; Back preserves the draft until explicit confirmation", async () => {
+    const user = userEvent.setup();
+    const original = await seed();
+    await mount();
+    await load(user, original.name);
+    enterWorksheetField("Operation Title", "Deliberately updated");
+    await openSave(user);
+    const chooseOverwrite = button("Overwrite this draft");
+    for (
+      let tab = 0;
+      tab < 6 && document.activeElement !== chooseOverwrite;
+      tab++
+    )
+      await user.tab();
+    expect(chooseOverwrite).toHaveFocus();
+    await user.keyboard("{Enter}{Enter}");
+    expect(chooseOverwrite).not.toBeInTheDocument();
+    expect(button("Confirm Overwrite")).toBeVisible();
+    expect(button("Confirm Overwrite")).not.toHaveFocus();
+    expect(
+      screen.queryByRole("button", { name: "Save new draft" }),
+    ).not.toBeInTheDocument();
+    expect(await observer.read("operation", original.id)).toEqual(original);
+    await user.tab();
+    expect(button("Back")).toHaveFocus();
+    await user.keyboard("{Enter}");
+    expect(button("Overwrite this draft")).toBeVisible();
+    expect(await observer.read("operation", original.id)).toEqual(original);
+    await user.click(button("Overwrite this draft"));
+    await user.click(button("Confirm Overwrite"));
+    await closed();
+    const saved = await observer.read("operation", original.id);
+    expect(saved.revision).toBe(2);
+    expect(parseDraft(saved.draftJSON, "operation").values.operationTitle).toBe(
+      "Deliberately updated",
+    );
+  });
+
+  test("an edited copy name stays unchanged until explicit Save; Back and Cancel create nothing", async () => {
+    const user = userEvent.setup();
+    const original = await seed();
+    await mount();
+    await load(user, original.name);
+    await openSave(user);
+    await waitFor(() => expect(button("Save as separate copy")).toBeEnabled());
+    await user.click(button("Save as separate copy"));
+    await user.click(button("Back"));
+    expect(await observer.list("operation")).toHaveLength(1);
+    await user.click(button("Cancel"));
+    await closed();
+    expect(await observer.read("operation", original.id)).toEqual(original);
+    await openSave(user);
+    await waitFor(() => expect(button("Save as separate copy")).toBeEnabled());
+    await user.click(button("Save as separate copy"));
+    const name = screen.getByLabelText("Draft name");
+    expect(name).toHaveFocus();
+    await user.clear(name);
+    await user.type(name, "Final version");
+    await user.keyboard("{Enter}{Enter}");
+    expect(name).toHaveValue("Final version");
+    expect(
+      screen.queryByRole("button", { name: "Save as separate copy" }),
+    ).not.toBeInTheDocument();
+    expect(await observer.list("operation")).toHaveLength(1);
+    await user.click(button("Save new draft"));
+    await closed();
+    const records = await observer.list("operation");
+    expect(records).toHaveLength(2);
+    expect(records.find((record) => record.id !== original.id).name).toBe(
+      "Final version",
+    );
+    expect(await observer.read("operation", original.id)).toEqual(original);
+  });
+
+  test("a pending overwrite cannot be submitted twice or redirected to another action", async () => {
+    const original = await seed();
+    const delayed = hold("overwrite");
+    const user = userEvent.setup();
+    await mount();
+    await load(user, original.name);
+    enterWorksheetField("Operation Title", "Confirmed update");
+    await openSave(user);
+    await user.click(button("Overwrite this draft"));
+    await waitFor(() => expect(button("Confirm Overwrite")).toBeEnabled());
+    await user.dblClick(button("Confirm Overwrite"));
+    await delayed.entered.promise;
+    expect(button("Confirm Overwrite")).toBeDisabled();
+    expect(button("Back")).toBeDisabled();
+    expect(screen.getByLabelText("Draft name")).toBeDisabled();
+    await user.keyboard("{Enter}{Enter}");
+    await user.click(button("Back"));
+    expect(await observer.read("operation", original.id)).toEqual(original);
+    await act(async () => delayed.release.resolve());
+    await closed();
+    const saved = await observer.read("operation", original.id);
+    expect(saved.revision).toBe(2);
+    expect(parseDraft(saved.draftJSON, "operation").values.operationTitle).toBe(
+      "Confirmed update",
+    );
+    expect(await observer.list("operation")).toHaveLength(1);
   });
 
   test("confirmed current-record Rename advances its binding; cancel and Delete preserve the visible worksheet", async () => {
@@ -601,7 +707,7 @@ describe("Named browser drafts", () => {
     expect(button("Save new draft")).toBeVisible();
   });
 
-  test("a pending Save stores the confirmation snapshot without reverting a later ordinary edit", async () => {
+  test("repeated pending Save creates one confirmation snapshot without reverting a later ordinary edit", async () => {
     const delayed = hold("create");
     const user = userEvent.setup();
     await mount();
@@ -610,12 +716,16 @@ describe("Named browser drafts", () => {
     await openSave(user);
     nameDraft("Snapshot");
     await waitFor(() => expect(button("Save new draft")).toBeEnabled());
-    await user.click(button("Save new draft"));
+    await user.dblClick(button("Save new draft"));
     await delayed.entered.promise;
+    expect(button("Save new draft")).toBeDisabled();
+    await user.keyboard("{Enter}{Enter}");
     enterWorksheetField("Operation Title", "Later edit");
     await act(async () => delayed.release.resolve());
     await closed();
-    const [saved] = await observer.list("operation");
+    const records = await observer.list("operation");
+    expect(records).toHaveLength(1);
+    const [saved] = records;
     expect(
       JSON.parse((await observer.read("operation", saved.id)).draftJSON).values
         .operationTitle,
