@@ -389,7 +389,7 @@ describe("Automatic worksheet recovery", () => {
           ),
         );
         await user.click(
-          within(screen.getByRole("dialog")).getByRole("button", {
+          await within(screen.getByRole("dialog")).findByRole("button", {
             name: "Replace Worksheet",
           }),
         );
