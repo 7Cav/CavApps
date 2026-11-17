@@ -117,15 +117,43 @@ export function orderRecipientsForRecommendation(recipients) {
   });
 }
 
-export function getCitationName(fullName) {
-  const { first, surname } = parseRecipientName(fullName);
-  return [first, surname].filter(Boolean).join(" ");
+export function getCitationName(fullName, username) {
+  const words = trimText(fullName).split(/\s+/).filter(Boolean);
+  const completeName = words.join(" ");
+  const normalizedUsername = normalize(username).normalize("NFC");
+  // The final dot permits punctuation within surnames such as "St. John".
+  const separator = normalizedUsername.lastIndexOf(".");
+  const surname = normalizedUsername.slice(0, separator);
+  const initials = normalizedUsername.slice(separator + 1);
+  if (separator <= 0 || !/^[\p{L}\p{M}]+$/u.test(initials)) return completeName;
+
+  const surnameStart = words.length - surname.split(" ").length;
+  if (
+    surnameStart < 1 ||
+    normalize(words.slice(surnameStart).join(" ")).normalize("NFC") !== surname
+  )
+    return completeName;
+
+  const givenInitials = words
+    .slice(0, surnameStart)
+    .map((word) => Array.from(word.normalize("NFC"))[0])
+    .join("")
+    .toLowerCase();
+  // One initial may omit middle initials; any supplied initials must agree.
+  if (!givenInitials.startsWith(initials)) return completeName;
+
+  // Username text only corroborates the boundary; spelling comes from realName.
+  // A stale username that still agrees with this name cannot be detected here.
+  return [words[0], ...words.slice(surnameStart)].join(" ");
 }
 
 export function getRecipientIdentity(member) {
   return {
     recipientRank: trimText(member?.rank?.rankFull),
-    recipientCitationName: getCitationName(member?.realName ?? ""),
+    recipientCitationName: getCitationName(
+      member?.realName,
+      member?.user?.username,
+    ),
   };
 }
 

@@ -329,7 +329,7 @@ describe("recommendation prose subjects", () => {
   test("composes established citation names in supplied order and retains distinct IDs with the same human identity", () => {
     const members = [
       makeRecipient({
-        user: { userId: "second" },
+        user: { userId: "second", username: "Kenton.W" },
         rank: { rankFull: " Staff Sergeant " },
         realName: " Wade Middle Kenton ",
       }),
@@ -374,6 +374,7 @@ describe("recipient group identity warnings", () => {
       const recipients = [
         makeRecipient({
           realName,
+          user: { username: "Jackson.J" },
           rank: {
             rankId: "21",
             rankShort: "PFC",
@@ -400,6 +401,7 @@ describe("recipient group identity warnings", () => {
   test("a single recipient may also use their exact full roster identity", () => {
     const member = makeRecipient({
       realName: "James Wayne Jackson",
+      user: { username: "Jackson.J" },
       rank: { rankId: "21", rankShort: "PFC", rankFull: "Private First Class" },
     });
     const analysis = analyzeRecommendationNarrative(
@@ -581,9 +583,10 @@ describe("recipient collection and identity", () => {
     ).toBe(true);
   });
 
-  test("preserves full roster display while using first and last citation names", () => {
+  test("preserves full roster display while omitting corroborated middle names in citations", () => {
     const member = makeRecipient({
       realName: " Taylor Morgan Smith ",
+      user: { username: "Smith.TM" },
       rank: { rankFull: " Specialist " },
     });
     expect(getRecipientDisplayName(member)).toBe(
@@ -595,9 +598,9 @@ describe("recipient collection and identity", () => {
     });
     expect(getCitationName("  Taylor  ")).toBe("Taylor");
     expect(getCitationName("Wade   Kenton")).toBe("Wade Kenton");
-    expect(getCitationName("  James\n Wayne\tAllen Jackson  ")).toBe(
-      "James Jackson",
-    );
+    expect(
+      getCitationName("  James\n Wayne\tAllen Jackson  ", "Jackson.JWA"),
+    ).toBe("James Jackson");
   });
 
   test("detects a multiword rank and identity across whitespace and newline boundaries", () => {
@@ -608,6 +611,141 @@ describe("recipient collection and identity", () => {
         "Wade Kenton",
       ),
     ).toBe(true);
+  });
+});
+
+describe("recipient-aware citation names", () => {
+  test.each([
+    ["Phoenix Van Auken", "Van Auken.P", "Phoenix Van Auken"],
+    ["Feib De Grassi", "De Grassi.F", "Feib De Grassi"],
+    ["Joubert Van Rooyen", "Van Rooyen.J", "Joubert Van Rooyen"],
+    ["Taylor Morgan Smith", "Smith.TM", "Taylor Smith"],
+    ["John Michael Smith", "Smith.J", "John Smith"],
+    ["Wade Kenton", "Kenton.W", "Wade Kenton"],
+    ["James Wayne Allen Jackson", "Jackson.JWA", "James Jackson"],
+    ["James Wayne Allen Jackson", "Jackson.JW", "James Jackson"],
+    ["James W. A. Jackson", "Jackson.JWA", "James Jackson"],
+    ["James Robert Van Buren", "Van Buren.JR", "James Van Buren"],
+    ["Alex Morgan Smith-Jones", "Smith-Jones.AM", "Alex Smith-Jones"],
+    ["Pat Alex O'Neil", "O'Neil.PA", "Pat O'Neil"],
+    ["Pat Alex O’Neil", "O’Neil.PA", "Pat O’Neil"],
+    ["Anna Maria St. John", "St. John.AM", "Anna St. John"],
+    [
+      "  pHoenix\nRoBeRt\tVan   Auken  ",
+      "  vAn   AuKeN.pR  ",
+      "pHoenix Van Auken",
+    ],
+    ["Émile André Du Pré", "du pre\u0301.ÉA", "Émile Du Pré"],
+  ])(
+    "%s with %s preserves the corroborated surname",
+    (realName, username, expected) => {
+      const member = makeRecipient({ realName, user: { username } });
+      Object.freeze(member.user);
+      Object.freeze(member);
+      expect(getRecipientIdentity(member).recipientCitationName).toBe(expected);
+      expect(member.realName).toBe(realName);
+      expect(member.user.username).toBe(username);
+    },
+  );
+
+  test.each([
+    undefined,
+    null,
+    42,
+    {},
+    "",
+    "Invalid username",
+    "Van Buren",
+    "Van Buren.",
+    ".JR",
+    "Van Buren.JR2",
+    "Van Buren.J.R",
+    "Van Buren.RJ",
+    "Van Buren.JX",
+    "Van Buren.JRA",
+    "Van Burren.JR",
+    "uren.JR",
+    "Robert.J",
+    "James Robert Van Buren.J",
+  ])(
+    "preserves the complete name when username %j cannot corroborate it",
+    (username) => {
+      expect(
+        getRecipientIdentity({
+          realName: "James Robert Van Buren",
+          user: { username },
+        }).recipientCitationName,
+      ).toBe("James Robert Van Buren");
+    },
+  );
+
+  test("missing recipient metadata and a mononym are safe without guessing a surname", () => {
+    expect(getRecipientIdentity().recipientCitationName).toBe("");
+    expect(getRecipientIdentity({ realName: {} }).recipientCitationName).toBe(
+      "",
+    );
+    expect(
+      getRecipientIdentity({ realName: "  Taylor  " }).recipientCitationName,
+    ).toBe("Taylor");
+    expect(getCitationName("  James\nRobert Van Buren  ")).toBe(
+      "James Robert Van Buren",
+    );
+  });
+
+  test.each([1, 2])(
+    "%i-recipient narrative feedback uses the corrected identity without rewriting prose",
+    (count) => {
+      const members = [
+        makeRecipient({
+          realName: "James Robert Van Buren",
+          user: { username: "Van Buren.JR" },
+        }),
+        jane,
+      ].slice(0, count);
+      for (const [identity, missing] of [
+        ["James Van Buren", false],
+        ["James Robert Van Buren", false],
+        ["James Buren", true],
+      ]) {
+        const text = `Specialist ${identity} and Specialist Jane Doe advanced. The team held. The mission succeeded.`;
+        const analysis = analyzeRecommendationNarrative(
+          text,
+          members,
+          "",
+          { minimumNarrativeSentences: 3 },
+          [],
+          {},
+        );
+        expect(
+          analysis.warnings.some(({ key }) => key === "recipient-mention"),
+        ).toBe(missing);
+        expect(analysis.text).toBe(text);
+      }
+    },
+  );
+
+  test("resolving a compound citation name preserves recipient data and full-surname discoverability", () => {
+    const compound = makeRecipient({
+      realName: "Phoenix Van Auken",
+      user: { userId: "compound", username: "Van Auken.P" },
+    });
+    const brown = makeRecipient({
+      realName: "Aaron Brown",
+      user: { userId: "brown", username: "Brown.A" },
+    });
+    const members = Object.freeze([brown, compound]);
+    const original = structuredClone(compound);
+    expect(getRecipientIdentity(compound).recipientCitationName).toBe(
+      "Phoenix Van Auken",
+    );
+    expect(
+      prioritizeInlineRecipients(
+        filterRecipients(members, "Van Auken"),
+        "Van Auken",
+      ),
+    ).toContain(compound);
+    expect(compound).toEqual(original);
+    expect(members).toEqual([brown, compound]);
   });
 });
 
