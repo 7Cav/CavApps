@@ -112,9 +112,12 @@ const updateMedalRecipientRosterCache = async () => {
 };
 
 const updateCachedIndividual = async (userName) => {
+  // Encoding keeps the caller's value in one path segment, but "." and ".."
+  // pass through it unchanged and the URL parser would still resolve them.
+  if (userName === "." || userName === "..") return null;
   try {
     const response = await axios(
-      `https://api.7cav.us/api/v1/milpacs/profile/username/${userName}`,
+      `https://api.7cav.us/api/v1/milpacs/profile/username/${encodeURIComponent(userName)}`,
       {
         headers: {
           Accept: "application/json",

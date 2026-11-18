@@ -1,7 +1,8 @@
 "use strict";
 
 /**
- * Regression test for the API_TOKEN log leak. No test framework — run with
+ * Regression tests for the API_TOKEN log leak and for path traversal through
+ * the individual lookup's username. No test framework — run with
  * `npm test` from server/, or via the repo-root `npm test`.
  *
  * The bug: passing a rejected axios error straight to console.error serialises
@@ -52,13 +53,15 @@ const cacheManager = require("./cacheManager");
 
 const startStub = async () => {
   const authHeadersSeen = [];
+  const pathsSeen = [];
   const server = http.createServer((req, res) => {
     authHeadersSeen.push(req.headers.authorization);
+    pathsSeen.push(req.url);
     res.writeHead(401, { "Content-Type": "application/json" });
     res.end('{"error":"unauthorized"}');
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
-  return { server, port: server.address().port, authHeadersSeen };
+  return { server, port: server.address().port, authHeadersSeen, pathsSeen };
 };
 
 const redirectUpstreamTo = (port) => {
@@ -116,17 +119,25 @@ const captureStderr = () => {
 };
 
 const main = async () => {
-  const { server, port, authHeadersSeen } = await startStub();
+  const { server, port, authHeadersSeen, pathsSeen } = await startStub();
   const restoreNetwork = redirectUpstreamTo(port);
   const stopCapture = captureStderr();
 
   let individualResult;
+  let traversalPaths;
   let initializeRejection;
   let captured;
 
   try {
     // cacheManager.js:82
     individualResult = await cacheManager.updateCachedIndividual("nobody");
+
+    // Each value must reach the upstream as one username segment, or not at all.
+    const before = pathsSeen.length;
+    for (const userName of ["../../../tickets", "..", ".", "a?b#c"]) {
+      await cacheManager.updateCachedIndividual(userName);
+    }
+    traversalPaths = pathsSeen.slice(before);
 
     // cacheManager.js:40, 59 and 106 are only reachable through
     // initializeCache, which calls process.exit(1) once it sees the cache is
@@ -173,6 +184,11 @@ const main = async () => {
   );
   assert.ok(captured.length > 0, "expected the failures to have been logged");
 
+  assert.deepStrictEqual(traversalPaths, [
+    "/api/v1/milpacs/profile/username/..%2F..%2F..%2Ftickets",
+    "/api/v1/milpacs/profile/username/a%3Fb%23c",
+  ]);
+
   // --- the assertion -------------------------------------------------------
   assert.ok(
     !captured.includes(SENTINEL),
@@ -181,7 +197,9 @@ const main = async () => {
     } time(s) in ${captured.length} bytes of log output`,
   );
 
-  console.log("cacheManager: no API_TOKEN in logs on upstream failure — OK");
+  console.log(
+    "cacheManager: no API_TOKEN in logs, username stays one path segment — OK",
+  );
 };
 
 main().catch((error) => {
