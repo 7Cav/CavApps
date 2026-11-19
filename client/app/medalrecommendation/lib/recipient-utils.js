@@ -117,34 +117,30 @@ export function orderRecipientsForRecommendation(recipients) {
   });
 }
 
+function surnameLetters(value) {
+  return value
+    .normalize("NFD")
+    .toLowerCase()
+    .replace(/[^\p{L}]/gu, "");
+}
+
 export function getCitationName(fullName, username) {
   const words = trimText(fullName).split(/\s+/).filter(Boolean);
-  const completeName = words.join(" ");
-  const normalizedUsername = normalize(username).normalize("NFC");
-  // The final dot permits punctuation within surnames such as "St. John".
-  const separator = normalizedUsername.lastIndexOf(".");
-  const surname = normalizedUsername.slice(0, separator);
-  const initials = normalizedUsername.slice(separator + 1);
-  if (separator <= 0 || !/^[\p{L}\p{M}]+$/u.test(initials)) return completeName;
+  if (words.length <= 2) return words.join(" ");
 
-  const surnameStart = words.length - surname.split(" ").length;
-  if (
-    surnameStart < 1 ||
-    normalize(words.slice(surnameStart).join(" ")).normalize("NFC") !== surname
-  )
-    return completeName;
-
-  const givenInitials = words
-    .slice(0, surnameStart)
-    .map((word) => Array.from(word.normalize("NFC"))[0])
-    .join("")
-    .toLowerCase();
-  // One initial may omit middle initials; any supplied initials must agree.
-  if (!givenInitials.startsWith(initials)) return completeName;
-
-  // Username text only corroborates the boundary; spelling comes from realName.
-  // A stale username that still agrees with this name cannot be detected here.
-  return [words[0], ...words.slice(surnameStart)].join(" ");
+  const handle = trimText(username);
+  const separator = handle.lastIndexOf(".");
+  const surname =
+    separator > 0 ? surnameLetters(handle.slice(0, separator)) : "";
+  if (surname) {
+    // Try the longest compound surname first; keep the roster spelling for display.
+    for (let start = 1; start < words.length - 1; start++) {
+      const tail = words.slice(start);
+      if (surnameLetters(tail.join("")) === surname)
+        return [words[0], ...tail].join(" ");
+    }
+  }
+  return [words[0], words.at(-1)].join(" ");
 }
 
 export function getRecipientIdentity(member) {

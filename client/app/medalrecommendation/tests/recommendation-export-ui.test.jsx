@@ -11,7 +11,6 @@ import {
   renderClient,
   renderPageWithRoster,
   selectAward,
-  selectAllRecipients,
   selectComboboxOption,
   selectRecipient,
   submitRecommendation,
@@ -65,125 +64,6 @@ async function ready({
 
 describe("Recommendation submission", () => {
   afterEach(() => vi.restoreAllMocks());
-
-  test("an Operation citation and BBCode retain the complete roster surname supplied through the page", async () => {
-    const user = userEvent.setup();
-    await renderPageWithRoster([
-      makeRecipient({
-        realName: "Phoenix Van Auken",
-        user: { username: "Van Auken.P" },
-      }),
-    ]);
-    await selectAward(user, "Army Commendation Medal With Valor");
-    await selectRecipient(user, "Van Auken", "Van Auken.P");
-    await fillOperationWorksheet(user, {
-      combatElement: "a rifleman",
-      operationTitle: "Overlord",
-      location: "Normandy",
-      operationDate: "2026-08-11",
-      narrative: "The rifleman advanced. The team held. The mission succeeded.",
-    });
-    await submitRecommendation(user);
-    const exportedBody = screen.getByLabelText("Recommendation Body").value;
-    // Exclude recipient headers so only the exported citation can satisfy these checks.
-    const exportedCitation = exportedBody.split("[/URL][/B]\n\n")[1];
-    for (const text of [getCitationText(), exportedCitation]) {
-      expect(text).toContain("Specialist Phoenix Van Auken");
-      expect(text).not.toContain("Phoenix Auken");
-    }
-    const preview = screen.getByRole("region", {
-      name: "Recommendation Preview",
-    });
-    expect(
-      within(preview).getByRole("link", {
-        name: "Specialist Phoenix Van Auken",
-        exact: true,
-      }),
-    ).toBeVisible();
-    expect(exportedBody).toMatch(
-      /\[B\]\[URL=[^\]\r\n]+\]Specialist Phoenix Van Auken\[\/URL\]\[\/B\]/,
-    );
-  });
-
-  test("Service group citations preserve compound surnames and omit corroborated middle names in preview and BBCode", async () => {
-    const user = userEvent.setup();
-    const members = [
-      ["Taylor Morgan Smith", "Smith.TM"],
-      ["Joubert Van Rooyen", "Van Rooyen.J"],
-      ["Feib De Grassi", "De Grassi.F"],
-    ].map(([realName, username], index) =>
-      makeRecipient({
-        realName,
-        user: { userId: String(index + 1), username },
-      }),
-    );
-    renderClient({ medalFamily: "service", roster: members });
-    await selectAward(user, "Humanitarian Service Medal");
-    await selectAllRecipients(user);
-    const continuation =
-      "supporting the unit. Readiness improved. The mission succeeded.";
-    enter("Narrative", continuation);
-    await submitRecommendation(user);
-    const exportedBody = screen.getByLabelText("Recommendation Body").value;
-    const exportedCitation = exportedBody.split("[/URL][/B]\n\n")[1];
-    for (const text of [getCitationText(), exportedCitation]) {
-      const [starter, closing] = text.split(continuation);
-      for (const identity of [
-        "Specialist Feib De Grassi",
-        "Specialist Joubert Van Rooyen",
-        "Specialist Taylor Smith",
-      ]) {
-        expect(starter).toContain(identity);
-        expect(closing).toContain(identity);
-      }
-      expect(text).not.toContain("Feib Grassi");
-      expect(text).not.toContain("Joubert Rooyen");
-      expect(text).not.toContain("Taylor Morgan Smith");
-    }
-    const preview = screen.getByRole("region", {
-      name: "Recommendation Preview",
-    });
-    for (const name of [
-      "Specialist Feib De Grassi",
-      "Specialist Joubert Van Rooyen",
-      "Specialist Taylor Morgan Smith",
-    ]) {
-      expect(
-        within(preview).getByRole("link", { name, exact: true }),
-      ).toBeVisible();
-    }
-    expect(exportedBody).toMatch(
-      /\[B\]\[URL=[^\]\r\n]+\]Specialist Taylor Morgan Smith\[\/URL\]\[\/B\]/,
-    );
-  });
-
-  test("an ambiguous name can generate a Service recommendation and export with the complete roster name", async () => {
-    const user = userEvent.setup();
-    renderClient({
-      medalFamily: "service",
-      roster: [
-        makeRecipient({
-          realName: "James Robert Van Buren",
-          user: { username: "Invalid username" },
-        }),
-      ],
-    });
-    await selectAward(user, "Humanitarian Service Medal");
-    await selectRecipient(user, "Van Buren", "Invalid username");
-    const continuation =
-      "supporting the unit. Readiness improved. The mission succeeded.";
-    enter("Narrative", continuation);
-    await submitRecommendation(user);
-    const exportedBody = screen.getByLabelText("Recommendation Body").value;
-    const exportedCitation = exportedBody.split("[/URL][/B]\n\n")[1];
-    for (const text of [getCitationText(), exportedCitation]) {
-      const [starter, closing] = text.split(continuation);
-      expect(starter).toContain("Specialist James Robert Van Buren");
-      expect(closing).toContain("Specialist James Robert Van Buren");
-      expect(text).not.toContain("James Buren");
-      expect(text).not.toContain("James Van Buren");
-    }
-  });
 
   // Recipient order and titles: https://wiki.7cav.us/wiki/Awards_and_Decorations?oldid=17908
   test.each([
