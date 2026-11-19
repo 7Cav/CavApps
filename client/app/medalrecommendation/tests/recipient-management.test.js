@@ -414,6 +414,26 @@ describe("recipient group identity warnings", () => {
       "recipient-mention",
     );
   });
+  test.each(["Patrick VanPelt", "Patrick Jay VanPelt"])(
+    "recognizes Specialist %s in the narrative with roster username VanPelt.JP",
+    (name) => {
+      const member = makeRecipient({
+        realName: "Patrick Jay VanPelt",
+        user: { username: "VanPelt.JP" },
+      });
+      const { warnings } = analyzeRecommendationNarrative(
+        "Specialist " +
+          name +
+          " advanced. The team held. The mission succeeded.",
+        [member],
+        "",
+        { minimumNarrativeSentences: 3 },
+        [],
+        {},
+      );
+      expect(warnings.map(({ key }) => key)).not.toContain("recipient-mention");
+    },
+  );
   const members = [
     "Alpha One",
     "Bravo Two",
@@ -479,6 +499,29 @@ describe("recipient group identity warnings", () => {
 });
 
 describe("recipient collection and identity", () => {
+  test.each([
+    ["Phoenix Van Auken", "Van Auken.P", "Phoenix Van Auken"],
+    ["Feib De Grassi", "De Grassi.F", "Feib De Grassi"],
+    ["Joubert Van Rooyen", "Van Rooyen.J", "Joubert Van Rooyen"],
+    ["Patrick Jay VanPelt", "VanPelt.JP", "Patrick VanPelt"],
+    ["Robert James Smith", "Smith.B", "Robert Smith"],
+    ["Taylor Morgan Smith", "Smith.TM", "Taylor Smith"],
+    ["James Wayne Allen Jackson", "Jackson.JWA", "James Jackson"],
+    ["Anna Maria St. John", "St. John.AM", "Anna St. John"],
+    ["Karl André Müller", "Muller.K", "Karl Müller"],
+    ["James Robert Van Buren", "Van Buren.JR", "James Van Buren"],
+    ["James Robert Van Buren", "Unmatched.X", "James Buren"],
+    ["James Robert Van Buren", undefined, "James Buren"],
+    ["James Robert Van Buren", "Van Buren", "James Buren"],
+    ["  Émile\tAndré du  Pré ", "DUPRE\u0301.X", "Émile du Pré"],
+    ["Pat Alex O’Neil de-Sá", "oneildesa.P", "Pat O’Neil de-Sá"],
+  ])("cites %s with username %s as %s", (realName, username, expected) => {
+    expect(
+      getRecipientIdentity({ realName, user: { username } })
+        .recipientCitationName,
+    ).toBe(expected);
+  });
+
   test("keeps first occurrences and order by stable ID, not similar names", () => {
     const laterJane = makeRecipient({
       user: { userId: " j ", username: "Doe.Later" },
