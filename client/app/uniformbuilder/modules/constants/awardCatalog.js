@@ -224,14 +224,14 @@ export const AWARD_CATALOG = [
     medalPriority: 29,
     awardAttachmentType: AwardAttachmentType.STARS,
     awardType: AwardType.MedalTiered,
-  }, // Fuck you, whoever put this into SOP
+  },
   {
     name: "StackUp Donation Medal",
     awardPriority: 31,
     medalPriority: 30,
     awardAttachmentType: AwardAttachmentType.GC_NOTCHES,
     awardType: AwardType.MedalTiered,
-  }, // and again
+  },
   {
     name: "Outstanding Volunteer Service Medal",
     awardPriority: 32,
@@ -305,6 +305,10 @@ export const AWARD_CATALOG = [
     awardType: AwardType.Medal,
   },
   {
+    //NOTE:
+    //Both the WWII Service Ribbon and HLL Vietnam ribbon share the same ribbon sprite.
+    //Technically, the WWII service ribbon is not on any current milpac, considered removed.
+    //However, if SOP changes, we may reach a case where 2 medals use the same ribbon.
     name: "WWII Service Ribbon",
     awardPriority: 43,
     medalPriority: 39,
@@ -340,31 +344,38 @@ export const AWARD_CATALOG = [
     awardType: AwardType.Medal,
   },
   {
-    name: "Recruiting Ribbon",
+    name: "Wardogs Service Ribbon",
     awardPriority: 48,
+    medalPriority: 44,
+    awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS_SERVICE,
+    awardType: AwardType.Medal,
+  },
+  {
+    name: "Recruiting Ribbon",
+    awardPriority: 49,
     awardAttachmentType: AwardAttachmentType.STARS_DONATION,
     awardType: AwardType.RibbonDonationLogic,
   }, // May Also require Special Case
   {
     name: "D-Day Commemorative Medal",
-    awardPriority: 49,
-    medalPriority: 44,
-    awardType: AwardType.Medal,
-  },
-  {
-    name: "Ranger Selection Ribbon",
     awardPriority: 50,
-    awardType: AwardType.Ribbon,
-  },
-  {
-    name: "Sniper Ribbon",
-    awardPriority: 51,
     medalPriority: 45,
     awardType: AwardType.Medal,
   },
   {
-    name: "Basic Assault Course Ribbon",
+    name: "Ranger Selection Ribbon",
+    awardPriority: 51,
+    awardType: AwardType.Ribbon,
+  },
+  {
+    name: "Sniper Ribbon",
     awardPriority: 52,
+    medalPriority: 46,
+    awardType: AwardType.Medal,
+  },
+  {
+    name: "Basic Assault Course Ribbon",
+    awardPriority: 53,
     awardType: AwardType.Ribbon,
   },
 
