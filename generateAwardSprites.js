@@ -468,8 +468,8 @@ function isRibbonSourceShape(width, height) {
  * resize is `fit: "fill"` — a stretch to the tile's width, not a scale. A
  * 512x512 source does not come out imperfect, it comes out as 43 columns of
  * mush, and by the time anyone sees it the only copy has been deleted. The
- * medal side keeps warning instead: `fit: "inside"` preserves aspect there,
- * so a mismatch costs transparent margin rather than the art.
+ * medal side does not need to: `fit: "inside"` preserves aspect there, so a
+ * mismatch costs transparent margin rather than the art.
  *
  * Exact multiples are accepted rather than a percentage tolerance. A tolerance
  * needs a threshold nobody can justify later, and the two failure modes here
@@ -1289,14 +1289,18 @@ async function run(paths = DEFAULT_PATHS, log = console) {
         `are not the same PNGs the sheets were built from.`,
     );
   }
-  noops.forEach(({ kind, name }) =>
+  noops.forEach(({ kind, name }) => {
+    const other = kind === "ribbon" ? "medal" : "ribbon";
+    const hasOther = tiles.some((t) => t.name === name && t.kind === other);
     warn(
       `${name} ${kind}: the uploaded image is identical to the current one, so this PR does ` +
-        `not change it. That is expected if you only meant to fix the ` +
-        `${kind === "ribbon" ? "medal" : "ribbon"}. If not, the file you uploaded is not ` +
-        `the file you edited.`,
-    ),
-  );
+        `not change it. ` +
+        (hasOther
+          ? `That is expected if you only meant to fix the ${other}. If not, the file you ` +
+            `uploaded is not the file you edited.`
+          : `If you meant to change it, the file you uploaded is not the file you edited.`),
+    );
+  });
 
   const tmpFor = (dest) => dest + ".tmp.png";
   try {
@@ -1423,15 +1427,18 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   return {
     processed: manifest.length,
     warnings: allWarnings,
-    tiles: tiles.map((tile) => {
-      const row = sheetRowIndex(lookupAward(catalog, tile.name), tile.kind);
-      return {
-        ...tile,
-        row,
-        above: names[tile.kind].get(row - 1) ?? null,
-        below: names[tile.kind].get(row + 1) ?? null,
-      };
-    }),
+    // Only tiles whose pixels changed; the no-op warnings cover the rest.
+    tiles: tiles
+      .filter((t) => !noops.some((n) => n.name === t.name && n.kind === t.kind))
+      .map((tile) => {
+        const row = sheetRowIndex(lookupAward(catalog, tile.name), tile.kind);
+        return {
+          ...tile,
+          row,
+          above: names[tile.kind].get(row - 1) ?? null,
+          below: names[tile.kind].get(row + 1) ?? null,
+        };
+      }),
     ribbonResult: ribbonPlan && {
       width: ribbonPlan.width,
       height: ribbonPlan.height,
@@ -1506,7 +1513,8 @@ async function renderPreview(tiles, paths) {
       width: left - gap,
       height: Math.max(...columns.map((c) => c.height)),
       channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 },
+      // Opaque mid-gray: dark art vanishes on GitHub's dark theme otherwise.
+      background: { r: 128, g: 128, b: 128, alpha: 1 },
     },
   })
     .composite(layers)

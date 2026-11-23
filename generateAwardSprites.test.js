@@ -2634,6 +2634,10 @@ async function main() {
     "run(one-sided): the sheet that could not change says so",
     oneSideRes.warnings.some((w) => w.startsWith("Both Award ribbon:")),
   );
+  ok(
+    "run(one-sided): only the changed tile reaches the PR body and preview",
+    oneSideRes.tiles.map((t) => t.kind).join() === "medal",
+  );
 
   // --- run: a failed encode leaves BOTH sheets as they were ---
   // The temp-file-then-rename dance exists for exactly this: two destinations

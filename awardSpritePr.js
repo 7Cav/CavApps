@@ -33,11 +33,11 @@ function prTitle(tiles) {
     awards.length <= 3
       ? listNames(awards.map((a) => a.name))
       : `${awards.length} awards`;
-  return `chore(uniformbuilder): ${verb} sprites for ${names}`;
+  return `chore(uniformbuilder): ${verb} award art for ${names}`;
 }
 
 function placement(tile) {
-  if (!tile) return "None";
+  if (!tile) return "Not changed";
   const verb = tile.replace ? "Replaced" : "New";
   const { above, below } = tile;
   if (above && below) return `${verb}, between ${above} and ${below}`;
@@ -58,8 +58,8 @@ function prBody({ tiles, warnings }, previewUrl) {
   return [
     summary.join(" "),
     `![Changed tiles with their neighbors](${previewUrl})`,
-    "The image has one column per tile, in table order. Each red box is a changed " +
-      "tile, with the tiles above and below it on the same sheet.",
+    "Ribbons and medals appear left to right in the same order as the table. Each " +
+      "red box is a changed tile, with the tiles above and below it on the same sheet.",
     [
       "| Award | Ribbon | Medal |",
       "| --- | --- | --- |",
@@ -78,7 +78,8 @@ function prBody({ tiles, warnings }, previewUrl) {
     warnings.length > 0 && "## Problems found",
     warnings.length > 0 && warnings.map((w) => `- ${w}`).join("\n"),
     "The AWARD_SPRITES workflow made this PR from the files pushed to " +
-      "`uniform-uploads/`. It also deletes those files and clears the manifest.",
+      "`uniform-uploads/`. It also deletes the uploaded images it used and clears the " +
+      "manifest.",
   ]
     .filter(Boolean)
     .join("\n\n")

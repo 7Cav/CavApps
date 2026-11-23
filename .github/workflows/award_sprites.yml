@@ -173,22 +173,28 @@ jobs:
           cd "$(mktemp -d)"
           git init -q
           git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          # ls-remote exits 2 when the branch does not exist yet; then the
-          # first commit here starts it. Anything else is a real failure.
-          status=0
-          git ls-remote --exit-code --heads origin award-sprite-previews > /dev/null || status=$?
-          case "$status" in
-            0) git fetch -q --depth 1 origin award-sprite-previews && git checkout -q FETCH_HEAD ;;
-            2) ;;
-            *) exit "$status" ;;
-          esac
-          cp "$PREVIEW" "$FILE"
-          git add "$FILE"
-          # The runner has no git identity; commit as the Actions bot.
-          git -c user.name="github-actions[bot]" \
-              -c user.email="41898297+github-actions[bot]@users.noreply.github.com" \
-              commit -q -m "Award sprite preview $FILE"
-          git push -q origin HEAD:refs/heads/award-sprite-previews
+          # Runs on other branches push here too, so a push can lose a race.
+          # FILE is unique per run, so retrying on the new tip cannot conflict.
+          for attempt in 1 2 3; do
+            # ls-remote exits 2 when the branch does not exist yet; then the
+            # first commit here starts it. Anything else is a real failure.
+            status=0
+            git ls-remote --exit-code --heads origin award-sprite-previews > /dev/null || status=$?
+            case "$status" in
+              0) git fetch -q --depth 1 origin award-sprite-previews && git checkout -q FETCH_HEAD ;;
+              2) ;;
+              *) exit "$status" ;;
+            esac
+            cp "$PREVIEW" "$FILE"
+            git add "$FILE"
+            # The runner has no git identity; commit as the Actions bot.
+            git -c user.name="github-actions[bot]" \
+                -c user.email="41898297+github-actions[bot]@users.noreply.github.com" \
+                commit -q -m "Award sprite preview $FILE"
+            git push -q origin HEAD:refs/heads/award-sprite-previews && exit 0
+            sleep $((attempt * 5))
+          done
+          exit 1
 
       - name: Open pull request
         if: steps.changes.outputs.changed == 'true'
