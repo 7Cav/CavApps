@@ -189,11 +189,13 @@ jobs:
               2) ;;
               *) exit "$status" ;;
             esac
+            # A push GitHub accepted but whose reply was lost is already done.
+            if cmp -s "$PREVIEW" "$FILE"; then exit 0; fi
             cp "$PREVIEW" "$FILE"
             git add "$FILE"
             # The runner has no git identity; commit as the Actions bot.
             git -c user.name="github-actions[bot]" \
-                -c user.email="41898297+github-actions[bot]@users.noreply.github.com" \
+                -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
                 commit -q -m "Award sprite preview $FILE"
             git push -q origin HEAD:refs/heads/award-sprite-previews && exit 0
             [ "$attempt" -lt 3 ] && sleep $((attempt * 5))

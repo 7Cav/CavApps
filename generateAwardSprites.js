@@ -1455,6 +1455,8 @@ async function run(paths = DEFAULT_PATHS, log = console) {
 }
 
 const PREVIEW = { ribbon: { scale: 4 }, medal: { scale: 2 }, pad: 6, gap: 24 };
+const previewCellWidth = (kind) =>
+  SHEETS[kind].width * PREVIEW[kind].scale + 2 * PREVIEW.pad;
 
 /**
  * One PNG for the PR body, laid out like its table: a row per award, ribbon on
@@ -1466,12 +1468,13 @@ const PREVIEW = { ribbon: { scale: 4 }, medal: { scale: 2 }, pad: 6, gap: 24 };
 async function renderPreview(tiles, paths) {
   const { pad, gap } = PREVIEW;
   const changed = tiles.filter((t) => !t.unchanged);
-  const cellW = (kind) => SHEETS[kind].width * PREVIEW[kind].scale + 2 * pad;
-  const columnLeft = { ribbon: 0, medal: cellW("ribbon") + gap };
+  const columnLeft = { ribbon: 0, medal: previewCellWidth("ribbon") + gap };
   const layers = [];
+  const dividers = [];
   let width = 0;
   let top = 0;
   for (const name of new Set(changed.map((t) => t.name))) {
+    if (top > 0) dividers.push(top - gap / 2);
     let rowHeight = 0;
     for (const tile of changed.filter((t) => t.name === name)) {
       const column = await previewColumn(tile, paths);
@@ -1483,10 +1486,18 @@ async function renderPreview(tiles, paths) {
           top: l.top + top,
         })),
       );
-      width = Math.max(width, left + cellW(tile.kind));
+      width = Math.max(width, left + previewCellWidth(tile.kind));
       rowHeight = Math.max(rowHeight, column.height);
     }
     top += rowHeight + gap;
+  }
+  // A line between awards; a tall medal otherwise reads as part of the next row.
+  for (const y of dividers) {
+    layers.push({
+      input: { create: { width, height: 1, channels: 4, background: "#000" } },
+      left: 0,
+      top: y,
+    });
   }
   return sharp({
     create: {
@@ -1512,7 +1523,7 @@ async function previewColumn(tile, paths) {
   const rows = [tile.row - 1, tile.row, tile.row + 1].filter(
     (row) => row >= 0 && row < sheetRowCount(height, tileHeight),
   );
-  const cellW = width * scale + 2 * pad;
+  const cellW = previewCellWidth(tile.kind);
   const cellH = tileHeight * scale + 2 * pad;
   const layers = [];
   for (const [i, row] of rows.entries()) {

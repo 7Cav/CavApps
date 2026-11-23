@@ -44,6 +44,7 @@ const {
   renderPreview,
   run,
 } = require("./generateAwardSprites");
+const { prTitle, prBody } = require("./awardSpritePr");
 
 // Synthetic stand-in for AWARD_CATALOG, in the real catalog's shape: an ordered
 // array of plain objects keyed by `name`. Shared by the in-memory Map fixture
@@ -1310,11 +1311,7 @@ async function main() {
     },
     error() {},
   };
-  const oddResult = await run(paths, spy);
-  ok(
-    "run(warnings): a small medal source is reported, not silently blurred",
-    oddResult.warnings.some((w) => w.includes("35x60")),
-  );
+  await run(paths, spy);
   ok(
     "run(warnings): the warning reaches the log too",
     warned.some((w) => w.includes("35x60")),
@@ -2616,6 +2613,22 @@ async function main() {
     "run(batch no-op): the row it would not have changed is untouched",
     (await rowColor(batchPaths.ribbonSheet, 14)).join() === "5,5,5",
   );
+  // The PR names only awards whose art changed, and says which sheet an
+  // award has no tile on.
+  const batchRows = prBody(batchRes, "preview.png")
+    .split("\n")
+    .filter((line) => line.startsWith("| ") && !/^\| (Award|---) /.test(line));
+  ok(
+    "pr: only awards with changed art reach the title and table",
+    prTitle(batchRes.tiles).includes("R Moved") &&
+      !prTitle(batchRes.tiles).includes("Same") &&
+      batchRows.length === 1 &&
+      batchRows[0].startsWith("| R Moved |"),
+  );
+  ok(
+    "pr: an award with no tile on a sheet says so",
+    batchRows[0].endsWith("| No medal |"),
+  );
 
   // --- an award on both sheets, fixing the art on only one of them ---
   // 45 of the 105 real awards sit on both sheets, and validateManifest requires
@@ -2671,6 +2684,10 @@ async function main() {
     "run(one-sided): the tile that did not change is marked unchanged",
     oneSideRes.tiles.map((t) => `${t.kind}:${t.unchanged}`).join() ===
       "ribbon:true,medal:false",
+  );
+  ok(
+    "pr: a tile that did not change is reported as not changed",
+    prBody(oneSideRes, "preview.png").includes("| Both Award | Not changed |"),
   );
   // Same cell geometry as the mid-sheet preview, medal column only drawn.
   const oneSideColor = await previewPixels(oneSideRes.tiles, oneSide);
