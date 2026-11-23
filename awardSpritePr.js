@@ -75,7 +75,7 @@ function prBody({ tiles, warnings }, previewUrl) {
           `| ${a.name} | ${placement(a.ribbon, "ribbon")} | ${placement(a.medal, "medal")} |`,
       ),
     ].join("\n"),
-    added.length > 0 &&
+    tiles.some((t) => !t.replace && t.below) &&
       "Each new tile moves the awards after it on its sheet down one slot.",
     "## Check before you merge",
     [

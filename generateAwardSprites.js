@@ -1297,12 +1297,12 @@ async function run(paths = DEFAULT_PATHS, log = console) {
       tiles.some((t) => t.name === name && t.kind === other) &&
       !isNoop(name, other);
     warn(
-      `${name} ${kind}: the uploaded image is identical to the current one, so this PR does ` +
-        `not change it. ` +
+      `${name} ${kind}: the uploaded image produced the same art that is already in this ` +
+        `slot, so this PR does not change it. ` +
         (otherChanged
-          ? `That is expected if you only meant to fix the ${other}. If not, the file you ` +
-            `uploaded is not the file you edited.`
-          : `If you meant to change it, the file you uploaded is not the file you edited.`),
+          ? `That is expected if you only meant to fix the ${other}. If not, check the file ` +
+            `you uploaded.`
+          : `If you expected a change, check the file you uploaded.`),
     );
   });
 
@@ -1615,6 +1615,8 @@ module.exports = {
   spliceSheet,
   validateManifest,
   writeManifest,
+  PREVIEW,
+  previewCellWidth,
   renderPreview,
   run,
 };

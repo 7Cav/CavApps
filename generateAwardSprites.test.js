@@ -41,6 +41,10 @@ const {
   validateManifest,
   spliceSheet,
   readSheet,
+  RIBBON,
+  MEDAL,
+  PREVIEW,
+  previewCellWidth,
   renderPreview,
   run,
 } = require("./generateAwardSprites");
@@ -146,6 +150,16 @@ async function makeSheet(file, width, tileH, colors) {
     .composite(bands)
     .png()
     .toFile(file);
+}
+
+// [x, y] of the center of cell i in a preview's ribbon or medal column.
+function previewCellCenter(kind, i) {
+  const { pad, gap } = PREVIEW;
+  const cellH =
+    (kind === "ribbon" ? RIBBON : MEDAL).tileHeight * PREVIEW[kind].scale +
+    2 * pad;
+  const left = kind === "ribbon" ? 0 : previewCellWidth("ribbon") + gap;
+  return [left + previewCellWidth(kind) / 2, i * cellH + cellH / 2];
 }
 
 // Render a preview and return a reader for the [r, g, b] at (x, y).
@@ -1474,10 +1488,8 @@ async function main() {
   // The preview shows those same neighbors: one column per tile, one cell per
   // row, the medal column clamped at the top of its sheet.
   const previewColor = await previewPixels(midRes.tiles, mid);
-  // Cell geometry from PREVIEW: ribbons 4x in 68px cells, medals 2x in 252px
-  // cells, 6px padding, the medal column 24px right of the 184px ribbon one.
   assert.deepStrictEqual(
-    [0, 1, 2].map((i) => previewColor(86, i * 68 + 32)),
+    [0, 1, 2].map((i) => previewColor(...previewCellCenter("ribbon", i))),
     [
       [2, 0, 0],
       [77, 0, 0],
@@ -1485,7 +1497,7 @@ async function main() {
     ],
   );
   assert.deepStrictEqual(
-    [0, 1].map((i) => previewColor(284, i * 252 + 126)),
+    [0, 1].map((i) => previewColor(...previewCellCenter("medal", i))),
     [
       [0, 77, 0],
       [0, 1, 0],
@@ -2590,7 +2602,7 @@ async function main() {
   ok(
     "run(batch no-op): the tile that changed nothing is named",
     batchRes.warnings.some(
-      (w) => w.startsWith("R Same ribbon:") && w.includes("identical"),
+      (w) => w.startsWith("R Same ribbon:") && w.includes("same art"),
     ),
   );
   ok(
@@ -2689,12 +2701,11 @@ async function main() {
     "pr: a tile that did not change is reported as not changed",
     prBody(oneSideRes, "preview.png").includes("| Both Award | Not changed |"),
   );
-  // Same cell geometry as the mid-sheet preview, medal column only drawn.
   const oneSideColor = await previewPixels(oneSideRes.tiles, oneSide);
   ok(
     "preview: an unchanged tile is not drawn, only the changed one",
-    oneSideColor(86, 32).join() === "128,128,128" &&
-      oneSideColor(284, 126).join() === "0,9,0",
+    oneSideColor(...previewCellCenter("ribbon", 0)).join() === "128,128,128" &&
+      oneSideColor(...previewCellCenter("medal", 0)).join() === "0,9,0",
   );
 
   // --- run: a failed encode leaves BOTH sheets as they were ---
