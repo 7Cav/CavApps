@@ -28,10 +28,10 @@ the sprite sheets and opens a pull request for review.
 
    - Medal art: RGBA with transparency, ideally 70×120 or larger (it is scaled
      to fit a 70×120 tile, centered horizontally, top-aligned on
-     transparency). Odd proportions warn rather than fail — the scale preserves
-     aspect, so the cost is transparent margin, not the art. A source smaller
-     than the tile is scaled **up**, which warns too: it will look soft, and
-     once the run consumes it there is nothing left to compare against.
+     transparency). The scale keeps proportions, so odd proportions leave
+     transparent margin and the PR preview shows it. A source smaller than the
+     tile is scaled **up**, which warns: it will look soft, and once the run
+     consumes it there is nothing left to compare against.
 
 3. **Add a manifest entry** to `manifest.json` (a JSON array):
 

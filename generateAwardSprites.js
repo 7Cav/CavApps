@@ -45,6 +45,7 @@ const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const sharp = require("sharp");
+const { prTitle, prBody } = require("./awardSpritePr");
 
 const ROOT = __dirname;
 
@@ -520,16 +521,15 @@ async function normalizeMedal(srcPath) {
         `transparency, so a flattened export fills the whole tile with a solid rectangle`,
     );
   }
-  // Upscaling is the one geometry problem the aspect warnings below cannot see:
-  // a source smaller than the tile fits perfectly, fills it edge to edge, and
-  // arrives blurred with nothing to compare it against once the original is
-  // gone. `withoutEnlargement: false` is deliberate — a small source is still
-  // better placed than refused — but it must not be silent.
+  // A small source is still better placed than refused, but it arrives blurred
+  // and the original is deleted, so it must not be silent. Odd proportions are
+  // not reported: centering a narrow medal is the correct result, and the PR
+  // preview shows it.
   if (meta.width < MEDAL.width && meta.height < MEDAL.tileHeight) {
     warnings.push(
-      `medal source ${path.basename(srcPath)} is ${meta.width}x${meta.height}, smaller than the ` +
-        `${MEDAL.width}x${MEDAL.tileHeight} tile, so it is scaled UP and the tile will look soft. ` +
-        `Author medal art at ${MEDAL.width}x${MEDAL.tileHeight} or larger`,
+      `the uploaded image is ${meta.width}x${meta.height}, smaller than the ` +
+        `${MEDAL.width}x${MEDAL.tileHeight} slot. The generator enlarged it, so it can look ` +
+        `blurry. Upload an image of ${MEDAL.width}x${MEDAL.tileHeight} or larger to fix this.`,
     );
   }
   const fit = await sharp(srcPath)
@@ -542,15 +542,6 @@ async function normalizeMedal(srcPath) {
     .png()
     .toBuffer();
   const fitMeta = await sharp(fit).metadata();
-  if (fitMeta.height < MEDAL.tileHeight) {
-    warnings.push(
-      `medal source ${path.basename(srcPath)} fits to ${fitMeta.width}x${fitMeta.height}; aspect is wider than ${MEDAL.width}x${MEDAL.tileHeight}, leaving a ${MEDAL.tileHeight - fitMeta.height}px gap below`,
-    );
-  } else if (fitMeta.width < MEDAL.width) {
-    warnings.push(
-      `medal source ${path.basename(srcPath)} fits to ${fitMeta.width}x${fitMeta.height}; aspect is narrower than ${MEDAL.width}x${MEDAL.tileHeight}, leaving ${MEDAL.width - fitMeta.width}px of transparent margin (centered)`,
-    );
-  }
   const left = Math.round((MEDAL.width - fitMeta.width) / 2);
   const png = await sharp({
     create: {
@@ -1124,7 +1115,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   );
   // One phrasing of the fact, whether it goes out as an error or a warning.
   const unclaimed = (f) =>
-    `${f} is in ${path.basename(paths.uploadDir)}/ but no manifest entry claims it`;
+    `${f} is in ${path.basename(paths.uploadDir)}/ but the manifest does not list it`;
   // Only an empty ARRAY means "nothing to do". A manifest that is not an array
   // at all — an object written where a one-element array was meant — is a
   // mistake worth reporting, not a no-op to skip. Collapsing the two made
@@ -1150,7 +1141,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
       );
     }
     log.log("uniform-uploads/manifest.json is empty — nothing to process.");
-    return { processed: 0, warnings: [] };
+    return { processed: 0, warnings: [], tiles: [] };
   }
   const catalog = await loadCatalog(paths.catalog);
 
@@ -1208,7 +1199,8 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   // could have prevented — and is lost outright if a later entry throws.
   orphans.forEach((f) =>
     warn(
-      `${unclaimed(f)}; no tile will be spliced from it and the manifest is emptied by this run`,
+      `${unclaimed(f)}, so no award uses it. It stays in the folder. To use it, add a ` +
+        `manifest entry for it in a new push.`,
     ),
   );
 
@@ -1217,6 +1209,9 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   const ribbonInserts = [];
   const medalInserts = [];
   const consumed = new Set();
+  // What the PR body and preview describe: one record per tile, in manifest
+  // order. The catalog row is the tile's final row, for inserts and replaces.
+  const tiles = [];
 
   for (const entry of manifest) {
     const award = lookupAward(catalog, entry.name);
@@ -1232,6 +1227,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
         name: entry.name,
         replace,
       });
+      tiles.push({ name: entry.name, kind: "ribbon", replace });
       // Only mark a source consumed once its tile is actually going into a
       // sheet — never delete art for a tile that wasn't placed.
       consumed.add(entry.ribbon);
@@ -1240,7 +1236,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
       const { png, warnings: w } = await normalizeMedal(
         path.join(paths.uploadDir, entry.medal),
       );
-      w.forEach(warn);
+      w.forEach((m) => warn(`${entry.name} medal: ${m}`));
       medalInserts.push({
         y: sheetRowIndex(award, "medal") * MEDAL.tileHeight,
         tileHeight: MEDAL.tileHeight,
@@ -1248,6 +1244,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
         name: entry.name,
         replace,
       });
+      tiles.push({ name: entry.name, kind: "medal", replace });
       consumed.add(entry.medal);
     }
   }
@@ -1280,23 +1277,24 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   // check they had uploaded the right files. What is owed is a warning naming
   // the tile that did not move, so "I uploaded the wrong file for one of these"
   // is visible in the pull request rather than indistinguishable from success.
-  const noops = pending.flatMap(({ dest, plan }) =>
-    plan.unchanged.map((name) => ({ sheet: path.basename(dest), name })),
-  );
+  const noops = [
+    ...(ribbonPlan?.unchanged ?? []).map((name) => ({ kind: "ribbon", name })),
+    ...(medalPlan?.unchanged ?? []).map((name) => ({ kind: "medal", name })),
+  ];
   if (noops.length === ribbonInserts.length + medalInserts.length) {
     throw new Error(
       `this run would change nothing: every tile it splices is byte-identical to the art ` +
-        `already in place (${noops.map(({ name, sheet }) => `"${name}" on ${sheet}`).join(", ")}). ` +
+        `already in place (${noops.map(({ name, kind }) => `"${name}" ${kind}`).join(", ")}). ` +
         `Nothing has been deleted — check you uploaded the files you meant to, and that they ` +
         `are not the same PNGs the sheets were built from.`,
     );
   }
-  noops.forEach(({ sheet, name }) =>
+  noops.forEach(({ kind, name }) =>
     warn(
-      `"${name}" already has exactly this art on ${sheet}, so its tile there is unchanged by ` +
-        `this run. That is expected when you are fixing an award's art on the other sheet ` +
-        `only; if you meant to change this one, the file you uploaded for it is not the ` +
-        `file you edited`,
+      `${name} ${kind}: the uploaded image is identical to the current one, so this PR does ` +
+        `not change it. That is expected if you only meant to fix the ` +
+        `${kind === "ribbon" ? "medal" : "ribbon"}. If not, the file you uploaded is not ` +
+        `the file you edited.`,
     ),
   );
 
@@ -1354,7 +1352,7 @@ async function run(paths = DEFAULT_PATHS, log = console) {
           // the log. The orphan sits inside client/public/skunkworks/, which CI
           // both diffs and commits, so an unremovable one would otherwise ride
           // into the pull request as an untracked file nobody wrote.
-          warn(`could not remove temp file ${tmp}: ${e.message}`);
+          warn(`could not remove temp file ${tmp}: ${e.message}.`);
         }
       }
     });
@@ -1380,7 +1378,11 @@ async function run(paths = DEFAULT_PATHS, log = console) {
         // now, something outside this run removed it, and skipping it in
         // silence turns that into a no-op. It is on its way to deletion anyway,
         // so saying so costs nothing and is the only trace anyone would get.
-      } else warn(`source ${file} was already gone before it was consumed`);
+      } else
+        warn(
+          `${file} disappeared from ${path.basename(paths.uploadDir)}/ before the generator ` +
+            `could delete it. Something else removed it.`,
+        );
     });
     writeManifest(paths.manifest, []);
   } catch (e) {
@@ -1411,9 +1413,25 @@ async function run(paths = DEFAULT_PATHS, log = console) {
       (medalPlan ? ` (sheet now ${medalPlan.height}px tall)` : "") +
       ".",
   );
+  const rowNames = (kind) =>
+    new Map(
+      [...catalog.values()]
+        .filter((award) => onSheet(award, kind))
+        .map((award) => [sheetRowIndex(award, kind), award.name]),
+    );
+  const names = { ribbon: rowNames("ribbon"), medal: rowNames("medal") };
   return {
     processed: manifest.length,
     warnings: allWarnings,
+    tiles: tiles.map((tile) => {
+      const row = sheetRowIndex(lookupAward(catalog, tile.name), tile.kind);
+      return {
+        ...tile,
+        row,
+        above: names[tile.kind].get(row - 1) ?? null,
+        below: names[tile.kind].get(row + 1) ?? null,
+      };
+    }),
     ribbonResult: ribbonPlan && {
       width: ribbonPlan.width,
       height: ribbonPlan.height,
@@ -1427,8 +1445,103 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   };
 }
 
+const PREVIEW = { ribbon: { scale: 4 }, medal: { scale: 2 }, pad: 6, gap: 24 };
+
+/**
+ * One PNG for the PR body: a column per tile from run().tiles, in order, with
+ * the changed tile framed between its neighbors on the same sheet. Neighbors get
+ * their own cells so the frame never covers their art. Reads the sheets from
+ * disk, so call it after run() has written them.
+ */
+async function renderPreview(tiles, paths) {
+  const { pad, gap } = PREVIEW;
+  const columns = [];
+  for (const tile of tiles) {
+    const { width, tileHeight } = SHEETS[tile.kind];
+    const { scale } = PREVIEW[tile.kind];
+    const sheetPath = paths[`${tile.kind}Sheet`];
+    const { height } = await sharp(sheetPath).metadata();
+    const rows = [tile.row - 1, tile.row, tile.row + 1].filter(
+      (row) => row >= 0 && row < sheetRowCount(height, tileHeight),
+    );
+    const cellW = width * scale + 2 * pad;
+    const cellH = tileHeight * scale + 2 * pad;
+    const layers = [];
+    for (const [i, row] of rows.entries()) {
+      const top = row * tileHeight;
+      // The last ribbon row is a partial tile; extract only what exists.
+      const art = await sharp(sheetPath)
+        .extract({
+          left: 0,
+          top,
+          width,
+          height: Math.min(tileHeight, height - top),
+        })
+        .resize({ width: width * scale, kernel: "nearest" })
+        .png()
+        .toBuffer();
+      layers.push({ input: art, left: pad, top: i * cellH + pad });
+      if (row === tile.row) {
+        layers.push({
+          input: Buffer.from(
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${cellW}" height="${cellH}">` +
+              `<rect x="1.5" y="1.5" width="${cellW - 3}" height="${cellH - 3}" ` +
+              `fill="none" stroke="#ff2d55" stroke-width="3"/></svg>`,
+          ),
+          left: 0,
+          top: i * cellH,
+        });
+      }
+    }
+    columns.push({ layers, width: cellW, height: rows.length * cellH });
+  }
+  let left = 0;
+  const layers = columns.flatMap((column) => {
+    const placed = column.layers.map((l) => ({ ...l, left: l.left + left }));
+    left += column.width + gap;
+    return placed;
+  });
+  return sharp({
+    create: {
+      width: left - gap,
+      height: Math.max(...columns.map((c) => c.height)),
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 },
+    },
+  })
+    .composite(layers)
+    .png()
+    .toBuffer();
+}
+
+/**
+ * CLI entry. With SPRITE_REPORT_DIR set (CI does), also writes the PR title,
+ * body and preview image there. SPRITE_PREVIEW_URL is where CI will publish
+ * the preview, so the body can link to it before it exists.
+ */
+async function main() {
+  const { SPRITE_REPORT_DIR: reportDir, SPRITE_PREVIEW_URL: previewUrl } =
+    process.env;
+  // Checked before run(), which deletes the uploads.
+  if (reportDir && !previewUrl) {
+    throw new Error("SPRITE_REPORT_DIR is set but SPRITE_PREVIEW_URL is not");
+  }
+  const result = await run();
+  if (!reportDir || result.tiles.length === 0) return;
+  fs.mkdirSync(reportDir, { recursive: true });
+  fs.writeFileSync(path.join(reportDir, "title.txt"), prTitle(result.tiles));
+  fs.writeFileSync(
+    path.join(reportDir, "pr-body.md"),
+    prBody(result, previewUrl),
+  );
+  fs.writeFileSync(
+    path.join(reportDir, "preview.png"),
+    await renderPreview(result.tiles, DEFAULT_PATHS),
+  );
+}
+
 if (require.main === module) {
-  run().catch((err) => {
+  main().catch((err) => {
     // The stack, not just the message: a syntax error in the catalog otherwise
     // surfaces as a bare "Unexpected token '}'" naming no file at all.
     console.error(err.stack ?? err.message);
@@ -1461,5 +1574,6 @@ module.exports = {
   spliceSheet,
   validateManifest,
   writeManifest,
+  renderPreview,
   run,
 };

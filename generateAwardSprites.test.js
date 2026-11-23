@@ -41,6 +41,7 @@ const {
   validateManifest,
   spliceSheet,
   readSheet,
+  renderPreview,
   run,
 } = require("./generateAwardSprites");
 
@@ -1250,12 +1251,9 @@ async function main() {
     JSON.parse(fs.readFileSync(paths.manifest, "utf8")).length === 2,
   );
 
-  // --- run: medal geometry still warns, and the warning reaches the log ---
-  // The medal normalizer resizes with fit:"inside", so an odd aspect costs
-  // transparent margin rather than the art itself, which is a warning and not an
-  // error. It is also the only thing left filling result.warnings, since the
-  // ribbon side throws and validateManifest no longer produces warnings.
-  // Unexercised, that channel would rot.
+  // --- run: a medal warning reaches both the result and the log ---
+  // An undersized medal source is enlarged rather than refused, which is a
+  // warning and not an error. Unexercised, that channel would rot.
   await makeSheet(paths.ribbonSheet, 43, 14, [
     [1, 0, 0],
     [2, 0, 0],
@@ -1276,7 +1274,7 @@ async function main() {
   );
   fs.writeFileSync(
     path.join(dir, "wideM.png"),
-    await colorTile(140, 120, [3, 3, 3]),
+    await colorTile(35, 60, [3, 3, 3]),
   );
   fs.writeFileSync(
     paths.manifest,
@@ -1303,12 +1301,12 @@ async function main() {
   };
   const oddResult = await run(paths, spy);
   ok(
-    "run(warnings): a wide medal source is reported, not silently letterboxed",
-    oddResult.warnings.some((w) => w.includes("70x60")),
+    "run(warnings): a small medal source is reported, not silently blurred",
+    oddResult.warnings.some((w) => w.includes("35x60")),
   );
   ok(
     "run(warnings): the warning reaches the log too",
-    warned.some((w) => w.includes("70x60")),
+    warned.some((w) => w.includes("35x60")),
   );
 
   // --- run: THE BUG. An occupied row, uploaded without `replace` ---
@@ -1444,6 +1442,54 @@ async function main() {
   ok("run(mid-sheet): the new tile landed on its catalog row", true);
   assert.deepStrictEqual(await rowColor(mid.ribbonSheet, 42), [3, 0, 0]);
   ok("run(mid-sheet): the row it displaced moved down one tile", true);
+  // The PR body tells the reviewer which awards should sit either side of the
+  // new tile, so the neighbors must be read after the shift, per sheet.
+  assert.deepStrictEqual(
+    midRes.tiles.map(({ kind, row, above, below }) => ({
+      kind,
+      row,
+      above,
+      below,
+    })),
+    [
+      { kind: "ribbon", row: 2, above: "Foo Ribbon", below: "Filler Ribbon" },
+      {
+        kind: "medal",
+        row: 0,
+        above: null,
+        below: `Baz "Q" Service Ribbon`,
+      },
+    ],
+  );
+  ok("run(mid-sheet): each tile names its neighbors on its own sheet", true);
+
+  // The preview shows those same neighbors: one column per tile, one cell per
+  // row, the medal column clamped at the top of its sheet.
+  const preview = await sharp(await renderPreview(midRes.tiles, mid))
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  const previewColor = (x, y) => {
+    const off = (y * preview.info.width + x) * preview.info.channels;
+    return [...preview.data.subarray(off, off + 3)];
+  };
+  // Cell geometry from PREVIEW: ribbons 4x in 68px cells, medals 2x in 252px
+  // cells, 6px padding, the medal column 24px right of the 184px ribbon one.
+  assert.deepStrictEqual(
+    [0, 1, 2].map((i) => previewColor(86, i * 68 + 32)),
+    [
+      [2, 0, 0],
+      [77, 0, 0],
+      [3, 0, 0],
+    ],
+  );
+  assert.deepStrictEqual(
+    [0, 1].map((i) => previewColor(284, i * 252 + 126)),
+    [
+      [0, 77, 0],
+      [0, 1, 0],
+    ],
+  );
+  ok("preview: each column shows the changed tile between its neighbors", true);
 
   // --- run: the other control. A new bottom-most award still appends ---
   const app = makeScratch("append", [
@@ -2521,12 +2567,12 @@ async function main() {
   ok(
     "run(batch no-op): the tile that changed nothing is named",
     batchRes.warnings.some(
-      (w) => w.includes('"R Same"') && w.includes("already"),
+      (w) => w.startsWith("R Same ribbon:") && w.includes("identical"),
     ),
   );
   ok(
     "run(batch no-op): the tile that did change is not accused of it",
-    !batchRes.warnings.some((w) => w.includes('"R Moved"')),
+    !batchRes.warnings.some((w) => w.includes("R Moved")),
   );
   ok(
     "run(batch no-op): the run still completes, having placed the other tile",
@@ -2586,9 +2632,7 @@ async function main() {
   );
   ok(
     "run(one-sided): the sheet that could not change says so",
-    oneSideRes.warnings.some(
-      (w) => w.includes('"Both Award"') && w.includes("ribbonSheet.png"),
-    ),
+    oneSideRes.warnings.some((w) => w.startsWith("Both Award ribbon:")),
   );
 
   // --- run: a failed encode leaves BOTH sheets as they were ---
@@ -2698,7 +2742,7 @@ async function main() {
   );
   fs.writeFileSync(
     path.join(lostPaths.uploadDir, "wM.png"),
-    await colorTile(140, 120, [9, 9, 9]),
+    await colorTile(35, 60, [9, 9, 9]),
   );
   fs.writeFileSync(
     path.join(lostPaths.uploadDir, "sq.png"),
@@ -2727,13 +2771,12 @@ async function main() {
   );
   ok(
     "run(lost warning): a warning from an earlier entry survives a later throw",
-    lost.warnings.some((w) => w.includes("70x60")),
+    lost.warnings.some((w) => w.includes("35x60")),
   );
 
   // --- run: a medal source smaller than its tile is scaled up, and says so ---
-  // The aspect warnings cannot see this one: 35x60 fits 70x120 exactly, filling
-  // the tile edge to edge with no margin to report. It is simply blurred, and
-  // once the source is consumed there is nothing left to compare it against.
+  // 35x60 fits 70x120 exactly, so the tile looks complete. It is simply
+  // blurred, and once the source is consumed nothing is left to compare it to.
   const small = makeScratch("upscale", [
     {
       name: "Both Award",
@@ -2769,9 +2812,9 @@ async function main() {
   );
   const smallRes = await run(small, silent());
   ok(
-    "run(upscale): a medal source below tile size is reported, not silently blurred",
+    "run(upscale): a medal source below tile size is reported against its award",
     smallRes.warnings.some(
-      (w) => w.includes("35x60") && w.includes("scaled UP"),
+      (w) => w.startsWith("Both Award medal:") && w.includes("35x60"),
     ),
   );
 

@@ -53,8 +53,12 @@ jobs:
       - name: Generate sprite sheets
         id: generate
         shell: bash
+        env:
+          # The generator writes the PR title, body and preview image here. The
+          # body links to the preview at its future URL; a later step pushes it.
+          SPRITE_REPORT_DIR: ${{ runner.temp }}/sprite-report
+          SPRITE_PREVIEW_URL: https://raw.githubusercontent.com/${{ github.repository }}/award-sprite-previews/${{ github.run_id }}-${{ github.run_attempt }}.png
         run: |
-          set -o pipefail
           # Read the manifest BEFORE generating: the generator empties it on
           # success, so afterwards there is no way to tell a push that had work
           # to do from one that did not, which is what made "no sheet changes"
@@ -79,23 +83,10 @@ jobs:
           else
             echo "had_work=false" >> "$GITHUB_OUTPUT"
           fi
-          npm run sprites:generate 2>&1 | tee sprite-gen.log
-          # grep exits 1 for "no matches" and 2 for "something went wrong". A
-          # bare `|| true` turns both into an empty string and then into
-          # "(none)", so a grep that failed reads as a run that had nothing to
-          # say. This block is the only channel by which a contributor learns
-          # their art was not consumed; it must not report a guess.
-          WARNINGS=$(grep '^WARN:' sprite-gen.log) || GREP_STATUS=$?
-          if [ "${GREP_STATUS:-0}" -gt 1 ]; then
-            echo "::error::could not scan sprite-gen.log for warnings (grep exited ${GREP_STATUS})"
-            exit 1
+          npm run sprites:generate
+          if [ -f "$SPRITE_REPORT_DIR/title.txt" ]; then
+            echo "title=$(cat "$SPRITE_REPORT_DIR/title.txt")" >> "$GITHUB_OUTPUT"
           fi
-          [ -z "$WARNINGS" ] && WARNINGS="(none)"
-          {
-            echo "warnings<<SPRITE_EOF"
-            echo "$WARNINGS"
-            echo "SPRITE_EOF"
-          } >> "$GITHUB_OUTPUT"
 
       # After the generator, not before it. The sprite suite asserts that each
       # committed sheet holds exactly the rows the catalog claims, and it does
@@ -167,6 +158,38 @@ jobs:
           client-id: ${{ secrets.SPRITE_BOT_CLIENT_ID }}
           private-key: ${{ secrets.SPRITE_BOT_PRIVATE_KEY }}
 
+      # GitHub has no API to attach an image to a PR body, so the preview lives
+      # on its own branch, which never merges. Pushed before the PR opens
+      # because the body already links to it.
+      - name: Publish preview image
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          PREVIEW: ${{ runner.temp }}/sprite-report/preview.png
+          FILE: ${{ github.run_id }}-${{ github.run_attempt }}.png
+        run: |
+          set -euo pipefail
+          cd "$(mktemp -d)"
+          git init -q
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          # ls-remote exits 2 when the branch does not exist yet; then the
+          # first commit here starts it. Anything else is a real failure.
+          status=0
+          git ls-remote --exit-code --heads origin award-sprite-previews > /dev/null || status=$?
+          case "$status" in
+            0) git fetch -q --depth 1 origin award-sprite-previews && git checkout -q FETCH_HEAD ;;
+            2) ;;
+            *) exit "$status" ;;
+          esac
+          cp "$PREVIEW" "$FILE"
+          git add "$FILE"
+          # The runner has no git identity; commit as the Actions bot.
+          git -c user.name="github-actions[bot]" \
+              -c user.email="41898297+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Award sprite preview $FILE"
+          git push -q origin HEAD:refs/heads/award-sprite-previews
+
       - name: Open pull request
         if: steps.changes.outputs.changed == 'true'
         uses: peter-evans/create-pull-request@v8
@@ -177,37 +200,6 @@ jobs:
           add-paths: |
             client/public/skunkworks/**
             uniform-uploads/**
-          commit-message: "chore(uniformbuilder): regenerate award sprite sheets"
-          title: "chore(uniformbuilder): regenerate award sprite sheets"
-          body: |
-            Automated sprite-sheet regeneration from `uniform-uploads/`.
-
-            This PR contains only the regenerated sprite-sheet PNG(s) and the
-            upload-folder cleanup (consumed source art removed, manifest
-            emptied). Placement was read from `constants/awardCatalog.js`.
-
-            **Generator warnings.** Read these — the run succeeded, but each
-            one is something it did not do:
-
-            - a tile whose art was already exactly what was on the sheet, so
-              that award is unchanged by this PR (expected when an award's art
-              was fixed on one sheet only, since both sources must be supplied
-              every time);
-            - a medal scaled to fit its tile with transparent margin left over,
-              or scaled up from a source smaller than the tile;
-            - a PNG left in the upload folder that no manifest entry claimed,
-              meaning an award you may have meant to include did not get a tile;
-            - a source that vanished before the run could consume it, or a temp
-              file the run could not clean up — neither should happen, so both
-              are worth reporting.
-
-            A wrong-sized ribbon source, a flattened medal source, and a run
-            where *nothing* would change are errors rather than warnings, so
-            they fail the run instead of reaching this list:
-
-            ```
-            ${{ steps.generate.outputs.warnings }}
-            ```
-
-            Review that the new award renders correctly in both racks and that
-            nothing below the insert point shifted, then merge.
+          commit-message: ${{ steps.generate.outputs.title }}
+          title: ${{ steps.generate.outputs.title }}
+          body-path: ${{ runner.temp }}/sprite-report/pr-body.md
