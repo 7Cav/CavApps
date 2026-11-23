@@ -1209,8 +1209,8 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   const ribbonInserts = [];
   const medalInserts = [];
   const consumed = new Set();
-  // What the PR body and preview describe: one record per tile, in manifest
-  // order. The catalog row is the tile's final row, for inserts and replaces.
+  // What the PR body and preview describe: one record per placed tile, in
+  // manifest order. The catalog row is the tile's final row either way.
   const tiles = [];
 
   for (const entry of manifest) {
@@ -1289,13 +1289,17 @@ async function run(paths = DEFAULT_PATHS, log = console) {
         `are not the same PNGs the sheets were built from.`,
     );
   }
+  const isNoop = (name, kind) =>
+    noops.some((n) => n.name === name && n.kind === kind);
   noops.forEach(({ kind, name }) => {
     const other = kind === "ribbon" ? "medal" : "ribbon";
-    const hasOther = tiles.some((t) => t.name === name && t.kind === other);
+    const otherChanged =
+      tiles.some((t) => t.name === name && t.kind === other) &&
+      !isNoop(name, other);
     warn(
       `${name} ${kind}: the uploaded image is identical to the current one, so this PR does ` +
         `not change it. ` +
-        (hasOther
+        (otherChanged
           ? `That is expected if you only meant to fix the ${other}. If not, the file you ` +
             `uploaded is not the file you edited.`
           : `If you meant to change it, the file you uploaded is not the file you edited.`),
@@ -1427,18 +1431,16 @@ async function run(paths = DEFAULT_PATHS, log = console) {
   return {
     processed: manifest.length,
     warnings: allWarnings,
-    // Only tiles whose pixels changed; the no-op warnings cover the rest.
-    tiles: tiles
-      .filter((t) => !noops.some((n) => n.name === t.name && n.kind === t.kind))
-      .map((tile) => {
-        const row = sheetRowIndex(lookupAward(catalog, tile.name), tile.kind);
-        return {
-          ...tile,
-          row,
-          above: names[tile.kind].get(row - 1) ?? null,
-          below: names[tile.kind].get(row + 1) ?? null,
-        };
-      }),
+    tiles: tiles.map((tile) => {
+      const row = sheetRowIndex(lookupAward(catalog, tile.name), tile.kind);
+      return {
+        ...tile,
+        unchanged: isNoop(tile.name, tile.kind),
+        row,
+        above: names[tile.kind].get(row - 1) ?? null,
+        below: names[tile.kind].get(row + 1) ?? null,
+      };
+    }),
     ribbonResult: ribbonPlan && {
       width: ribbonPlan.width,
       height: ribbonPlan.height,
@@ -1455,63 +1457,41 @@ async function run(paths = DEFAULT_PATHS, log = console) {
 const PREVIEW = { ribbon: { scale: 4 }, medal: { scale: 2 }, pad: 6, gap: 24 };
 
 /**
- * One PNG for the PR body: a column per tile from run().tiles, in order, with
- * the changed tile framed between its neighbors on the same sheet. Neighbors get
- * their own cells so the frame never covers their art. Reads the sheets from
- * disk, so call it after run() has written them.
+ * One PNG for the PR body, laid out like its table: a row per award, ribbon on
+ * the left, medal on the right. Each changed tile is framed between its
+ * neighbors on the same sheet, each in its own cell so the frame never covers
+ * their art. Reads the sheets from disk, so call it after run() has written
+ * them.
  */
 async function renderPreview(tiles, paths) {
   const { pad, gap } = PREVIEW;
-  const columns = [];
-  for (const tile of tiles) {
-    const { width, tileHeight } = SHEETS[tile.kind];
-    const { scale } = PREVIEW[tile.kind];
-    const sheetPath = paths[`${tile.kind}Sheet`];
-    const { height } = await sharp(sheetPath).metadata();
-    const rows = [tile.row - 1, tile.row, tile.row + 1].filter(
-      (row) => row >= 0 && row < sheetRowCount(height, tileHeight),
-    );
-    const cellW = width * scale + 2 * pad;
-    const cellH = tileHeight * scale + 2 * pad;
-    const layers = [];
-    for (const [i, row] of rows.entries()) {
-      const top = row * tileHeight;
-      // The last ribbon row is a partial tile; extract only what exists.
-      const art = await sharp(sheetPath)
-        .extract({
-          left: 0,
-          top,
-          width,
-          height: Math.min(tileHeight, height - top),
-        })
-        .resize({ width: width * scale, kernel: "nearest" })
-        .png()
-        .toBuffer();
-      layers.push({ input: art, left: pad, top: i * cellH + pad });
-      if (row === tile.row) {
-        layers.push({
-          input: Buffer.from(
-            `<svg xmlns="http://www.w3.org/2000/svg" width="${cellW}" height="${cellH}">` +
-              `<rect x="1.5" y="1.5" width="${cellW - 3}" height="${cellH - 3}" ` +
-              `fill="none" stroke="#ff2d55" stroke-width="3"/></svg>`,
-          ),
-          left: 0,
-          top: i * cellH,
-        });
-      }
+  const changed = tiles.filter((t) => !t.unchanged);
+  const cellW = (kind) => SHEETS[kind].width * PREVIEW[kind].scale + 2 * pad;
+  const columnLeft = { ribbon: 0, medal: cellW("ribbon") + gap };
+  const layers = [];
+  let width = 0;
+  let top = 0;
+  for (const name of new Set(changed.map((t) => t.name))) {
+    let rowHeight = 0;
+    for (const tile of changed.filter((t) => t.name === name)) {
+      const column = await previewColumn(tile, paths);
+      const left = columnLeft[tile.kind];
+      layers.push(
+        ...column.layers.map((l) => ({
+          ...l,
+          left: l.left + left,
+          top: l.top + top,
+        })),
+      );
+      width = Math.max(width, left + cellW(tile.kind));
+      rowHeight = Math.max(rowHeight, column.height);
     }
-    columns.push({ layers, width: cellW, height: rows.length * cellH });
+    top += rowHeight + gap;
   }
-  let left = 0;
-  const layers = columns.flatMap((column) => {
-    const placed = column.layers.map((l) => ({ ...l, left: l.left + left }));
-    left += column.width + gap;
-    return placed;
-  });
   return sharp({
     create: {
-      width: left - gap,
-      height: Math.max(...columns.map((c) => c.height)),
+      width,
+      height: top - gap,
       channels: 4,
       // Opaque mid-gray: dark art vanishes on GitHub's dark theme otherwise.
       background: { r: 128, g: 128, b: 128, alpha: 1 },
@@ -1520,6 +1500,48 @@ async function renderPreview(tiles, paths) {
     .composite(layers)
     .png()
     .toBuffer();
+}
+
+/** One tile and its sheet neighbors as stacked cells, the tile framed. */
+async function previewColumn(tile, paths) {
+  const { pad } = PREVIEW;
+  const { width, tileHeight } = SHEETS[tile.kind];
+  const { scale } = PREVIEW[tile.kind];
+  const sheetPath = paths[`${tile.kind}Sheet`];
+  const { height } = await sharp(sheetPath).metadata();
+  const rows = [tile.row - 1, tile.row, tile.row + 1].filter(
+    (row) => row >= 0 && row < sheetRowCount(height, tileHeight),
+  );
+  const cellW = width * scale + 2 * pad;
+  const cellH = tileHeight * scale + 2 * pad;
+  const layers = [];
+  for (const [i, row] of rows.entries()) {
+    const top = row * tileHeight;
+    // The last ribbon row is a partial tile; extract only what exists.
+    const art = await sharp(sheetPath)
+      .extract({
+        left: 0,
+        top,
+        width,
+        height: Math.min(tileHeight, height - top),
+      })
+      .resize({ width: width * scale, kernel: "nearest" })
+      .png()
+      .toBuffer();
+    layers.push({ input: art, left: pad, top: i * cellH + pad });
+    if (row === tile.row) {
+      layers.push({
+        input: Buffer.from(
+          `<svg xmlns="http://www.w3.org/2000/svg" width="${cellW}" height="${cellH}">` +
+            `<rect x="1.5" y="1.5" width="${cellW - 3}" height="${cellH - 3}" ` +
+            `fill="none" stroke="#ff2d55" stroke-width="3"/></svg>`,
+        ),
+        left: 0,
+        top: i * cellH,
+      });
+    }
+  }
+  return { layers, height: rows.length * cellH };
 }
 
 /**

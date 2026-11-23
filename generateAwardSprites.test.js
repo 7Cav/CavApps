@@ -147,6 +147,17 @@ async function makeSheet(file, width, tileH, colors) {
     .toFile(file);
 }
 
+// Render a preview and return a reader for the [r, g, b] at (x, y).
+async function previewPixels(tiles, paths) {
+  const { data, info } = await sharp(await renderPreview(tiles, paths))
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  return (x, y) => {
+    const off = (y * info.width + x) * info.channels;
+    return [...data.subarray(off, off + 3)];
+  };
+}
+
 async function rowColor(sheetPath, y) {
   const { data, width, channels } = await readSheet(sheetPath);
   const off = y * width * channels;
@@ -1465,13 +1476,7 @@ async function main() {
 
   // The preview shows those same neighbors: one column per tile, one cell per
   // row, the medal column clamped at the top of its sheet.
-  const preview = await sharp(await renderPreview(midRes.tiles, mid))
-    .raw()
-    .toBuffer({ resolveWithObject: true });
-  const previewColor = (x, y) => {
-    const off = (y * preview.info.width + x) * preview.info.channels;
-    return [...preview.data.subarray(off, off + 3)];
-  };
+  const previewColor = await previewPixels(midRes.tiles, mid);
   // Cell geometry from PREVIEW: ribbons 4x in 68px cells, medals 2x in 252px
   // cells, 6px padding, the medal column 24px right of the 184px ribbon one.
   assert.deepStrictEqual(
@@ -2538,10 +2543,17 @@ async function main() {
   const batchPaths = makeScratch("batchnoop", [
     { name: "R Moved", awardPriority: 0, awardType: "Ribbon" },
     { name: "R Same", awardPriority: 1, awardType: "Ribbon" },
+    {
+      name: "Both Same",
+      awardPriority: 2,
+      medalPriority: 2,
+      awardType: "Medal",
+    },
   ]);
   await makeSheet(batchPaths.ribbonSheet, 43, 14, [
     [4, 4, 4],
     [5, 5, 5],
+    [6, 6, 6],
   ]);
   await makeSheet(batchPaths.medalSheet, 70, 120, [[0, 1, 0]]);
   fs.writeFileSync(
@@ -2553,11 +2565,25 @@ async function main() {
     await colorTile(43, 14, [5, 5, 5]),
   );
   fs.writeFileSync(
+    path.join(batchPaths.uploadDir, "bothR.png"),
+    await colorTile(43, 14, [6, 6, 6]),
+  );
+  fs.writeFileSync(
+    path.join(batchPaths.uploadDir, "bothM.png"),
+    await colorTile(70, 120, [0, 1, 0]),
+  );
+  fs.writeFileSync(
     batchPaths.manifest,
     JSON.stringify(
       [
         { name: "R Moved", ribbon: "moved.png", replace: true },
         { name: "R Same", ribbon: "same.png", replace: true },
+        {
+          name: "Both Same",
+          ribbon: "bothR.png",
+          medal: "bothM.png",
+          replace: true,
+        },
       ],
       null,
       2,
@@ -2575,8 +2601,15 @@ async function main() {
     !batchRes.warnings.some((w) => w.includes("R Moved")),
   );
   ok(
+    "run(batch no-op): an award with neither tile changed is not told one of them did",
+    batchRes.warnings.filter((w) => w.startsWith("Both Same")).length === 2 &&
+      !batchRes.warnings.some(
+        (w) => w.startsWith("Both Same") && w.includes("only meant to fix"),
+      ),
+  );
+  ok(
     "run(batch no-op): the run still completes, having placed the other tile",
-    batchRes.processed === 2 &&
+    batchRes.processed === 3 &&
       (await rowColor(batchPaths.ribbonSheet, 0)).join() === "9,9,9",
   );
   ok(
@@ -2635,8 +2668,16 @@ async function main() {
     oneSideRes.warnings.some((w) => w.startsWith("Both Award ribbon:")),
   );
   ok(
-    "run(one-sided): only the changed tile reaches the PR body and preview",
-    oneSideRes.tiles.map((t) => t.kind).join() === "medal",
+    "run(one-sided): the tile that did not change is marked unchanged",
+    oneSideRes.tiles.map((t) => `${t.kind}:${t.unchanged}`).join() ===
+      "ribbon:true,medal:false",
+  );
+  // Same cell geometry as the mid-sheet preview, medal column only drawn.
+  const oneSideColor = await previewPixels(oneSideRes.tiles, oneSide);
+  ok(
+    "preview: an unchanged tile is not drawn, only the changed one",
+    oneSideColor(86, 32).join() === "128,128,128" &&
+      oneSideColor(284, 126).join() === "0,9,0",
   );
 
   // --- run: a failed encode leaves BOTH sheets as they were ---

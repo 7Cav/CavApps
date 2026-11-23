@@ -10,8 +10,11 @@ function listNames(names) {
     : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
 }
 
-/** run().tiles grouped by award, in manifest order. */
-function byAward(tiles) {
+/**
+ * run().tiles grouped by award, in manifest order. An award none of whose
+ * tiles changed is left out; its warnings already say so.
+ */
+function changedAwards(tiles) {
   const awards = new Map();
   for (const tile of tiles) {
     const award = awards.get(tile.name) ?? {
@@ -21,11 +24,13 @@ function byAward(tiles) {
     award[tile.kind] = tile;
     awards.set(tile.name, award);
   }
-  return [...awards.values()];
+  return [...awards.values()].filter((a) =>
+    [a.ribbon, a.medal].some((t) => t && !t.unchanged),
+  );
 }
 
 function prTitle(tiles) {
-  const awards = byAward(tiles);
+  const awards = changedAwards(tiles);
   const replaced = awards.filter((a) => a.replace).length;
   const verb =
     replaced === 0 ? "add" : replaced === awards.length ? "replace" : "update";
@@ -36,8 +41,9 @@ function prTitle(tiles) {
   return `chore(uniformbuilder): ${verb} award art for ${names}`;
 }
 
-function placement(tile) {
-  if (!tile) return "Not changed";
+function placement(tile, kind) {
+  if (!tile) return `No ${kind}`;
+  if (tile.unchanged) return "Not changed";
   const verb = tile.replace ? "Replaced" : "New";
   const { above, below } = tile;
   if (above && below) return `${verb}, between ${above} and ${below}`;
@@ -47,7 +53,7 @@ function placement(tile) {
 }
 
 function prBody({ tiles, warnings }, previewUrl) {
-  const awards = byAward(tiles);
+  const awards = changedAwards(tiles);
   const added = awards.filter((a) => !a.replace).map((a) => a.name);
   const replaced = awards.filter((a) => a.replace).map((a) => a.name);
   const summary = [
@@ -58,13 +64,15 @@ function prBody({ tiles, warnings }, previewUrl) {
   return [
     summary.join(" "),
     `![Changed tiles with their neighbors](${previewUrl})`,
-    "Ribbons and medals appear left to right in the same order as the table. Each " +
-      "red box is a changed tile, with the tiles above and below it on the same sheet.",
+    "Each row of the image is one award from the table, ribbon on the left and medal " +
+      "on the right. Each red box is a changed tile, between the tiles above and below " +
+      "it on the same sheet.",
     [
       "| Award | Ribbon | Medal |",
       "| --- | --- | --- |",
       ...awards.map(
-        (a) => `| ${a.name} | ${placement(a.ribbon)} | ${placement(a.medal)} |`,
+        (a) =>
+          `| ${a.name} | ${placement(a.ribbon, "ribbon")} | ${placement(a.medal, "medal")} |`,
       ),
     ].join("\n"),
     added.length > 0 &&
