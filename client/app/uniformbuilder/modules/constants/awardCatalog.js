@@ -384,24 +384,24 @@ export const AWARD_CATALOG = [
   // Anything here is shown as is, and there is no inherent precicence for these.
   {
     name: "Cadre Course Ribbon",
-    awardPriority: 53,
+    awardPriority: 54,
     awardType: AwardType.Ribbon,
   },
   {
     name: "Womens Army Corp Service Medal",
-    awardPriority: 54,
-    medalPriority: 46,
+    awardPriority: 55,
+    medalPriority: 47,
     awardType: AwardType.Medal,
   },
   {
     name: "D Day Participation Ribbon",
-    awardPriority: 55,
+    awardPriority: 56,
     awardType: AwardType.Ribbon,
   },
   {
     name: "European/African/Middle Eastern Campaign Medal",
-    awardPriority: 56,
-    medalPriority: 47,
+    awardPriority: 57,
+    medalPriority: 48,
     awardAttachmentType: AwardAttachmentType.OAK_CLUSTERS,
     awardType: AwardType.Medal,
   },
