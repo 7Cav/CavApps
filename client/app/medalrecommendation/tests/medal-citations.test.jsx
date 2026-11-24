@@ -252,6 +252,15 @@ describe("Operation Medal citation contracts", () => {
       ).toBe(expected);
     },
   );
+
+  test("the Army Commendation Medal closing names the recipient with their full rank and complete roster name", () => {
+    const member = makeRecipient({ realName: "Chris Jackson Van Auken" });
+    const closing = getOperationMedal("Army Commendation Medal").buildClosing({
+      ...BASE_CLOSING_VALUES,
+      recipientSubject: resolveRecommendationRecipientSubject([member]),
+    });
+    expect(closing).toMatch(/^Specialist Chris Jackson Van Auken's /);
+  });
 });
 
 describe("Medal Recommendation Aid - citation integrations", () => {
