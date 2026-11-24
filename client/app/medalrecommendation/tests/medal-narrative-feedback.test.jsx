@@ -24,6 +24,14 @@ const compliantNarrative =
   "He repeatedly engaged enemy forces during each major contact. " +
   "His actions contributed directly to the successful completion of the operation.";
 
+const corporalSmiths = ["Allen", "Bruce"].map((middle) =>
+  makeRecipient({
+    realName: `John ${middle} Smith`,
+    user: { userId: middle, username: `Smith.J${middle[0]}` },
+    rank: { rankFull: "Corporal", rankShort: "CPL", rankId: "19" },
+  }),
+);
+
 const defaultAnalysisOptions = {
   recipientRank: "Specialist",
   recipientCitationName: "John Smith",
@@ -601,19 +609,12 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
   test("Operation mention advice stays soft and clears independently for recipients with distinct and shared surnames", async () => {
     const user = userEvent.setup();
     renderClient({
-      roster: [
-        makeRecipient(),
-        makeRecipient({
-          realName: "Jane Smith",
-          user: { userId: "jane", username: "Smith.JA" },
-        }),
-        kentonRecipient,
-      ],
+      roster: [...corporalSmiths, kentonRecipient],
     });
     await selectAward(user);
     await selectAllRecipients(user);
     const narrative =
-      "Specialist Smith coordinated transport. Staff Sergeant Kenton led the team. Staff Sergeant Wade Kenton reported back.";
+      "Corporal John Allen Smith and Corporal John Bruce Smith charged the hill. Corporal Smith flanked. Staff Sergeant Kenton led the team. Staff Sergeant Wade Kenton reported back.";
     await fillOperationWorksheet(user, {
       actionCharacter: "Skillful",
       combatElement: "rifleman",
@@ -639,7 +640,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
         ),
       ]),
     );
-    expect(live.join(" ")).not.toMatch(/John Smith|Jane Smith/);
+    expect(live.join(" ")).not.toMatch(/John Allen Smith|John Bruce Smith/);
     await submitRecommendation(user);
     expect(new Set(mentionMessages())).toEqual(new Set(live));
     expect(getCitationText()).toContain(narrative);
@@ -648,12 +649,37 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     );
 
     const corrected =
-      "Specialist John Smith coordinated transport with Specialist Jane Smith. Staff Sergeant Wade Kenton led the team. Staff Sergeant Kenton reported back.";
+      "Corporal John Allen Smith and Corporal John Bruce Smith charged the hill. Corporal John Allen Smith flanked. Staff Sergeant Wade Kenton led the team. Staff Sergeant Kenton reported back.";
     enterWorksheetField("Narrative", corrected);
     expect(mentionMessages()).toEqual([]);
     await submitRecommendation(user);
     expect(mentionMessages()).toEqual([]);
     expect(getCitationText()).toContain(corrected);
+  });
+
+  test("a complete name clears the shared-surname advisory in a Service continuation", async () => {
+    const user = userEvent.setup();
+    renderClient({ medalFamily: "service", roster: corporalSmiths });
+    await selectAward(user, "Humanitarian Service Medal");
+    await selectAllRecipients(user);
+    const original =
+      "organizing support. Corporal Smith flanked. The team returned.";
+    enterWorksheetField("Narrative", original);
+    expect(screen.getByText(/more than one selected recipient/i)).toBeVisible();
+    await submitRecommendation(user);
+    expect(getCitationText()).toContain(original);
+    const corrected = original.replace(
+      "Corporal Smith",
+      "Corporal John Allen Smith",
+    );
+    enterWorksheetField("Narrative", corrected);
+    expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
+    await submitRecommendation(user);
+    expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
+    expect(getCitationText()).toContain(corrected);
+    expect(screen.getByLabelText("Recommendation Body").value).toContain(
+      corrected,
+    );
   });
 
   test("the generated Service starter supplies the first mention and surname-only intermediate references clear the advice", async () => {
@@ -757,7 +783,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(citation).not.toHaveTextContent("dodged Major General Fire");
   });
 
-  test("gives only a general reminder for an unrecognized partial name and accepts the complete name", async () => {
+  test("an omitted middle initial produces one soft warning and preserves the authored preview and BBCode", async () => {
     const user = userEvent.setup();
     renderClient();
 
@@ -778,10 +804,14 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     });
     await submitRecommendation(user);
 
-    const missingIdentity = /recipient mention:.*not detected.*first mention/i;
-    expect(screen.getByText(missingIdentity)).toBeVisible();
+    const incompleteIdentity =
+      /reference to Specialist Taylor J\. Smith appears incomplete/i;
+    expect(screen.getByText(incompleteIdentity)).toBeVisible();
     expect(screen.getAllByText(/^Recipient mentions?:/)).toHaveLength(1);
     expect(getCitationText()).toContain(narrative);
+    expect(screen.getByLabelText("Recommendation Body").value).toContain(
+      narrative,
+    );
 
     const completeNarrative = narrative.replace(
       "Taylor Smith",
@@ -791,7 +821,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     await user.clear(field);
     await user.paste(completeNarrative);
     await submitRecommendation(user);
-    expect(screen.queryByText(missingIdentity)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
     expect(getCitationText()).toContain(completeNarrative);
   });
 

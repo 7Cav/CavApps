@@ -81,22 +81,68 @@ function matchPhrase(text, first, parts, allowPossessive = false, start = 0) {
   return token.end;
 }
 
+// Require the first given name and the entire surname. Any retained middle
+// components must occur in roster order; never enumerate their combinations.
+function matchOmittedMiddle(text, first, { givenNames, parts }) {
+  let token = first;
+  let retained = 0;
+  let best = null;
+  for (const given of givenNames) {
+    const end = matchPhrase(text, token, given);
+    if (end === null) {
+      if (!retained) break;
+      continue;
+    }
+    retained++;
+    token = nextToken(text, end);
+    if (!token || token.start === end) break;
+    if (retained < givenNames.length)
+      best = matchPhrase(text, token, parts, true) ?? best;
+  }
+  return best;
+}
+
 function prepareRecipients(members) {
   return members.map((member) => {
     const { recipientRank, recipientCitationName } =
       getRecipientIdentity(member);
-    const surname = resolveRecipientSurname(
-      member?.realName,
-      member?.user?.username,
+    const surname = key(
+      resolveRecipientSurname(member?.realName, member?.user?.username) ?? "",
     );
     const name = key(recipientCitationName);
     const parts = phrase(name);
     const forms = [{ kind: "complete", parts, start: 0 }];
-    const surnameParts = surname ? phrase(key(surname)) : [];
-    if (surname) forms.push({ kind: "surname", parts: surnameParts, start: 0 });
+    const surnameParts = phrase(surname);
+    const words = name.split(" ");
+    const surnameLength = surname ? surname.split(" ").length : 0;
+    function addMiddleOmission(kind, givenNames, ending) {
+      if (givenNames.length > 1)
+        forms.push({ kind, givenNames: givenNames.map(phrase), parts: ending });
+    }
+    if (surname) {
+      forms.push({ kind: "surname", parts: surnameParts, start: 0 });
+      addMiddleOmission(
+        "incomplete",
+        words.slice(0, -surnameLength),
+        surnameParts,
+      );
+      // Only whole trailing components of a corroborated compound surname.
+      for (let start = 1; start < surnameParts.length; start++) {
+        if (surnameParts[start].spaced)
+          forms.push({ kind: "incomplete", parts: surnameParts, start });
+      }
+    }
     // A longer roster tail (e.g. Van Auken with Auken.P) may veto a
     // competing recipient's match, but cannot establish a reference itself.
     if (members.length > 1) {
+      // A shared first and last word can also hide a compound or unresolved
+      // surname. This alternative only vetoes another recipient's attribution.
+      if (surnameLength !== 1)
+        addMiddleOmission(
+          "unconfirmed",
+          words.slice(0, -1),
+          phrase(words.at(-1)),
+        );
       for (let start = 1; start < parts.length - surnameParts.length; start++) {
         if (parts[start].spaced)
           forms.push({ kind: "unconfirmed", parts, start });
@@ -107,7 +153,7 @@ function prepareRecipients(members) {
       rank: key(recipientRank),
       name,
       forms,
-      hasSurnameCandidate: Boolean(surname),
+      surname,
     };
   });
 }
@@ -117,7 +163,9 @@ function matchName(text, first, recipients) {
   let matches = [];
   for (const recipient of recipients) {
     for (const form of recipient.forms) {
-      const stop = matchPhrase(text, first, form.parts, true, form.start);
+      const stop = form.givenNames
+        ? matchOmittedMiddle(text, first, form)
+        : matchPhrase(text, first, form.parts, true, form.start);
       if (stop === null || stop < end) continue;
       if (stop > end) matches = [];
       matches.push({ recipient, form });
@@ -126,13 +174,24 @@ function matchName(text, first, recipients) {
   }
   const supported =
     matches.find((m) => m.form.kind === "complete") ??
-    matches.find((m) => m.form.kind === "surname");
+    matches.find((m) => m.form.kind === "surname") ??
+    matches.find((m) => m.form.kind === "incomplete");
   if (!supported) return null;
   const { recipient, form } = supported;
   const ids = new Set(matches.map((m) => m.recipient.id));
   return ids.size > 1
     ? { kind: "ambiguous", candidateIds: [...ids], end }
     : { kind: form.kind, recipientId: recipient.id, end };
+}
+
+// Test the very shorthand we would recommend, including competing complete,
+// incomplete or unconfirmed forms. A collision affects only this rank/name.
+function surnameIsAmbiguous({ id, rank, surname }, recipients) {
+  if (!surname || recipients.length === 1) return false;
+  const sameRank = recipients.filter((other) => other.rank === rank);
+  return (
+    matchName(surname, nextToken(surname, 0), sameRank)?.recipientId !== id
+  );
 }
 
 function indexRanks(recipients, rankEntries) {
@@ -200,9 +259,10 @@ export function scanRecipientReferences(
     }
   }
   return {
-    recipients: recipients.map(({ id, hasSurnameCandidate }) => ({
-      id,
-      hasSurnameCandidate,
+    recipients: recipients.map((recipient) => ({
+      id: recipient.id,
+      hasSurnameCandidate: Boolean(recipient.surname),
+      surnameIsAmbiguous: surnameIsAmbiguous(recipient, recipients),
     })),
     references,
   };
@@ -222,10 +282,13 @@ export function evaluateRecipientReferences(
     return findings;
   const seen = new Set();
   const possiblySeen = new Set();
-  const surnameCandidates = new Set(
-    recipients.filter((r) => r.hasSurnameCandidate).map((r) => r.id),
+  const distinctSurnames = new Set(
+    recipients
+      .filter((r) => r.hasSurnameCandidate && !r.surnameIsAmbiguous)
+      .map((r) => r.id),
   );
   const reportedIntermediate = new Set();
+  const reportedIncomplete = new Set();
   let reportedAmbiguity = false;
   for (const ref of references) {
     if (ref.kind === "ambiguous") {
@@ -238,6 +301,23 @@ export function evaluateRecipientReferences(
     }
     const id = ref.recipientId;
     const intermediate = firstMention === "generated" || seen.has(id);
+    if (ref.kind === "incomplete") {
+      let expectedForm = "complete";
+      if (distinctSurnames.has(id)) {
+        if (intermediate) expectedForm = "surname";
+        else if (possiblySeen.has(id)) expectedForm = "review";
+      }
+      const key = `${id}-${expectedForm}`;
+      if (!reportedIncomplete.has(key)) {
+        findings.push({
+          kind: "incomplete",
+          recipientId: id,
+          expectedForm,
+          start: ref.start,
+        });
+        reportedIncomplete.add(key);
+      }
+    }
     if (!intermediate && !possiblySeen.has(id) && ref.kind === "surname")
       findings.push({
         kind: "first-shortened",
@@ -247,7 +327,7 @@ export function evaluateRecipientReferences(
     if (
       intermediate &&
       ref.kind === "complete" &&
-      surnameCandidates.has(id) &&
+      distinctSurnames.has(id) &&
       !reportedIntermediate.has(id)
     ) {
       findings.push({

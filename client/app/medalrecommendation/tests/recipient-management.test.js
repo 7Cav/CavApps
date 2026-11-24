@@ -462,9 +462,15 @@ describe("recipient group identity warnings", () => {
         [],
         {},
       );
-      expect(warnings.some(({ key }) => key === "recipient-mention")).toBe(
-        expectWarning,
-      );
+      if (expectWarning) {
+        expect(warnings).toEqual([
+          expect.objectContaining({
+            message: expect.stringMatching(
+              /appears incomplete.*complete roster name/i,
+            ),
+          }),
+        ]);
+      } else expect(warnings).toEqual([]);
     },
   );
   const members = [

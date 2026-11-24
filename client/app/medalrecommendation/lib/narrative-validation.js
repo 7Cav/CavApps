@@ -210,7 +210,7 @@ function getRecipientMentionWarnings(
 
   const warnings = [];
   let missing = 0;
-  for (const { kind, recipientId } of findings) {
+  for (const { kind, recipientId, expectedForm } of findings) {
     if (kind === "complete-not-detected") {
       missing++;
     } else if (kind === "ambiguous") {
@@ -228,6 +228,19 @@ function getRecipientMentionWarnings(
           warnings,
           `recipient-first-shortened-${recipientId}`,
           `Recipient mention: The first recognized mention of ${name} appears shortened. Use Full Rank + Complete Roster Name for the first mention.`,
+        );
+      } else if (kind === "incomplete") {
+        const advice = {
+          complete: "Use Full Rank + Complete Roster Name here.",
+          surname:
+            "Use Full Rank + Complete Surname for this intermediate mention.",
+          review:
+            "Verify the intended recipient and the position of this mention.",
+        };
+        addWarning(
+          warnings,
+          `recipient-incomplete-${recipientId}-${expectedForm}`,
+          `Recipient mention: A recognized reference to ${name} appears incomplete. ${advice[expectedForm]}`,
         );
       } else if (kind === "intermediate-complete") {
         addWarning(

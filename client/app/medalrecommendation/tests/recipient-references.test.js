@@ -71,11 +71,15 @@ describe("recipient references in authored text", () => {
     ]);
   });
 
-  test("skips standalone words, fragments, rank abbreviations, and incomplete combinations", () => {
+  test("skips standalone words, unrelated fragments, prose and longer ranks even when a partial identity looks similar", () => {
     const may = member("m", "Sergeant", "Jane May", "May.J");
     const text =
-      "May called Buck Rogers. The sergeant may continue. SGT May; ex-Sergeant May; Sergeant Mayfield; Sergeant May-Jones; Sergeant May.J; Sergeant, May. Corporal Buck Rogers.";
-    expect(scanRecipientReferences(text, [may, buck]).references).toEqual([]);
+      "May called Buck Rogers. The sergeant may continue. SGT May; ex-Sergeant May; Sergeant Mayfield; Sergeant May-Jones; Sergeant May.J; Sergeant, May. Corporal Buck Riley Rogers. Corporal Buck Rogersson. Staff Sergeant Auken. The sergeant may proceed.";
+    const compoundMay = member("v", "Sergeant", "Alice Van May", "VanMay.A");
+    expect(
+      scanRecipientReferences(text, [may, buck, phoenix, compoundMay])
+        .references,
+    ).toEqual([]);
   });
 
   test("a username supporting Auken cannot rule out Van Auken", () => {
@@ -88,10 +92,19 @@ describe("recipient references in authored text", () => {
     ]);
     expect(evaluateRecipientReferences(scan, service)).toEqual([]);
     expect(
+      evaluateRecipientReferences(
+        scanRecipientReferences(
+          "Sergeant Phoenix Van Auken led. Sergeant Auken fired.",
+          [partial],
+        ),
+        operation,
+      ),
+    ).toEqual([]);
+    expect(
       scanRecipientReferences(continuation, [phoenix]).references.map(
         (r) => r.text,
       ),
-    ).toEqual(["Sergeant Van Auken"]);
+    ).toEqual(["Sergeant Van Auken", "Sergeant Auken"]);
   });
 
   test("an unconfirmed longer surname prevents attribution to a competing recipient", () => {
@@ -194,12 +207,145 @@ describe("advisory findings for the known citation structure", () => {
     ).toEqual([]);
   });
 
-  test("an unsupported shortened name produces only a general presence finding where the author supplies the first mention", () => {
-    const scan = scanRecipientReferences("Corporal Buck Rogers led.", [buck]);
-    expect(evaluateRecipientReferences(scan, operation)).toEqual([
-      { kind: "complete-not-detected", recipientId: "17" },
+  test.each([
+    [
+      "Operation first",
+      operation,
+      buck,
+      "Corporal Buck Rogers led. Corporal Buck Jimmy Rogers fired.",
+      "Corporal Buck Jimmy Rogers led. Corporal Rogers fired.",
+      "Corporal Buck Rogers",
+      "complete",
+      ["intermediate-complete"],
+    ],
+    [
+      "Operation intermediate",
+      operation,
+      buck,
+      "Corporal Buck Jimmy Rogers led. Corporal Buck Rogers fired.",
+      "Corporal Buck Jimmy Rogers led. Corporal Rogers fired.",
+      "Corporal Buck Rogers",
+      "surname",
+      [],
+    ],
+    [
+      "Service continuation",
+      service,
+      buck,
+      "led. Corporal Buck Rogers fired.",
+      "led. Corporal Rogers fired.",
+      "Corporal Buck Rogers",
+      "surname",
+      [],
+    ],
+    [
+      "compound surname",
+      operation,
+      phoenix,
+      "Sergeant Phoenix Van Auken led. Sergeant Auken fired.",
+      "Sergeant Phoenix Van Auken led. Sergeant Van Auken fired.",
+      "Sergeant Auken",
+      "surname",
+      [],
+    ],
+  ])(
+    "%s incomplete identity is assessed in place and the correction clears the advice",
+    (
+      _,
+      context,
+      recipient,
+      original,
+      corrected,
+      partial,
+      expectedForm,
+      laterFindings,
+    ) => {
+      const check = (text) =>
+        evaluateRecipientReferences(
+          scanRecipientReferences(text, [recipient]),
+          context,
+        );
+      const findings = check(original);
+      expect(findings[0]).toMatchObject({
+        kind: "incomplete",
+        expectedForm,
+        start: original.indexOf(partial),
+      });
+      expect(findings.slice(1).map((f) => f.kind)).toEqual(laterFindings);
+      expect(check(corrected)).toEqual([]);
+    },
+  );
+
+  test("retains whole middle components in roster order and requires the entire corroborated surname after a given name", () => {
+    const recipient = member(
+      "r",
+      "Corporal",
+      "Buck Alan J. Van Rogers",
+      "VanRogers.B",
+    );
+    const text =
+      "Corporal Buck J. Van Rogers led. Corporal Buck Alan Van Rogers returned. Corporal Buck J. Alan Van Rogers left. Corporal Buck Rogers reported.";
+    const scan = scanRecipientReferences(text, [recipient]);
+    expect(scan.references.map((r) => [r.kind, r.text])).toEqual([
+      ["incomplete", "Corporal Buck J. Van Rogers"],
+      ["incomplete", "Corporal Buck Alan Van Rogers"],
     ]);
-    expect(evaluateRecipientReferences(scan, service)).toEqual([]);
+  });
+
+  test("a partial identity shared with another roster name gives only manual-review advice, even across uncertain surname boundaries", () => {
+    const allen = member("a", "Corporal", "John Allen Smith", "Smith.JA");
+    for (const username of ["Smith.JB", "Unmatched.B", "BruceSmith.J"]) {
+      const bruce = member("b", "Corporal", "John Bruce Smith", username);
+      const scan = scanRecipientReferences("Corporal John Smith led.", [
+        allen,
+        bruce,
+      ]);
+      expect(
+        evaluateRecipientReferences(scan, operation).map((f) => f.kind),
+      ).toEqual(["ambiguous"]);
+    }
+  });
+
+  test("a unique incomplete reference can be corrected with the full name when the surname is shared", () => {
+    const roster = [
+      member("a", "Corporal", "John Allen Smith", "Smith.JA"),
+      member("b", "Corporal", "Jane Bruce Smith", "Smith.JB"),
+    ];
+    const check = (text) =>
+      evaluateRecipientReferences(
+        scanRecipientReferences(text, roster),
+        service,
+      );
+    expect(check("Corporal Jane Smith reported.")).toEqual([
+      expect.objectContaining({
+        kind: "incomplete",
+        recipientId: "b",
+        expectedForm: "complete",
+      }),
+    ]);
+    expect(check("Corporal Jane Bruce Smith reported.")).toEqual([]);
+  });
+
+  test("a surname collision leaves distinct rank or surname identities subject to the intermediate rule", () => {
+    const roster = [
+      member("a", "Corporal", "John Allen Smith", "Smith.JA"),
+      member("b", "Corporal", "John Bruce Smith", "Smith.JB"),
+      member("s", "Sergeant", "Drew Smith", "Smith.D"),
+      buck,
+    ];
+    const scan = scanRecipientReferences(
+      "Corporal John Allen Smith met Corporal John Bruce Smith. Sergeant Drew Smith and Corporal Buck Jimmy Rogers reported.",
+      roster,
+    );
+    expect(
+      evaluateRecipientReferences(scan, service).map((f) => [
+        f.kind,
+        f.recipientId,
+      ]),
+    ).toEqual([
+      ["intermediate-complete", "s"],
+      ["intermediate-complete", "17"],
+    ]);
   });
 
   test("ambiguous mentions neither establish an order nor trigger individual missing-name findings", () => {
