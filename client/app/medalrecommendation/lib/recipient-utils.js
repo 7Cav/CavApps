@@ -121,6 +121,31 @@ export function getCitationName(fullName) {
   return trimText(fullName).replace(/\s+/g, " ");
 }
 
+function surnameLetters(value) {
+  return value
+    .normalize("NFD")
+    .toLowerCase()
+    .replace(/[^\p{L}]/gu, "");
+}
+
+// For intermediate references only. Null means the roster doesn't corroborate a surname.
+export function resolveRecipientSurname(fullName, username) {
+  const handle = trimText(username);
+  const separator = handle.lastIndexOf(".");
+  if (separator < 1) return null;
+  const evidence = surnameLetters(handle.slice(0, separator));
+  if (!evidence) return null;
+
+  const name = trimText(fullName);
+  // Try complete trailing components, longest first, leaving at least one given name.
+  for (const { index } of name.matchAll(/\S+/g)) {
+    if (index === 0) continue;
+    const surname = name.slice(index);
+    if (surnameLetters(surname) === evidence) return surname;
+  }
+  return null;
+}
+
 export function getRecipientIdentity(member) {
   return {
     recipientRank: trimText(member?.rank?.rankFull),

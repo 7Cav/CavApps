@@ -9,8 +9,11 @@ import {
   fillOperationWorksheet,
   getCitationText,
   getHighlightTexts,
+  kentonRecipient,
   renderClient,
   makeRecipient,
+  enterWorksheetField,
+  selectAllRecipients,
   selectAward,
   selectRecipient,
   submitRecommendation,
@@ -255,8 +258,9 @@ describe("narrative validation utilities", () => {
 
       expect(result.warnings).toContainEqual({
         key: "recipient-mention",
-        message:
-          "Recipient mention: The selected recipient's Full Rank Full Name was not detected in the narrative. Verify that the recipient is identified correctly.",
+        message: expect.stringMatching(
+          /not detected.*verify the first mention/i,
+        ),
       });
       expect(result.highlightRanges).toEqual([]);
     });
@@ -536,8 +540,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
       operationDate: "2026-08-11",
       narrative: text,
     });
-    const warning =
-      "Recipient mention: The selected recipient's Full Rank Full Name was not detected in the narrative. Verify that the recipient is identified correctly.";
+    const warning = /recipient mention:.*not detected.*first mention/i;
     expect(screen.getByText(warning)).toBeVisible();
     expect(
       screen.getByRole("textbox", { name: "Narrative" }),
@@ -593,6 +596,93 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(
       screen.queryByRole("region", { name: "Recommendation Preview" }),
     ).not.toBeInTheDocument();
+  });
+
+  test("Operation mention advice stays soft and clears independently for recipients with distinct and shared surnames", async () => {
+    const user = userEvent.setup();
+    renderClient({
+      roster: [
+        makeRecipient(),
+        makeRecipient({
+          realName: "Jane Smith",
+          user: { userId: "jane", username: "Smith.JA" },
+        }),
+        kentonRecipient,
+      ],
+    });
+    await selectAward(user);
+    await selectAllRecipients(user);
+    const narrative =
+      "Specialist Smith coordinated transport. Staff Sergeant Kenton led the team. Staff Sergeant Wade Kenton reported back.";
+    await fillOperationWorksheet(user, {
+      actionCharacter: "Skillful",
+      combatElement: "rifleman",
+      operationTitle: "Exfor",
+      location: "Remagen",
+      operationDate: "2026-08-11",
+      narrative,
+    });
+    const mentionMessages = () =>
+      screen
+        .queryAllByText(/^Recipient mentions?:/)
+        .map((node) => node.textContent);
+    const live = mentionMessages();
+    expect(live).toHaveLength(3);
+    expect(live).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/more than one selected recipient/i),
+        expect.stringMatching(
+          /first recognized mention of Staff Sergeant Wade Kenton.*shortened/i,
+        ),
+        expect.stringMatching(
+          /intermediate mention of Staff Sergeant Wade Kenton.*complete name/i,
+        ),
+      ]),
+    );
+    expect(live.join(" ")).not.toMatch(/John Smith|Jane Smith/);
+    await submitRecommendation(user);
+    expect(new Set(mentionMessages())).toEqual(new Set(live));
+    expect(getCitationText()).toContain(narrative);
+    expect(screen.getByLabelText("Recommendation Body").value).toContain(
+      narrative,
+    );
+
+    const corrected =
+      "Specialist John Smith coordinated transport with Specialist Jane Smith. Staff Sergeant Wade Kenton led the team. Staff Sergeant Kenton reported back.";
+    enterWorksheetField("Narrative", corrected);
+    expect(mentionMessages()).toEqual([]);
+    await submitRecommendation(user);
+    expect(mentionMessages()).toEqual([]);
+    expect(getCitationText()).toContain(corrected);
+  });
+
+  test("the generated Service starter supplies the first mention and surname-only intermediate references clear the advice", async () => {
+    const user = userEvent.setup();
+    renderClient({ medalFamily: "service" });
+    await selectAward(user, "Humanitarian Service Medal");
+    await selectRecipient(user);
+    const continuation =
+      "coordinating support. Specialist John Smith contacted the section. The team returned.";
+    enterWorksheetField("Narrative", continuation);
+    const warning = /intermediate mention of Specialist John Smith/i;
+    expect(screen.getByText(warning)).toBeVisible();
+    expect(screen.getAllByText(/^Recipient mentions?:/)).toHaveLength(1);
+    await submitRecommendation(user);
+    expect(screen.getByText(warning)).toBeVisible();
+    expect(getCitationText()).toContain(
+      "Specialist John Smith distinguished themselves by " + continuation,
+    );
+    expect(screen.getByLabelText("Recommendation Body").value).toContain(
+      continuation,
+    );
+
+    enterWorksheetField(
+      "Narrative",
+      continuation.replace("Specialist John Smith", "Specialist Smith"),
+    );
+    expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
+    await submitRecommendation(user);
+    expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
   });
 
   test("preserves citation text exactly when highlight ranges overlap", async () => {
@@ -667,7 +757,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(citation).not.toHaveTextContent("dodged Major General Fire");
   });
 
-  test("warns on a shortened identity and accepts the complete name without rewriting the narrative", async () => {
+  test("gives only a general reminder for an unrecognized partial name and accepts the complete name", async () => {
     const user = userEvent.setup();
     renderClient();
 
@@ -688,9 +778,9 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     });
     await submitRecommendation(user);
 
-    const missingIdentity =
-      /the selected recipient's full rank full name was not detected in the narrative/i;
+    const missingIdentity = /recipient mention:.*not detected.*first mention/i;
     expect(screen.getByText(missingIdentity)).toBeVisible();
+    expect(screen.getAllByText(/^Recipient mentions?:/)).toHaveLength(1);
     expect(getCitationText()).toContain(narrative);
 
     const completeNarrative = narrative.replace(

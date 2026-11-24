@@ -1,20 +1,15 @@
 import { combineNarrative } from "./citation-builders";
 import {
-  EXPLICIT_RECIPIENT_LIMIT,
-  getRecipientIdentity,
-} from "./recipient-utils";
+  evaluateRecipientReferences,
+  scanRecipientReferences,
+} from "./recipient-references";
+import { getRecipientDisplayName, getRecipientId } from "./recipient-utils";
+
+const missingRecipientMessage =
+  "Recipient mention: The complete recipient identity was not detected in the authored narrative. Verify the first mention uses Full Rank + Complete Roster Name.";
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function buildFlexiblePhrasePattern(value) {
-  return value
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-    .map(escapeRegExp)
-    .join("\\s+");
 }
 
 function addWarning(warnings, key, message) {
@@ -175,16 +170,84 @@ export function hasRecipientIdentity(
   recipientRank,
   recipientCitationName,
   recipientFullName,
+  rankEntries = [],
 ) {
-  return [recipientCitationName, recipientFullName]
-    .filter(Boolean)
-    .some((name) => {
-      const fullIdentityPattern = new RegExp(
-        `${buildFlexiblePhrasePattern(recipientRank)}\\s+${buildFlexiblePhrasePattern(name)}`,
-        "i",
+  // Direct callers supply identity strings without a roster ID or username.
+  for (const realName of new Set([recipientCitationName, recipientFullName])) {
+    if (!realName) continue;
+    const member = {
+      user: { userId: "recipient" },
+      realName,
+      rank: { rankFull: recipientRank },
+    };
+    if (
+      scanRecipientReferences(text, [member], { rankEntries }).references.length
+    )
+      return true;
+  }
+  return false;
+}
+
+function getRecipientMentionWarnings(
+  narrative,
+  recipients,
+  rankEntries,
+  narrativeField,
+  systemOpening,
+) {
+  const systemOwned = narrativeField?.systemOwnedNarrativeOpening;
+  // Selectable Service starters can be empty. Wait until the builder supplies
+  // its opening before assigning the continuation an intermediate position.
+  if (systemOwned && !systemOpening?.trim()) return [];
+  const scan = scanRecipientReferences(narrative, recipients, {
+    rankEntries,
+    recipientIdentityChecks: narrativeField?.recipientIdentityChecks,
+  });
+  const findings = evaluateRecipientReferences(scan, {
+    firstMention: systemOwned ? "generated" : "authored",
+    finalMention: "generated",
+  });
+
+  const warnings = [];
+  let missing = 0;
+  for (const { kind, recipientId } of findings) {
+    if (kind === "complete-not-detected") {
+      missing++;
+    } else if (kind === "ambiguous") {
+      addWarning(
+        warnings,
+        "recipient-ambiguous",
+        "Recipient mention: A recognized reference could refer to more than one selected recipient. Review the wording to clarify whom you mean.",
       );
-      return fullIdentityPattern.test(text);
-    });
+    } else {
+      const name = getRecipientDisplayName(
+        recipients.find((member) => getRecipientId(member) === recipientId),
+      );
+      if (kind === "first-shortened") {
+        addWarning(
+          warnings,
+          `recipient-first-shortened-${recipientId}`,
+          `Recipient mention: The first recognized mention of ${name} appears shortened. Use Full Rank + Complete Roster Name for the first mention.`,
+        );
+      } else if (kind === "intermediate-complete") {
+        addWarning(
+          warnings,
+          `recipient-intermediate-complete-${recipientId}`,
+          `Recipient mention: An intermediate mention of ${name} appears to use the complete name. Use Full Rank + Complete Surname for intermediate mentions.`,
+        );
+      }
+    }
+  }
+  if (missing) {
+    addWarning(
+      warnings,
+      "recipient-mention",
+      recipients.length === 1
+        ? missingRecipientMessage
+        : `Recipient mentions: A complete identity was not detected for ${missing} of ${recipients.length} recipients. Verify their first mentions.`,
+    );
+  }
+  return warnings;
 }
 
 export function getGroupRecipientWarning(
@@ -192,31 +255,12 @@ export function getGroupRecipientWarning(
   recipients,
   narrativeField,
 ) {
-  if (
-    narrativeField?.recipientIdentityChecks === false ||
-    narrativeField?.systemOwnedNarrativeOpening ||
-    recipients.length < 2 ||
-    recipients.length > EXPLICIT_RECIPIENT_LIMIT
-  )
-    return null;
-
-  const missing = recipients.filter((member) => {
-    const { recipientRank, recipientCitationName } =
-      getRecipientIdentity(member);
-    return !hasRecipientIdentity(
-      narrative,
-      recipientRank,
-      recipientCitationName,
-      member.realName,
-    );
-  }).length;
-
-  return missing
-    ? {
-        key: "recipient-mention",
-        message: `${missing} of ${recipients.length} recipients ${missing === 1 ? "is" : "are"} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
-      }
-    : null;
+  if (recipients.length < 2) return null;
+  return (
+    getRecipientMentionWarnings(narrative, recipients, [], narrativeField).find(
+      ({ key }) => key === "recipient-mention",
+    ) ?? null
+  );
 }
 
 export function analyzeNarrative(
@@ -240,13 +284,10 @@ export function analyzeNarrative(
         recipientRank,
         recipientCitationName,
         recipientFullName,
+        rankEntries,
       )
     ) {
-      addWarning(
-        warnings,
-        "recipient-mention",
-        "Recipient mention: The selected recipient's Full Rank Full Name was not detected in the narrative. Verify that the recipient is identified correctly.",
-      );
+      addWarning(warnings, "recipient-mention", missingRecipientMessage);
     }
   }
 
@@ -417,23 +458,17 @@ export function analyzeRecommendationNarrative(
       ? combineNarrative(systemOpening, narrative)
       : narrative;
   const analysis = analyzeNarrative(text, {
-    ...(narrativeField?.recipientIdentityChecks !== false &&
-    !systemOwnedNarrativeOpening &&
-    recipients.length === 1
-      ? {
-          ...getRecipientIdentity(recipients[0]),
-          recipientFullName: recipients[0].realName,
-        }
-      : {}),
     rankEntries,
     minimumNarrativeSentences: medal.minimumNarrativeSentences,
   });
-  // User-owned identity checks inspect authored narrative, never generated prose.
-  const groupWarning = getGroupRecipientWarning(
-    narrative,
-    recipients,
-    narrativeField,
+  analysis.warnings.unshift(
+    ...getRecipientMentionWarnings(
+      narrative,
+      recipients,
+      rankEntries,
+      narrativeField,
+      systemOpening,
+    ),
   );
-  if (groupWarning) analysis.warnings.unshift(groupWarning);
   return analysis;
 }

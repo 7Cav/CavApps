@@ -9,6 +9,7 @@ import {
   matchPastedRecipients,
   orderRecipientsForRecommendation,
   prioritizeInlineRecipients,
+  resolveRecipientSurname,
   selectShownRecipients,
   uniqueRecipients,
   validateRecipientEntries,
@@ -359,7 +360,7 @@ describe("recipient group identity warnings", () => {
     [
       "James Wayne Jackson",
       "Private First Class James Jackson",
-      "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
+      "not detected for 1 of 2 recipients",
     ],
     ["James Wayne Jackson", "PRIVATE  FIRST CLASS james\nwayne JACKSON", null],
     [
@@ -370,7 +371,7 @@ describe("recipient group identity warnings", () => {
     [
       "James Wayne Jackson",
       "Private First Class James RandomUnrelatedWord Jackson",
-      "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
+      "not detected for 1 of 2 recipients",
     ],
   ])(
     "checks for the complete roster identity of %s in a group narrative containing %s",
@@ -397,7 +398,8 @@ describe("recipient group identity warnings", () => {
         recipients,
         {},
       );
-      expect(warning?.message ?? null).toBe(expected);
+      if (expected) expect(warning?.message).toContain(expected);
+      else expect(warning).toBeNull();
     },
   );
 
@@ -417,6 +419,28 @@ describe("recipient group identity warnings", () => {
     expect(analysis.warnings.map((warning) => warning.key)).not.toContain(
       "recipient-mention",
     );
+  });
+  test("defers mention-order advice while a selectable Service starter is empty", () => {
+    const medal = SERVICE_MEDALS.find(
+      ({ id }) => id === "meritorious-service-medal",
+    );
+    const recipients = [makeRecipient()];
+    const systemOpening = medal.buildNarrativeOpening({
+      recipientSubject: resolveRecommendationRecipientSubject(recipients),
+      narrativeOpening: "",
+    });
+    const narrative =
+      "Specialist John Smith reported to Specialist John Smith.";
+    const analysis = analyzeRecommendationNarrative(
+      narrative,
+      recipients,
+      systemOpening,
+      medal,
+      [],
+      resolveMedalWorksheet(medal).fields.narrative,
+    );
+    expect(analysis.text).toBe(narrative);
+    expect(analysis.warnings.map(({ key }) => key)).toEqual(["sentence-count"]);
   });
   test.each([
     ["Patrick VanPelt", true],
@@ -460,21 +484,21 @@ describe("recipient group identity warnings", () => {
       3,
       "one missing",
       "Specialist Alpha One and Specialist Bravo Two acted.",
-      "1 of 3 recipients is",
+      "1 of 3",
     ],
     [
       false,
       4,
       "two missing",
       "Specialist Alpha One and Specialist Bravo Two acted.",
-      "2 of 4 recipients are",
+      "2 of 4",
     ],
     [
       false,
       6,
       "one missing at the explicit-subject boundary",
       "Specialist Alpha One, Specialist Bravo Two, Specialist Charlie Three, Specialist Delta Four and Specialist Echo Five acted.",
-      "1 of 6 recipients is",
+      "1 of 6",
     ],
     [
       false,
@@ -499,10 +523,39 @@ describe("recipient group identity warnings", () => {
         systemOwnedNarrativeOpening,
       });
       if (expected)
-        expect(warning?.message).toBe(
-          `${expected} not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.`,
+        expect(warning?.message).toContain(
+          `not detected for ${expected} recipients`,
         );
       else expect(warning).toBeNull();
+    },
+  );
+});
+
+describe("surnames for intermediate references", () => {
+  test.each([
+    ["Wade Kenton", "Kenton.W", "Kenton"],
+    ["Buck Jimmy Rogers", "Rogers.B", "Rogers"],
+    ["Phoenix Van Auken", "Van Auken.P", "Van Auken"],
+    ["Patrick J. Van Pelt", "VanPelt.JP", "Van Pelt"],
+    ["Anna Maria St. John", "St. John.AM", "St. John"],
+    ["  Émile André du  Pré-O’Neil  ", "DUPRE\u0301ONEIL.E", "du  Pré-O’Neil"],
+  ])(
+    "%s with username %s resolves to the roster spelling %s",
+    (name, username, expected) => {
+      expect(resolveRecipientSurname(name, username)).toBe(expected);
+    },
+  );
+
+  test.each([
+    ["James Robert Van Buren", undefined],
+    ["James Robert Van Buren", "VanBuren"],
+    ["Wade Kenton", "Smith.W"],
+    ["James Robert Van Buren", "uren.J"],
+    ["Taylor", "Taylor.T"],
+  ])(
+    "leaves the surname unresolved for %s with username %s",
+    (name, username) => {
+      expect(resolveRecipientSurname(name, username)).toBeNull();
     },
   );
 });
