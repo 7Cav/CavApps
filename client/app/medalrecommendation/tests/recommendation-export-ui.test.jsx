@@ -71,11 +71,12 @@ describe("Recommendation submission", () => {
       count: 2,
       award: "Humanitarian Service Medal",
       expectedOrder: [0, 1],
-      expectedSubject: "Specialist Taylor Smith and Specialist Aaron Young",
+      expectedSubject:
+        "Specialist Taylor Morgan Smith and Specialist Aaron Young",
       worksheetInputs: {},
       worksheetChoices: {},
       expectedClosingFragment:
-        "Specialist Taylor Smith and Specialist Aaron Young's dedication to duty",
+        "Specialist Taylor Morgan Smith and Specialist Aaron Young's dedication to duty",
       expectedTitle: "Medal Recommendation - HSM - Multiple",
     },
     {
@@ -83,11 +84,11 @@ describe("Recommendation submission", () => {
       award: "Humanitarian Service Medal",
       expectedOrder: [2, 3, 5, 4, 0, 1],
       expectedSubject:
-        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young",
+        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Michael Smith, Specialist John Robert Smith, Specialist Taylor Morgan Smith, and Specialist Aaron Young",
       worksheetInputs: {},
       worksheetChoices: {},
       expectedClosingFragment:
-        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Smith, Specialist John Smith, Specialist Taylor Smith, and Specialist Aaron Young's dedication to duty",
+        "Captain Zulu Zulu, Staff Sergeant Wade Kenton, Specialist John Michael Smith, Specialist John Robert Smith, Specialist Taylor Morgan Smith, and Specialist Aaron Young's dedication to duty",
       expectedTitle: "Medal Recommendation - HSM - Multiple",
     },
     {
@@ -193,10 +194,12 @@ describe("Recommendation submission", () => {
             `[B][URL=https://7cav.us/rosters/profile/${members[index].profileId}/]${fullNames[index]}[/URL][/B]`,
         ),
       );
-      expect(getCitationText()).toContain(
+      const citation = getCitationText();
+      expect(citation).toContain(
         `${expectedSubject} distinguished themselves by supporting the unit.`,
       );
-      expect(getCitationText()).toContain(expectedClosingFragment);
+      expect(citation).toContain(expectedClosingFragment);
+      expect(exported).toContain(citation);
       expect(screen.getByLabelText("Recommendation Title")).toHaveValue(
         expectedTitle,
       );

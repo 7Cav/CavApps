@@ -667,7 +667,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(citation).not.toHaveTextContent("dodged Major General Fire");
   });
 
-  test("accepts the citation name format when a roster name contains a middle name or initial", async () => {
+  test("warns on a shortened identity and accepts the complete name without rewriting the narrative", async () => {
     const user = userEvent.setup();
     renderClient();
 
@@ -688,16 +688,21 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     });
     await submitRecommendation(user);
 
-    const preview = screen.getByRole("region", {
-      name: "Recommendation Preview",
-    });
-    expect(preview).toBeVisible();
-    expect(preview).toHaveTextContent("Specialist Taylor Smith");
-    expect(
-      screen.queryByText(
-        /the selected recipient's full rank full name was not detected in the narrative/i,
-      ),
-    ).not.toBeInTheDocument();
+    const missingIdentity =
+      /the selected recipient's full rank full name was not detected in the narrative/i;
+    expect(screen.getByText(missingIdentity)).toBeVisible();
+    expect(getCitationText()).toContain(narrative);
+
+    const completeNarrative = narrative.replace(
+      "Taylor Smith",
+      "Taylor J. Smith",
+    );
+    const field = screen.getByRole("textbox", { name: "Narrative" });
+    await user.clear(field);
+    await user.paste(completeNarrative);
+    await submitRecommendation(user);
+    expect(screen.queryByText(missingIdentity)).not.toBeInTheDocument();
+    expect(getCitationText()).toContain(completeNarrative);
   });
 
   test("uses the Silver Star four-sentence minimum for narrative warnings", async () => {

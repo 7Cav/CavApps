@@ -117,39 +117,14 @@ export function orderRecipientsForRecommendation(recipients) {
   });
 }
 
-function surnameLetters(value) {
-  return value
-    .normalize("NFD")
-    .toLowerCase()
-    .replace(/[^\p{L}]/gu, "");
-}
-
-export function getCitationName(fullName, username) {
-  const words = trimText(fullName).split(/\s+/).filter(Boolean);
-  if (words.length <= 2) return words.join(" ");
-
-  const handle = trimText(username);
-  const separator = handle.lastIndexOf(".");
-  const surname =
-    separator > 0 ? surnameLetters(handle.slice(0, separator)) : "";
-  if (surname) {
-    // Try the longest compound surname first; keep the roster spelling for display.
-    for (let start = 1; start < words.length - 1; start++) {
-      const tail = words.slice(start);
-      if (surnameLetters(tail.join("")) === surname)
-        return [words[0], ...tail].join(" ");
-    }
-  }
-  return [words[0], words.at(-1)].join(" ");
+export function getCitationName(fullName) {
+  return trimText(fullName).replace(/\s+/g, " ");
 }
 
 export function getRecipientIdentity(member) {
   return {
     recipientRank: trimText(member?.rank?.rankFull),
-    recipientCitationName: getCitationName(
-      member?.realName,
-      member?.user?.username,
-    ),
+    recipientCitationName: getCitationName(member?.realName),
   };
 }
 

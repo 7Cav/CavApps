@@ -326,7 +326,7 @@ describe("recommendation prose subjects", () => {
     },
   );
 
-  test("composes established citation names in supplied order and retains distinct IDs with the same human identity", () => {
+  test("keeps recipients with the same first and last names distinct in the supplied order", () => {
     const members = [
       makeRecipient({
         user: { userId: "second" },
@@ -343,7 +343,7 @@ describe("recommendation prose subjects", () => {
       }),
     ];
     expect(resolveRecommendationRecipientSubject(members).subject).toBe(
-      "Staff Sergeant Wade Kenton, Specialist John Smith, and Specialist John Smith",
+      "Staff Sergeant Wade Middle Kenton, Specialist John Michael Smith, and Specialist John James Smith",
     );
     expect(members.map((member) => getRecipientDisplayName(member))).toEqual([
       "Staff Sergeant Wade Middle Kenton",
@@ -356,7 +356,11 @@ describe("recommendation prose subjects", () => {
 describe("recipient group identity warnings", () => {
   test.each([
     ["James Wayne Jackson", "Private First Class James Wayne Jackson", null],
-    ["James Wayne Jackson", "Private First Class James Jackson", null],
+    [
+      "James Wayne Jackson",
+      "Private First Class James Jackson",
+      "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
+    ],
     ["James Wayne Jackson", "PRIVATE  FIRST CLASS james\nwayne JACKSON", null],
     [
       "James Wayne Allen Jackson",
@@ -369,7 +373,7 @@ describe("recipient group identity warnings", () => {
       "1 of 2 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.",
     ],
   ])(
-    "roster %s accepts only its exact full or citation identity: %s",
+    "checks for the complete roster identity of %s in a group narrative containing %s",
     (realName, identity, expected) => {
       const recipients = [
         makeRecipient({
@@ -414,9 +418,12 @@ describe("recipient group identity warnings", () => {
       "recipient-mention",
     );
   });
-  test.each(["Patrick VanPelt", "Patrick Jay VanPelt"])(
-    "recognizes Specialist %s in the narrative with roster username VanPelt.JP",
-    (name) => {
+  test.each([
+    ["Patrick VanPelt", true],
+    ["Patrick Jay VanPelt", false],
+  ])(
+    "checks the complete roster name when the narrative mentions Specialist %s",
+    (name, expectWarning) => {
       const member = makeRecipient({
         realName: "Patrick Jay VanPelt",
         user: { username: "VanPelt.JP" },
@@ -431,7 +438,9 @@ describe("recipient group identity warnings", () => {
         [],
         {},
       );
-      expect(warnings.map(({ key }) => key)).not.toContain("recipient-mention");
+      expect(warnings.some(({ key }) => key === "recipient-mention")).toBe(
+        expectWarning,
+      );
     },
   );
   const members = [
@@ -500,26 +509,17 @@ describe("recipient group identity warnings", () => {
 
 describe("recipient collection and identity", () => {
   test.each([
-    ["Phoenix Van Auken", "Van Auken.P", "Phoenix Van Auken"],
-    ["Feib De Grassi", "De Grassi.F", "Feib De Grassi"],
-    ["Joubert Van Rooyen", "Van Rooyen.J", "Joubert Van Rooyen"],
-    ["Patrick Jay VanPelt", "VanPelt.JP", "Patrick VanPelt"],
-    ["Robert James Smith", "Smith.B", "Robert Smith"],
-    ["Taylor Morgan Smith", "Smith.TM", "Taylor Smith"],
-    ["James Wayne Allen Jackson", "Jackson.JWA", "James Jackson"],
-    ["Anna Maria St. John", "St. John.AM", "Anna St. John"],
-    ["Karl André Müller", "Muller.K", "Karl Müller"],
-    ["James Robert Van Buren", "Van Buren.JR", "James Van Buren"],
-    ["James Robert Van Buren", "Unmatched.X", "James Buren"],
-    ["James Robert Van Buren", undefined, "James Buren"],
-    ["James Robert Van Buren", "Van Buren", "James Buren"],
-    ["  Émile\tAndré du  Pré ", "DUPRE\u0301.X", "Émile du Pré"],
-    ["Pat Alex O’Neil de-Sá", "oneildesa.P", "Pat O’Neil de-Sá"],
-  ])("cites %s with username %s as %s", (realName, username, expected) => {
-    expect(
-      getRecipientIdentity({ realName, user: { username } })
-        .recipientCitationName,
-    ).toBe(expected);
+    "Chris Jackson Baxter",
+    "Buck Jimmy Rogers",
+    "Patrick Jay VanPelt",
+    "Phoenix Van Auken",
+    "Feib De Grassi",
+    "Joubert Van Rooyen",
+    "Anna Maria St. John",
+    "Émile André du Pré",
+    "Pat Alex O’Neil de-Sá",
+  ])("preserves every part of the roster name %s in citations", (realName) => {
+    expect(getCitationName(realName)).toBe(realName);
   });
 
   test("keeps first occurrences and order by stable ID, not similar names", () => {
@@ -624,9 +624,10 @@ describe("recipient collection and identity", () => {
     ).toBe(true);
   });
 
-  test("preserves full roster display while using first and last citation names", () => {
+  test("uses the complete roster identity for display and citation even when the username differs", () => {
     const member = makeRecipient({
       realName: " Taylor Morgan Smith ",
+      user: { username: "Unmatched.X" },
       rank: { rankFull: " Specialist " },
     });
     expect(getRecipientDisplayName(member)).toBe(
@@ -634,12 +635,16 @@ describe("recipient collection and identity", () => {
     );
     expect(getRecipientIdentity(member)).toEqual({
       recipientRank: "Specialist",
-      recipientCitationName: "Taylor Smith",
+      recipientCitationName: "Taylor Morgan Smith",
     });
+  });
+
+  test("normalizes citation-name whitespace and handles missing and single-word names", () => {
+    expect(getCitationName()).toBe("");
     expect(getCitationName("  Taylor  ")).toBe("Taylor");
     expect(getCitationName("Wade   Kenton")).toBe("Wade Kenton");
     expect(getCitationName("  James\n Wayne\tAllen Jackson  ")).toBe(
-      "James Jackson",
+      "James Wayne Allen Jackson",
     );
   });
 

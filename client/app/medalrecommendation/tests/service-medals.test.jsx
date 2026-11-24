@@ -389,7 +389,7 @@ describe("Service Medal Recommendation Aid", () => {
     ).toHaveAttribute("src", "https://wiki.7cav.us/images/d/d6/AAM.jpg");
   });
 
-  test("uses first and last name only throughout an AAM citation", async () => {
+  test("uses the complete roster name in the AAM starter and closing", async () => {
     const user = await renderSelectedServiceMedal({
       roster: [multiPartNameServiceRecipient],
     });
@@ -402,7 +402,9 @@ describe("Service Medal Recommendation Aid", () => {
     await replaceNarrative(user, completeNarrativeContinuation);
 
     expect(
-      screen.getByText("Corporal John Smith distinguished themselves by"),
+      screen.getByText(
+        "Corporal John Michael Smith distinguished themselves by",
+      ),
     ).toBeVisible();
 
     await submitRecommendation(user);
@@ -410,10 +412,12 @@ describe("Service Medal Recommendation Aid", () => {
     const citation = screen.getByLabelText("Citation Narrative").textContent;
 
     expect(citation).toContain(
-      "Corporal John Smith distinguished themselves by",
+      "Corporal John Michael Smith distinguished themselves by",
     );
-    expect(citation).toContain("Corporal John Smith's dedication to duty");
-    expect(citation).not.toContain("John Michael Smith");
+    expect(citation).toContain(
+      "Corporal John Michael Smith's dedication to duty",
+    );
+    expect(citation).toContain(completeNarrativeContinuation);
   });
 
   test("updates combined AAM narrative warnings live before generation", async () => {

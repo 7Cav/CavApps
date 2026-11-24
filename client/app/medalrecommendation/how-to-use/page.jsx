@@ -101,10 +101,9 @@ const steps = [
     ),
     tool: (
       <p>
-        The Aid retrieves recipient information from the CavApps roster,
-        including names and ranks. It uses this information to construct the
-        recommendation's recipient identities and format the citation according
-        to the supported recipient rules.
+        When the Aid names a recipient in the citation, it uses their full rank
+        and complete roster name, including middle names and every part of the
+        surname.
       </p>
     ),
   },
@@ -159,8 +158,11 @@ const steps = [
           guidance and validation feedback.
         </p>
         <p>
-          You remain responsible for the accuracy and substance of the
-          narrative.
+          Review the recipient references you write. Use full rank and complete
+          roster name for the first and final mentions in the citation body. For
+          each intermediate mention, use full rank and last name. The Aid checks
+          for the recipient's presence where applicable. Review mention order
+          yourself.
         </p>
       </>
     ),
