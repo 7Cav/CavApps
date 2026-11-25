@@ -178,7 +178,13 @@ function matchName(text, first, recipients) {
     matches.find((m) => m.form.kind === "incomplete");
   if (!supported) return null;
   const { recipient, form } = supported;
-  const ids = new Set(matches.map((m) => m.recipient.id));
+  // An exact roster name outranks an inferred omission on the same span.
+  // Corroborated surnames and unconfirmed compound surnames can still veto attribution.
+  const candidates =
+    form.kind === "complete"
+      ? matches.filter((m) => m.form.kind !== "incomplete")
+      : matches;
+  const ids = new Set(candidates.map((m) => m.recipient.id));
   return ids.size > 1
     ? { kind: "ambiguous", candidateIds: [...ids], end }
     : { kind: form.kind, recipientId: recipient.id, end };

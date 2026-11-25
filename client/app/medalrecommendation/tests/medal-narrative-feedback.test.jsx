@@ -12,6 +12,7 @@ import {
   kentonRecipient,
   renderClient,
   makeRecipient,
+  makeJohnSmithRecipient,
   enterWorksheetField,
   selectAllRecipients,
   selectAward,
@@ -24,13 +25,12 @@ const compliantNarrative =
   "He repeatedly engaged enemy forces during each major contact. " +
   "His actions contributed directly to the successful completion of the operation.";
 
-const corporalSmiths = ["Allen", "Bruce"].map((middle) =>
-  makeRecipient({
-    realName: `John ${middle} Smith`,
-    user: { userId: middle, username: `Smith.J${middle[0]}` },
+function corporalSmith(middle) {
+  return {
+    ...makeJohnSmithRecipient(middle),
     rank: { rankFull: "Corporal", rankShort: "CPL", rankId: "19" },
-  }),
-);
+  };
+}
 
 const defaultAnalysisOptions = {
   recipientRank: "Specialist",
@@ -609,7 +609,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
   test("Operation mention advice stays soft and clears independently for recipients with distinct and shared surnames", async () => {
     const user = userEvent.setup();
     renderClient({
-      roster: [...corporalSmiths, kentonRecipient],
+      roster: [corporalSmith("Allen"), corporalSmith("Bruce"), kentonRecipient],
     });
     await selectAward(user);
     await selectAllRecipients(user);
@@ -657,9 +657,12 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(getCitationText()).toContain(corrected);
   });
 
-  test("a complete name clears the shared-surname advisory in a Service continuation", async () => {
+  test("Corporal John Smith clears the shared-surname advisory in a Service continuation with John Allen Smith selected", async () => {
     const user = userEvent.setup();
-    renderClient({ medalFamily: "service", roster: corporalSmiths });
+    renderClient({
+      medalFamily: "service",
+      roster: [corporalSmith(), corporalSmith("Allen")],
+    });
     await selectAward(user, "Humanitarian Service Medal");
     await selectAllRecipients(user);
     const original =
@@ -668,10 +671,7 @@ describe("Medal Recommendation Aid - narrative feedback", () => {
     expect(screen.getByText(/more than one selected recipient/i)).toBeVisible();
     await submitRecommendation(user);
     expect(getCitationText()).toContain(original);
-    const corrected = original.replace(
-      "Corporal Smith",
-      "Corporal John Allen Smith",
-    );
+    const corrected = original.replace("Corporal Smith", "Corporal John Smith");
     enterWorksheetField("Narrative", corrected);
     expect(screen.queryByText(/^Recipient mentions?:/)).not.toBeInTheDocument();
     await submitRecommendation(user);

@@ -11,6 +11,8 @@ function member(id, rankFull, realName, username) {
 }
 const buck = member("17", "Corporal", "Buck Jimmy Rogers", "Rogers.B");
 const phoenix = member("22", "Sergeant", "Phoenix Van Auken", "Van Auken.P");
+const john = member("john", "Corporal", "John Smith", "Smith.J");
+const allen = member("allen", "Corporal", "John Allen Smith", "Smith.JA");
 
 describe("recipient references in authored text", () => {
   test("reports the exact identity spans in the original text, including after non-BMP characters", () => {
@@ -132,15 +134,53 @@ describe("recipient references in authored text", () => {
     ).toEqual([]);
   });
 
-  test("an identity shared as a complete name and a surname cannot be assigned to either recipient", () => {
-    const van = member("v", "Sergeant", "Van Auken", "Auken.V");
-    const { references } = scanRecipientReferences("Sergeant Van Auken led.", [
-      van,
-      phoenix,
+  test("the two full Smith names are attributed in narrative order regardless of selection order", () => {
+    const text = "Corporal John Smith and Corporal John Allen Smith led.";
+    for (const roster of [
+      [john, allen],
+      [allen, john],
+    ]) {
+      const scan = scanRecipientReferences(text, roster);
+      expect(scan.references.map((r) => [r.kind, r.recipientId])).toEqual([
+        ["complete", "john"],
+        ["complete", "allen"],
+      ]);
+      expect(evaluateRecipientReferences(scan, operation)).toEqual([]);
+    }
+    const onlyAllen = scanRecipientReferences("Corporal John Smith led.", [
+      allen,
     ]);
-    expect(references[0]).toMatchObject({ kind: "ambiguous" });
-    expect(references[0]).not.toHaveProperty("recipientId");
+    expect(evaluateRecipientReferences(onlyAllen, operation)).toEqual([
+      expect.objectContaining({ kind: "incomplete", recipientId: "allen" }),
+    ]);
   });
+
+  test("identical full names remain ambiguous between their roster IDs", () => {
+    const otherJohn = member("other", "Corporal", "John Smith", "Smith.J2");
+    const { references } = scanRecipientReferences("Corporal John Smith led.", [
+      allen,
+      otherJohn,
+      john,
+    ]);
+    expect(references).toHaveLength(1);
+    expect(references[0].kind).toBe("ambiguous");
+    expect(new Set(references[0].candidateIds)).toEqual(
+      new Set(["john", "other"]),
+    );
+  });
+
+  test.each(["Van Auken.P", "Auken.P"])(
+    "a complete name overlapping a corroborated or possible compound surname (%s) stays ambiguous",
+    (username) => {
+      const van = member("v", "Sergeant", "Van Auken", "Auken.V");
+      const { references } = scanRecipientReferences(
+        "Sergeant Van Auken led.",
+        [van, member("22", "Sergeant", "Phoenix Van Auken", username)],
+      );
+      expect(references[0]).toMatchObject({ kind: "ambiguous" });
+      expect(references[0]).not.toHaveProperty("recipientId");
+    },
+  );
 
   test("locates distant mentions in a draft-sized narrative without changing offsets or prose", () => {
     const middle = "The team advanced. ".repeat(50_000);
