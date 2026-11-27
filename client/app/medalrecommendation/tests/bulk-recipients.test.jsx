@@ -49,8 +49,7 @@ const groups = [
   developmentRecipientGroup,
   { groupTitle: "Aviation", positions: [{ positionId: "air" }] },
 ];
-const identityWarning =
-  /Recipient mentions?:|\d+ of \d+ recipients (?:is|are) not referenced/;
+const identityWarning = /Recipient mentions?:/;
 const narrative =
   "The element  held the position. The team supported the advance. The department secured the objective.";
 const operationValues = {
@@ -1094,7 +1093,7 @@ describe("one shared recommendation", () => {
     });
     expect(screen.getAllByText(identityWarning)).toHaveLength(1);
     expect(screen.getByText(identityWarning)).toHaveTextContent(
-      "2 of 2 recipients are not referenced",
+      "not detected for 2 of 2 recipients",
     );
     expect(screen.getAllByText(/Sentence count:/)).toHaveLength(1);
     expect(screen.getAllByText(/Possible duplicate:/)).toHaveLength(1);
@@ -1103,7 +1102,7 @@ describe("one shared recommendation", () => {
     expectOneCitation();
     expect(screen.getAllByText(identityWarning)).toHaveLength(1);
     expect(screen.getByText(identityWarning)).toHaveTextContent(
-      "2 of 2 recipients are not referenced",
+      "not detected for 2 of 2 recipients",
     );
     expect(screen.getAllByText(/Sentence count:/)).toHaveLength(1);
     await user.click(screen.getByRole("button", { name: "Remove Recipient" }));
@@ -1350,8 +1349,7 @@ describe("worksheet-owned narrative identity warnings", () => {
     const text =
       "Specialist John Smith secured the objective. Staff Sergeant Wade Kenton supported the advance. The team completed the mission.";
     await fillOperationWorksheet(user, { ...operationValues, narrative: text });
-    const warning =
-      "1 of 3 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.";
+    const warning = /not detected for 1 of 3 recipients/i;
     expect(screen.getAllByText(identityWarning)).toHaveLength(1);
     expect(screen.getByText(warning)).toBeVisible();
     expect(
@@ -1390,8 +1388,7 @@ describe("worksheet-owned narrative identity warnings", () => {
     const text =
       "Specialist Tim Rhone secured the objective. Captain Brent Swanson directed the advance. Staff Sergeant Wade Kenton covered the crossing. First Lieutenant Darek Hazen coordinated the support. Staff Sergeant Ryan Beauchamp maintained communications.";
     await fillOperationWorksheet(user, { ...operationValues, narrative: text });
-    const warning =
-      "1 of 6 recipients is not referenced in the narrative. Ensure each recipient is properly cited before submitting the recommendation.";
+    const warning = /not detected for 1 of 6 recipients/i;
     expect(screen.getAllByText(identityWarning)).toHaveLength(1);
     expect(screen.getByText(warning)).toBeVisible();
     await submitRecommendation(user);
